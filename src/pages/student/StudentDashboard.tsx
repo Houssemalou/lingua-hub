@@ -46,33 +46,33 @@ export default function StudentDashboard() {
       className="space-y-8"
     >
       {/* Welcome Header */}
-      <motion.div variants={item} className="relative overflow-hidden rounded-2xl gradient-accent p-8">
+      <motion.div variants={item} className="relative overflow-hidden rounded-2xl gradient-accent p-4 sm:p-6 lg:p-8">
         <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-sidebar-primary-foreground">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sidebar-primary-foreground">
             Welcome back, {currentStudent.name.split(' ')[0]}! 👋
           </h1>
-          <p className="text-sidebar-primary-foreground/80 mt-2 max-w-xl">
+          <p className="text-sidebar-primary-foreground/80 mt-2 max-w-xl text-sm sm:text-base">
             You're making great progress! Keep up the amazing work on your language learning journey.
           </p>
-          <div className="flex items-center gap-6 mt-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-4 sm:mt-6">
             <div>
-              <p className="text-sidebar-primary-foreground/70 text-sm">Current Level</p>
-              <Badge variant={currentStudent.level.toLowerCase() as any} className="mt-1 text-base px-3 py-1">
+              <p className="text-sidebar-primary-foreground/70 text-xs sm:text-sm">Current Level</p>
+              <Badge variant={currentStudent.level.toLowerCase() as any} className="mt-1 text-sm sm:text-base px-2 sm:px-3 py-1">
                 {currentStudent.level}
               </Badge>
             </div>
             <div>
-              <p className="text-sidebar-primary-foreground/70 text-sm">Hours Learned</p>
-              <p className="text-2xl font-bold text-sidebar-primary-foreground mt-1">{currentStudent.hoursLearned}h</p>
+              <p className="text-sidebar-primary-foreground/70 text-xs sm:text-sm">Hours Learned</p>
+              <p className="text-xl sm:text-2xl font-bold text-sidebar-primary-foreground mt-1">{currentStudent.hoursLearned}h</p>
             </div>
             <div>
-              <p className="text-sidebar-primary-foreground/70 text-sm">Sessions Completed</p>
-              <p className="text-2xl font-bold text-sidebar-primary-foreground mt-1">{currentStudent.totalSessions}</p>
+              <p className="text-sidebar-primary-foreground/70 text-xs sm:text-sm">Sessions Completed</p>
+              <p className="text-xl sm:text-2xl font-bold text-sidebar-primary-foreground mt-1">{currentStudent.totalSessions}</p>
             </div>
           </div>
         </div>
-        <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-20">
-          <BookOpen className="w-48 h-48" />
+        <div className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 opacity-20 hidden sm:block">
+          <BookOpen className="w-32 sm:w-40 lg:w-48 h-32 sm:h-40 lg:h-48" />
         </div>
       </motion.div>
 
@@ -80,18 +80,18 @@ export default function StudentDashboard() {
       {liveSessions.length > 0 && (
         <motion.div variants={item}>
           <Card className="border-destructive/50 bg-destructive/5">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center animate-pulse">
-                    <Bell className="w-6 h-6 text-destructive" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-destructive/20 flex items-center justify-center animate-pulse shrink-0">
+                    <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">Session in Progress!</h3>
-                    <p className="text-muted-foreground">{liveSessions[0].roomName} is happening now</p>
+                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Session in Progress!</h3>
+                    <p className="text-muted-foreground text-xs sm:text-sm">{liveSessions[0].roomName} is happening now</p>
                   </div>
                 </div>
-                <Button variant="live" onClick={() => navigate(`/student/room/${liveSessions[0].roomId}`)}>
+                <Button variant="live" size="sm" className="w-full sm:w-auto" onClick={() => navigate(`/student/room/${liveSessions[0].roomId}`)}>
                   Join Now
                 </Button>
               </div>

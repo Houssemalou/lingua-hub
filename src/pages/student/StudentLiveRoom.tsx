@@ -69,19 +69,19 @@ export default function StudentLiveRoom() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-2 lg:order-1">
           {/* Session Objective */}
           <Card className="gradient-accent">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-sidebar-primary-foreground/20 flex items-center justify-center shrink-0">
-                  <Target className="w-6 h-6 text-sidebar-primary-foreground" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-sidebar-primary-foreground/20 flex items-center justify-center shrink-0">
+                  <Target className="w-5 h-5 sm:w-6 sm:h-6 text-sidebar-primary-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sidebar-primary-foreground text-lg">Session Objective</h3>
-                  <p className="text-sidebar-primary-foreground/90 mt-1">{room.objective}</p>
+                  <h3 className="font-semibold text-sidebar-primary-foreground text-base sm:text-lg">Session Objective</h3>
+                  <p className="text-sidebar-primary-foreground/90 mt-1 text-sm sm:text-base">{room.objective}</p>
                 </div>
               </div>
             </CardContent>
@@ -89,32 +89,33 @@ export default function StudentLiveRoom() {
 
           {/* Push to Talk */}
           <Card>
-            <CardContent className="p-8">
-              <div className="text-center space-y-6">
-                <h3 className="text-lg font-medium text-foreground">Voice Control</h3>
+            <CardContent className="p-4 sm:p-6 lg:p-8">
+              <div className="text-center space-y-4 sm:space-y-6">
+                <h3 className="text-base sm:text-lg font-medium text-foreground">Voice Control</h3>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsMuted(!isMuted)}
-                  className={`w-32 h-32 rounded-full mx-auto flex items-center justify-center transition-all duration-200 ${
+                  className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto flex items-center justify-center transition-all duration-200 ${
                     isMuted 
                       ? 'bg-muted hover:bg-muted/80' 
                       : 'bg-destructive hover:bg-destructive/90 animate-pulse-ring'
                   }`}
                 >
                   {isMuted ? (
-                    <MicOff className="w-12 h-12 text-muted-foreground" />
+                    <MicOff className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
                   ) : (
-                    <Mic className="w-12 h-12 text-destructive-foreground" />
+                    <Mic className="w-10 h-10 sm:w-12 sm:h-12 text-destructive-foreground" />
                   )}
                 </motion.button>
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-sm sm:text-base">
                   {isMuted ? 'Click to unmute and speak' : 'Speaking... Click to mute'}
                 </p>
                 <div className="flex justify-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm">
                     <Volume2 className="w-4 h-4" />
-                    Audio Settings
+                    <span className="hidden sm:inline">Audio Settings</span>
+                    <span className="sm:hidden">Audio</span>
                   </Button>
                 </div>
               </div>
@@ -174,7 +175,7 @@ export default function StudentLiveRoom() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 order-1 lg:order-2">
           {/* Participants */}
           <Card>
             <CardHeader className="pb-3">

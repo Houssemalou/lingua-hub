@@ -85,37 +85,37 @@ export default function StudentProgress() {
     >
       {/* Header */}
       <motion.div variants={item}>
-        <h1 className="text-3xl font-bold text-foreground">Progress & Level</h1>
-        <p className="text-muted-foreground mt-1">Track your language learning journey</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Progress & Level</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">Track your language learning journey</p>
       </motion.div>
 
       {/* Current Level Card */}
       <motion.div variants={item}>
         <Card className="overflow-hidden">
-          <div className="gradient-accent p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-2xl bg-sidebar-primary-foreground/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-4xl font-bold text-sidebar-primary-foreground">{currentStudent.level}</span>
+          <div className="gradient-accent p-4 sm:p-6 lg:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-xl sm:rounded-2xl bg-sidebar-primary-foreground/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-sidebar-primary-foreground">{currentStudent.level}</span>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-sidebar-primary-foreground">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-sidebar-primary-foreground">
                     {levelDescriptions[currentStudent.level].name}
                   </h2>
-                  <p className="text-sidebar-primary-foreground/80 mt-1 max-w-md">
+                  <p className="text-sidebar-primary-foreground/80 mt-1 max-w-md text-sm sm:text-base">
                     {levelDescriptions[currentStudent.level].description}
                   </p>
                 </div>
               </div>
-              <div className="text-center lg:text-right">
-                <p className="text-sidebar-primary-foreground/70 text-sm">Overall Progress</p>
-                <p className="text-5xl font-bold text-sidebar-primary-foreground mt-1">{averageProgress}%</p>
+              <div className="text-left sm:text-right">
+                <p className="text-sidebar-primary-foreground/70 text-xs sm:text-sm">Overall Progress</p>
+                <p className="text-3xl sm:text-4xl lg:text-5xl font-bold text-sidebar-primary-foreground mt-1">{averageProgress}%</p>
               </div>
             </div>
           </div>
           
           {nextLevel && (
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">Progress to {nextLevel}</span>
@@ -123,8 +123,8 @@ export default function StudentProgress() {
                     {Math.round((progressToNextLevel / rangeToNextLevel) * 100)}%
                   </span>
                 </div>
-                <Progress value={(progressToNextLevel / rangeToNextLevel) * 100} className="h-3" />
-                <p className="text-sm text-muted-foreground">
+                <Progress value={(progressToNextLevel / rangeToNextLevel) * 100} className="h-2 sm:h-3" />
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Keep practicing! You need {rangeToNextLevel - progressToNextLevel} more points to reach {nextLevel}.
                 </p>
               </div>
@@ -137,13 +137,13 @@ export default function StudentProgress() {
       <motion.div variants={item}>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Award className="w-5 h-5 text-accent" />
               CEFR Level Path
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between relative">
+          <CardContent className="overflow-x-auto">
+            <div className="flex items-center justify-between relative min-w-[400px] sm:min-w-0 px-2">
               <div className="absolute top-1/2 left-0 right-0 h-1 bg-muted -translate-y-1/2" />
               {levels.map((level, index) => {
                 const isCompleted = index < currentLevelIndex;
@@ -153,17 +153,17 @@ export default function StudentProgress() {
                 return (
                   <div key={level} className="relative flex flex-col items-center z-10">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-all ${
                         isCompleted
                           ? 'bg-success text-success-foreground'
                           : isCurrent
-                            ? 'bg-accent text-accent-foreground ring-4 ring-accent/30'
+                            ? 'bg-accent text-accent-foreground ring-2 sm:ring-4 ring-accent/30'
                             : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {level}
                     </div>
-                    <p className={`text-xs mt-2 font-medium ${
+                    <p className={`text-[10px] sm:text-xs mt-1 sm:mt-2 font-medium ${
                       isCurrent ? 'text-accent' : isFuture ? 'text-muted-foreground' : 'text-foreground'
                     }`}>
                       {levelDescriptions[level].name}
