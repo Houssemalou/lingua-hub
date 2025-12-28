@@ -15,6 +15,7 @@ import {
   Languages,
   ShieldCheck,
   GraduationCap,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,8 @@ import { currentStudent } from '@/data/mockData';
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 const adminNavItems = [
@@ -41,24 +44,33 @@ const studentNavItems = [
   { to: '/student/profile', icon: User, label: 'Profile' },
 ];
 
-export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
+export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const { role, setRole } = useRole();
   const { theme, toggleTheme } = useTheme();
 
   const navItems = role === 'admin' ? adminNavItems : studentNavItems;
 
+  const handleNavClick = () => {
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
+
   return (
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 72 : 256 }}
       transition={{ duration: 0.2, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 h-screen bg-sidebar flex flex-col border-r border-sidebar-border z-50"
+      className={cn(
+        "fixed left-0 h-screen bg-sidebar flex flex-col border-r border-sidebar-border z-50",
+        isMobile ? "top-0 w-64" : "top-0"
+      )}
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         <AnimatePresence mode="wait">
-          {!collapsed && (
+          {(!collapsed || isMobile) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -72,19 +84,29 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
             </motion.div>
           )}
         </AnimatePresence>
-        {collapsed && (
+        {collapsed && !isMobile && (
           <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center mx-auto">
             <Languages className="w-5 h-5 text-sidebar-primary-foreground" />
           </div>
+        )}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-sidebar-foreground ml-auto"
+            onClick={onClose}
+          >
+            <X className="w-5 h-5" />
+          </Button>
         )}
       </div>
 
       {/* Role Switcher */}
       <div className="p-3 border-b border-sidebar-border">
-        <div className={cn("flex gap-1", collapsed && "flex-col")}>
+        <div className={cn("flex gap-1", collapsed && !isMobile && "flex-col")}>
           <Button
             variant={role === 'admin' ? 'default' : 'ghost'}
-            size={collapsed ? 'icon-sm' : 'sm'}
+            size={(collapsed && !isMobile) ? 'icon-sm' : 'sm'}
             onClick={() => setRole('admin')}
             className={cn(
               "flex-1",
@@ -94,11 +116,11 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           >
             <ShieldCheck className="w-4 h-4" />
-            {!collapsed && <span className="ml-1">Admin</span>}
+            {(!collapsed || isMobile) && <span className="ml-1">Admin</span>}
           </Button>
           <Button
             variant={role === 'student' ? 'default' : 'ghost'}
-            size={collapsed ? 'icon-sm' : 'sm'}
+            size={(collapsed && !isMobile) ? 'icon-sm' : 'sm'}
             onClick={() => setRole('student')}
             className={cn(
               "flex-1",
@@ -108,7 +130,7 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
             )}
           >
             <GraduationCap className="w-4 h-4" />
-            {!collapsed && <span className="ml-1">Student</span>}
+            {(!collapsed || isMobile) && <span className="ml-1">Student</span>}
           </Button>
         </div>
       </div>
@@ -121,6 +143,7 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={handleNavClick}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
                 isActive
@@ -137,7 +160,7 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
               )}
               <item.icon className="w-5 h-5 shrink-0" />
               <AnimatePresence mode="wait">
-                {!collapsed && (
+                {(!collapsed || isMobile) && (
                   <motion.span
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -166,7 +189,7 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
             <Moon className="w-5 h-5 shrink-0" />
           )}
           <AnimatePresence mode="wait">
-            {!collapsed && (
+            {(!collapsed || isMobile) && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -182,13 +205,13 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
         {/* User */}
         {role === 'student' && (
           <div className="px-3 py-3 border-t border-sidebar-border">
-            <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+            <div className={cn("flex items-center gap-3", collapsed && !isMobile && "justify-center")}>
               <Avatar className="w-9 h-9">
                 <AvatarImage src={currentStudent.avatar} />
                 <AvatarFallback>{currentStudent.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <AnimatePresence mode="wait">
-                {!collapsed && (
+                {(!collapsed || isMobile) && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -208,17 +231,19 @@ export function AppSidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         )}
 
-        {/* Collapse toggle */}
-        <button
-          onClick={onToggle}
-          className="w-full flex items-center justify-center py-3 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-        >
-          {collapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <ChevronLeft className="w-5 h-5" />
-          )}
-        </button>
+        {/* Collapse toggle (desktop only) */}
+        {!isMobile && (
+          <button
+            onClick={onToggle}
+            className="w-full flex items-center justify-center py-3 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            {collapsed ? (
+              <ChevronRight className="w-5 h-5" />
+            ) : (
+              <ChevronLeft className="w-5 h-5" />
+            )}
+          </button>
+        )}
       </div>
     </motion.aside>
   );

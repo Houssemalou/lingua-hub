@@ -54,50 +54,50 @@ export default function StudentProfile() {
     >
       {/* Header */}
       <motion.div variants={item}>
-        <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
-        <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">My Profile</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage your account settings and preferences</p>
       </motion.div>
 
       {/* Profile Card */}
       <motion.div variants={item}>
         <Card>
-          <CardContent className="p-8">
-            <div className="flex flex-col sm:flex-row gap-8">
+          <CardContent className="p-4 sm:p-6 lg:p-8">
+            <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
               {/* Avatar Section */}
-              <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-3 sm:gap-4">
                 <div className="relative">
-                  <Avatar className="w-32 h-32 border-4 border-accent">
+                  <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-accent">
                     <AvatarImage src={currentStudent.avatar} />
-                    <AvatarFallback className="text-4xl">{currentStudent.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="text-3xl sm:text-4xl">{currentStudent.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <button className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
-                    <Camera className="w-5 h-5" />
+                  <button className="absolute bottom-0 right-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
+                    <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
-                <Badge variant={currentStudent.level.toLowerCase() as any} className="text-base px-4 py-1">
+                <Badge variant={currentStudent.level.toLowerCase() as any} className="text-sm sm:text-base px-3 sm:px-4 py-1">
                   Level {currentStudent.level}
                 </Badge>
               </div>
 
               {/* Info Section */}
-              <div className="flex-1 space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-foreground">{currentStudent.name}</h2>
-                    <p className="text-muted-foreground">{currentStudent.email}</p>
+              <div className="flex-1 space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="text-center sm:text-left">
+                    <h2 className="text-xl sm:text-2xl font-bold text-foreground">{currentStudent.name}</h2>
+                    <p className="text-muted-foreground text-sm sm:text-base">{currentStudent.email}</p>
                   </div>
                   {!isEditing ? (
-                    <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
+                    <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2 w-full sm:w-auto">
                       <Edit2 className="w-4 h-4" />
                       Edit Profile
                     </Button>
                   ) : (
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={handleCancel} className="gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <Button variant="outline" onClick={handleCancel} className="gap-2 flex-1 sm:flex-none">
                         <X className="w-4 h-4" />
                         Cancel
                       </Button>
-                      <Button onClick={handleSave} className="gap-2">
+                      <Button onClick={handleSave} className="gap-2 flex-1 sm:flex-none">
                         <Save className="w-4 h-4" />
                         Save
                       </Button>
@@ -146,23 +146,23 @@ export default function StudentProfile() {
       </motion.div>
 
       {/* Stats */}
-      <motion.div variants={item} className="grid gap-4 sm:grid-cols-3">
+      <motion.div variants={item} className="grid gap-3 sm:gap-4 grid-cols-3">
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-4xl font-bold text-primary">{currentStudent.totalSessions}</p>
-            <p className="text-muted-foreground mt-1">Sessions Completed</p>
+          <CardContent className="p-4 sm:p-6 text-center">
+            <p className="text-2xl sm:text-4xl font-bold text-primary">{currentStudent.totalSessions}</p>
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">Sessions</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-4xl font-bold text-accent">{currentStudent.hoursLearned}h</p>
-            <p className="text-muted-foreground mt-1">Hours Learned</p>
+          <CardContent className="p-4 sm:p-6 text-center">
+            <p className="text-2xl sm:text-4xl font-bold text-accent">{currentStudent.hoursLearned}h</p>
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">Hours</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-4xl font-bold text-success">7</p>
-            <p className="text-muted-foreground mt-1">Day Streak 🔥</p>
+          <CardContent className="p-4 sm:p-6 text-center">
+            <p className="text-2xl sm:text-4xl font-bold text-success">7</p>
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">Streak 🔥</p>
           </CardContent>
         </Card>
       </motion.div>
