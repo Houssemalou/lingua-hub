@@ -16,11 +16,13 @@ import {
   ShieldCheck,
   GraduationCap,
   X,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useRole } from '@/contexts/RoleContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { currentStudent } from '@/data/mockData';
 
@@ -31,23 +33,24 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const adminNavItems = [
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/rooms', icon: DoorOpen, label: 'Rooms' },
-  { to: '/admin/students', icon: Users, label: 'Students' },
-];
-
-const studentNavItems = [
-  { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/student/sessions', icon: CalendarCheck, label: 'Sessions' },
-  { to: '/student/progress', icon: TrendingUp, label: 'Progress' },
-  { to: '/student/profile', icon: User, label: 'Profile' },
-];
-
 export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
   const { role, setRole } = useRole();
   const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t, isRTL } = useLanguage();
+
+  const adminNavItems = [
+    { to: '/admin/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/admin/rooms', icon: DoorOpen, label: t('nav.rooms') },
+    { to: '/admin/students', icon: Users, label: t('nav.students') },
+  ];
+
+  const studentNavItems = [
+    { to: '/student/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/student/progress', icon: TrendingUp, label: t('nav.progress') },
+    { to: '/student/profile', icon: User, label: t('nav.profile') },
+  ];
 
   const navItems = role === 'admin' ? adminNavItems : studentNavItems;
 
@@ -57,13 +60,18 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     }
   };
 
+  const toggleLanguage = () => {
+    setLanguage(language === 'fr' ? 'ar' : 'fr');
+  };
+
   return (
     <motion.aside
       initial={false}
       animate={{ width: collapsed ? 72 : 256 }}
       transition={{ duration: 0.2, ease: 'easeInOut' }}
       className={cn(
-        "fixed left-0 h-screen bg-sidebar flex flex-col border-r border-sidebar-border z-50",
+        "fixed h-screen bg-sidebar flex flex-col border-sidebar-border z-50",
+        isRTL ? "right-0 border-l" : "left-0 border-r",
         isMobile ? "top-0 w-64" : "top-0"
       )}
     >
@@ -75,7 +83,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2"
+              className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
             >
               <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
                 <Languages className="w-5 h-5 text-sidebar-primary-foreground" />
@@ -93,7 +101,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
           <Button
             variant="ghost"
             size="icon"
-            className="text-sidebar-foreground ml-auto"
+            className={cn("text-sidebar-foreground", isRTL ? "mr-auto" : "ml-auto")}
             onClick={onClose}
           >
             <X className="w-5 h-5" />
@@ -116,7 +124,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
             )}
           >
             <ShieldCheck className="w-4 h-4" />
-            {(!collapsed || isMobile) && <span className="ml-1">Admin</span>}
+            {(!collapsed || isMobile) && <span className={cn(isRTL ? "mr-1" : "ml-1")}>{t('nav.admin')}</span>}
           </Button>
           <Button
             variant={role === 'student' ? 'default' : 'ghost'}
@@ -130,7 +138,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
             )}
           >
             <GraduationCap className="w-4 h-4" />
-            {(!collapsed || isMobile) && <span className="ml-1">Student</span>}
+            {(!collapsed || isMobile) && <span className={cn(isRTL ? "mr-1" : "ml-1")}>{t('nav.student')}</span>}
           </Button>
         </div>
       </div>
@@ -146,6 +154,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
               onClick={handleNavClick}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                isRTL && "flex-row-reverse",
                 isActive
                   ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -154,18 +163,22 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
               {isActive && (
                 <motion.div
                   layoutId="activeNav"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-sidebar-primary rounded-r-full"
-                  style={{ left: '-8px' }}
+                  className={cn(
+                    "absolute top-1/2 -translate-y-1/2 w-1 h-8 bg-sidebar-primary rounded-full",
+                    isRTL ? "right-0" : "left-0",
+                    isRTL ? "rounded-l-full" : "rounded-r-full"
+                  )}
+                  style={isRTL ? { right: '-8px' } : { left: '-8px' }}
                 />
               )}
               <item.icon className="w-5 h-5 shrink-0" />
               <AnimatePresence mode="wait">
                 {(!collapsed || isMobile) && (
                   <motion.span
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={{ opacity: 0, x: isRTL ? 10 : -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="font-medium"
+                    exit={{ opacity: 0, x: isRTL ? 10 : -10 }}
+                    className="font-medium whitespace-nowrap"
                   >
                     {item.label}
                   </motion.span>
@@ -178,10 +191,36 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
 
       {/* Bottom section */}
       <div className="mt-auto border-t border-sidebar-border">
+        {/* Language toggle */}
+        <button
+          onClick={toggleLanguage}
+          className={cn(
+            "w-full flex items-center gap-3 px-5 py-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+            isRTL && "flex-row-reverse"
+          )}
+        >
+          <Globe className="w-5 h-5 shrink-0" />
+          <AnimatePresence mode="wait">
+            {(!collapsed || isMobile) && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="font-medium whitespace-nowrap"
+              >
+                {language === 'fr' ? 'العربية' : 'Français'}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-5 py-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+          className={cn(
+            "w-full flex items-center gap-3 px-5 py-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors",
+            isRTL && "flex-row-reverse"
+          )}
         >
           {theme === 'dark' ? (
             <Sun className="w-5 h-5 shrink-0" />
@@ -194,9 +233,9 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="font-medium"
+                className="font-medium whitespace-nowrap"
               >
-                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                {theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}
               </motion.span>
             )}
           </AnimatePresence>
@@ -205,7 +244,11 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
         {/* User */}
         {role === 'student' && (
           <div className="px-3 py-3 border-t border-sidebar-border">
-            <div className={cn("flex items-center gap-3", collapsed && !isMobile && "justify-center")}>
+            <div className={cn(
+              "flex items-center gap-3", 
+              collapsed && !isMobile && "justify-center",
+              isRTL && "flex-row-reverse"
+            )}>
               <Avatar className="w-9 h-9">
                 <AvatarImage src={currentStudent.avatar} />
                 <AvatarFallback>{currentStudent.name.charAt(0)}</AvatarFallback>
@@ -216,13 +259,13 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex-1 min-w-0"
+                    className={cn("flex-1 min-w-0", isRTL && "text-right")}
                   >
                     <p className="text-sm font-medium text-sidebar-foreground truncate">
                       {currentStudent.name}
                     </p>
                     <p className="text-xs text-sidebar-foreground/60 truncate">
-                      Level {currentStudent.level}
+                      {t('nav.level')} {currentStudent.level}
                     </p>
                   </motion.div>
                 )}
@@ -237,10 +280,10 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
             onClick={onToggle}
             className="w-full flex items-center justify-center py-3 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
           >
-            {collapsed ? (
-              <ChevronRight className="w-5 h-5" />
+            {isRTL ? (
+              collapsed ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />
             ) : (
-              <ChevronLeft className="w-5 h-5" />
+              collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />
             )}
           </button>
         )}

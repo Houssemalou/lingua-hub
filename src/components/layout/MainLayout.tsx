@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AppSidebar } from './AppSidebar';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function MainLayout() {
   const isMobile = useIsMobile();
+  const { isRTL } = useLanguage();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -29,7 +31,10 @@ export function MainLayout() {
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       {isMobile && (
-        <header className="fixed top-0 left-0 right-0 h-14 bg-sidebar border-b border-sidebar-border z-40 flex items-center px-4">
+        <header className={cn(
+          "fixed top-0 left-0 right-0 h-14 bg-sidebar border-b border-sidebar-border z-40 flex items-center px-4",
+          isRTL && "flex-row-reverse"
+        )}>
           <Button
             variant="ghost"
             size="icon"
@@ -42,7 +47,7 @@ export function MainLayout() {
               <Menu className="w-5 h-5" />
             )}
           </Button>
-          <span className="font-bold text-sidebar-foreground ml-3">LinguaAI</span>
+          <span className={cn("font-bold text-sidebar-foreground", isRTL ? "mr-3" : "ml-3")}>LinguaAI</span>
         </header>
       )}
 
@@ -63,9 +68,9 @@ export function MainLayout() {
       <AnimatePresence>
         {(!isMobile || mobileMenuOpen) && (
           <motion.div
-            initial={isMobile ? { x: -280 } : false}
+            initial={isMobile ? { x: isRTL ? 280 : -280 } : false}
             animate={{ x: 0 }}
-            exit={isMobile ? { x: -280 } : undefined}
+            exit={isMobile ? { x: isRTL ? 280 : -280 } : undefined}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
             <AppSidebar 
@@ -88,7 +93,8 @@ export function MainLayout() {
       <motion.main
         initial={false}
         animate={{ 
-          marginLeft: isMobile ? 0 : (sidebarCollapsed ? 72 : 256),
+          marginLeft: isMobile ? 0 : (isRTL ? 0 : (sidebarCollapsed ? 72 : 256)),
+          marginRight: isMobile ? 0 : (isRTL ? (sidebarCollapsed ? 72 : 256) : 0),
           paddingTop: isMobile ? 56 : 0
         }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
