@@ -5,7 +5,7 @@ export interface Student {
   avatar: string;
   nickname: string;
   bio: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level: 'A1' | 'A2' | 'B1' | 'B2';
   joinedAt: string;
   skills: {
     pronunciation: number;
@@ -21,7 +21,7 @@ export interface Room {
   id: string;
   name: string;
   language: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level: 'A1' | 'A2' | 'B1' | 'B2';
   objective: string;
   scheduledAt: string;
   duration: number; // in minutes
@@ -37,7 +37,7 @@ export interface Session {
   roomId: string;
   roomName: string;
   language: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level: 'A1' | 'A2' | 'B1' | 'B2';
   objective: string;
   scheduledAt: string;
   duration: number;

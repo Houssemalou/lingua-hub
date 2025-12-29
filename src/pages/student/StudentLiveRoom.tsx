@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getRoomById, getStudentById, mockChatMessages, currentStudent } from '@/data/mockData';
+import { QuizModal } from '@/components/quiz/QuizModal';
+import { getQuizForSession } from '@/data/quizzes';
 
 export default function StudentLiveRoom() {
   const { roomId } = useParams();
@@ -18,6 +20,17 @@ export default function StudentLiveRoom() {
   const [isMuted, setIsMuted] = useState(true);
   const [messages, setMessages] = useState(mockChatMessages);
   const [newMessage, setNewMessage] = useState('');
+  const [showQuiz, setShowQuiz] = useState(false);
+  
+  const quiz = getQuizForSession(roomId || '');
+
+  const handleLeaveRoom = () => {
+    if (quiz && !quiz.completed) {
+      setShowQuiz(true);
+    } else {
+      navigate('/student/sessions');
+    }
+  };
 
   if (!room) {
     return (
@@ -264,12 +277,27 @@ export default function StudentLiveRoom() {
           <Button 
             variant="outline" 
             className="w-full" 
-            onClick={() => navigate('/student/sessions')}
+            onClick={handleLeaveRoom}
           >
             Leave Room
           </Button>
         </div>
       </div>
+
+      {/* Quiz Modal */}
+      {quiz && (
+        <QuizModal
+          quiz={quiz}
+          isOpen={showQuiz}
+          onClose={() => {
+            setShowQuiz(false);
+            navigate('/student/sessions');
+          }}
+          onComplete={(score) => {
+            console.log('Quiz completed with score:', score);
+          }}
+        />
+      )}
     </motion.div>
   );
 }
