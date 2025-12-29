@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Mail, TrendingUp } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockStudents } from '@/data/mockData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { cn } from '@/lib/utils';
 
 const container = {
   hidden: { opacity: 0 },
@@ -24,6 +24,7 @@ const item = {
 };
 
 export default function AdminStudents() {
+  const { t, isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
 
@@ -46,29 +47,30 @@ export default function AdminStudents() {
       className="space-y-6"
     >
       {/* Header */}
-      <motion.div variants={item}>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Students</h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage and view all enrolled students</p>
+      <motion.div variants={item} className={cn(isRTL && "text-right")}>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t('students.title')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">{t('students.subtitle')}</p>
       </motion.div>
 
       {/* Filters */}
-      <motion.div variants={item} className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <motion.div variants={item} className={cn("flex flex-col sm:flex-row gap-4", isRTL && "sm:flex-row-reverse")}>
+        <div className={cn("relative flex-1", isRTL && "text-right")}>
+          <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
           <Input
-            placeholder="Search students..."
+            placeholder={t('students.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className={cn(isRTL ? "pr-10 text-right" : "pl-10")}
+            dir={isRTL ? "rtl" : "ltr"}
           />
         </div>
         <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Level" />
+          <SelectTrigger className={cn("w-full sm:w-40", isRTL && "flex-row-reverse")}>
+            <Filter className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+            <SelectValue placeholder={t('students.allLevels')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
+            <SelectItem value="all">{t('students.allLevels')}</SelectItem>
             <SelectItem value="A1">A1</SelectItem>
             <SelectItem value="A2">A2</SelectItem>
             <SelectItem value="B1">B1</SelectItem>
@@ -79,53 +81,32 @@ export default function AdminStudents() {
         </Select>
       </motion.div>
 
-      {/* Students Grid */}
-      <motion.div variants={item} className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Students Grid - Simplified Cards */}
+      <motion.div variants={item} className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filteredStudents.map((student) => (
-          <Card key={student.id} variant="interactive">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start gap-3 sm:gap-4">
-                <Avatar className="w-12 h-12 sm:w-14 sm:h-14 shrink-0">
+          <Card key={student.id} variant="interactive" className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardContent className="p-3 sm:p-4">
+              <div className={cn("flex flex-col items-center text-center gap-2 sm:gap-3")}>
+                <Avatar className="w-12 h-12 sm:w-16 sm:h-16">
                   <AvatarImage src={student.avatar} />
-                  <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="text-sm sm:text-base">{student.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-foreground truncate text-sm sm:text-base">{student.name}</h3>
-                    <Badge variant={student.level.toLowerCase() as any} className="text-xs">{student.level}</Badge>
+                
+                <h3 className="font-semibold text-foreground text-sm sm:text-base truncate w-full">
+                  {student.name}
+                </h3>
+                
+                <div className="w-full space-y-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{t('students.progress')}</span>
+                    <span className="font-medium text-foreground">{getAverageSkill(student.skills)}%</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{student.email}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">@{student.nickname}</p>
+                  <Progress value={getAverageSkill(student.skills)} className="h-1.5" />
                 </div>
-              </div>
-
-              <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
-                <div className="flex items-center justify-between text-xs sm:text-sm">
-                  <span className="text-muted-foreground">Overall Progress</span>
-                  <span className="font-medium">{getAverageSkill(student.skills)}%</span>
-                </div>
-                <Progress value={getAverageSkill(student.skills)} className="h-1.5 sm:h-2" />
-              </div>
-
-              <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground">
-                  <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span>{student.totalSessions} sessions</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground">
-                  <span>{student.hoursLearned}h learned</span>
-                </div>
-              </div>
-
-              <div className="mt-3 sm:mt-4 flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 gap-1 text-xs sm:text-sm h-8 sm:h-9">
-                  <Mail className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Contact</span>
-                </Button>
-                <Button variant="secondary" size="sm" className="flex-1 text-xs sm:text-sm h-8 sm:h-9">
-                  <span className="sm:hidden">View</span>
-                  <span className="hidden sm:inline">View Profile</span>
-                </Button>
+                
+                <p className="text-xs text-muted-foreground">
+                  {student.totalSessions} {t('students.sessionsCompleted')}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -134,8 +115,8 @@ export default function AdminStudents() {
 
       {filteredStudents.length === 0 && (
         <motion.div variants={item} className="text-center py-12">
-          <h3 className="text-lg font-medium text-foreground">No students found</h3>
-          <p className="text-muted-foreground mt-1">Try adjusting your search or filters</p>
+          <h3 className="text-lg font-medium text-foreground">{t('students.noResults')}</h3>
+          <p className="text-muted-foreground mt-1">{t('students.noResultsHint')}</p>
         </motion.div>
       )}
     </motion.div>
