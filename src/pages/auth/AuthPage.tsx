@@ -62,8 +62,12 @@ export default function AuthPage() {
     setError('');
     
     const result = await signupAdmin(email, password, name);
-    if (!result.success) {
-      setError(result.error || 'Erreur lors de l\'inscription');
+    if (result.success) {
+      // Redirect to login after successful signup
+      resetForm();
+      setMode('login');
+    } else {
+      setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
     setLoading(false);
   };
@@ -83,8 +87,12 @@ export default function AuthPage() {
       level,
     });
     
-    if (!result.success) {
-      setError(result.error || 'Erreur lors de l\'inscription');
+    if (result.success) {
+      // Redirect to login after successful signup
+      resetForm();
+      setMode('login');
+    } else {
+      setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
     setLoading(false);
   };
