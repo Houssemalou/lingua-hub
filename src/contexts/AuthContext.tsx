@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     registeredUsers.push(newUser);
     localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
-    setUser(newUser);
+    // Don't auto-login, redirect to login page
     
     return { success: true };
   };
@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     registeredUsers.push(newUser);
     localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
-    setUser(newUser);
+    // Don't auto-login, redirect to login page
     
     return { success: true };
   };
