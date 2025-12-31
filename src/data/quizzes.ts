@@ -7,6 +7,8 @@ export interface QuizQuestion {
 
 export interface Quiz {
   id: string;
+  title: string;
+  description: string;
   sessionId: string;
   sessionName: string;
   language: string;
@@ -33,6 +35,8 @@ export interface QuizResult {
 export const mockQuizzes: Quiz[] = [
   {
     id: 'quiz-1',
+    title: 'Advanced English Grammar',
+    description: 'Test your knowledge of advanced grammar structures',
     sessionId: '3',
     sessionName: 'Advanced English Grammar',
     language: 'English',

@@ -17,6 +17,8 @@ import {
   GraduationCap,
   X,
   Globe,
+  ClipboardList,
+  FileCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,12 +45,14 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/admin/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/rooms', icon: DoorOpen, label: t('nav.rooms') },
     { to: '/admin/students', icon: Users, label: t('nav.students') },
+    { to: '/admin/quiz-results', icon: FileCheck, label: t('nav.quizResults') },
   ];
 
   const studentNavItems = [
     { to: '/student/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
     { to: '/student/progress', icon: TrendingUp, label: t('nav.progress') },
+    { to: '/student/quiz', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
   ];
 
