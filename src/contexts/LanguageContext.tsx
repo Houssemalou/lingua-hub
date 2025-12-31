@@ -24,6 +24,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.darkMode': 'Mode sombre',
     'nav.level': 'Niveau',
     'nav.logout': 'Déconnexion',
+    'nav.quiz': 'Quiz',
+    'nav.quizResults': 'Résultats Quiz',
     
     // Auth
     'auth.login': 'Connexion',
@@ -132,15 +134,21 @@ const translations: Record<Language, Record<string, string>> = {
     'profile.updated': 'Profil mis à jour avec succès !',
     
     // Quiz
-    'quiz.title': 'Quiz de session',
+    'quiz.title': 'Quiz',
+    'quiz.subtitle': 'Testez vos connaissances et suivez vos résultats',
+    'quiz.available': 'Quiz disponibles',
+    'quiz.history': 'Historique des quiz',
+    'quiz.questions': 'questions',
+    'quiz.start': 'Commencer',
+    'quiz.passed': 'Réussi',
+    'quiz.failed': 'Échoué',
+    'quiz.noHistory': "Vous n'avez pas encore passé de quiz",
     'quiz.question': 'Question',
     'quiz.of': 'sur',
     'quiz.next': 'Suivant',
     'quiz.submit': 'Terminer',
     'quiz.results': 'Résultats',
     'quiz.score': 'Score',
-    'quiz.passed': 'Félicitations ! Vous avez réussi le quiz.',
-    'quiz.failed': 'Continuez à pratiquer pour améliorer votre score.',
     'quiz.close': 'Fermer',
     'quiz.pending': 'En attente',
     'quiz.completed': 'Terminé',
@@ -236,6 +244,15 @@ const translations: Record<Language, Record<string, string>> = {
     'level.mastery': 'Maîtrise',
     'level.masteryDesc': 'Peut comprendre pratiquement tout ce qui est lu ou entendu',
     
+    // Quiz Results (Admin)
+    'quizResults.subtitle': 'Visualiser les résultats des quiz de tous les étudiants',
+    'quizResults.totalQuizzes': 'Total quiz passés',
+    'quizResults.passedQuizzes': 'Quiz réussis',
+    'quizResults.avgScore': 'Score moyen',
+    'quizResults.average': 'Moyenne générale',
+    'quizResults.search': 'Rechercher par étudiant ou quiz...',
+    'quizResults.allResults': 'Tous les résultats',
+    
     // Common
     'common.join': 'Rejoindre',
     'common.view': 'Voir',
@@ -270,6 +287,8 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.darkMode': 'الوضع الداكن',
     'nav.level': 'المستوى',
     'nav.logout': 'تسجيل الخروج',
+    'nav.quiz': 'اختبار',
+    'nav.quizResults': 'نتائج الاختبارات',
     
     // Auth
     'auth.login': 'تسجيل الدخول',
@@ -378,21 +397,36 @@ const translations: Record<Language, Record<string, string>> = {
     'profile.updated': 'تم تحديث الملف الشخصي بنجاح!',
     
     // Quiz
-    'quiz.title': 'اختبار الجلسة',
+    'quiz.title': 'الاختبار',
+    'quiz.subtitle': 'اختبر معرفتك وتابع نتائجك',
+    'quiz.available': 'الاختبارات المتاحة',
+    'quiz.history': 'سجل الاختبارات',
+    'quiz.questions': 'أسئلة',
+    'quiz.start': 'ابدأ',
+    'quiz.passed': 'ناجح',
+    'quiz.failed': 'راسب',
+    'quiz.noHistory': 'لم تخض أي اختبار بعد',
     'quiz.question': 'السؤال',
     'quiz.of': 'من',
     'quiz.next': 'التالي',
     'quiz.submit': 'إنهاء',
     'quiz.results': 'النتائج',
     'quiz.score': 'النتيجة',
-    'quiz.passed': 'تهانينا! لقد نجحت في الاختبار.',
-    'quiz.failed': 'استمر في التدريب لتحسين نتيجتك.',
     'quiz.close': 'إغلاق',
     'quiz.pending': 'قيد الانتظار',
     'quiz.completed': 'مكتمل',
     'quiz.session': 'الجلسة',
     'quiz.date': 'التاريخ',
     'quiz.student': 'الطالب',
+    
+    // Quiz Results (Admin)
+    'quizResults.subtitle': 'عرض نتائج اختبارات جميع الطلاب',
+    'quizResults.totalQuizzes': 'إجمالي الاختبارات',
+    'quizResults.passedQuizzes': 'الاختبارات الناجحة',
+    'quizResults.avgScore': 'متوسط النتيجة',
+    'quizResults.average': 'المتوسط العام',
+    'quizResults.search': 'البحث عن طالب أو اختبار...',
+    'quizResults.allResults': 'جميع النتائج',
     
     // Rooms
     'rooms.title': 'إدارة الغرف',
