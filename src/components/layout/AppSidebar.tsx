@@ -23,12 +23,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { currentStudent } from '@/data/mockData';
+import { LogOut } from 'lucide-react';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,7 +39,8 @@ interface SidebarProps {
 
 export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps) {
   const location = useLocation();
-  const { role, setRole } = useRole();
+  const { user, logout } = useAuth();
+  const role = user?.role || 'student';
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t, isRTL } = useLanguage();
   const { settings } = usePlatform();
@@ -127,37 +128,29 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
         )}
       </div>
 
-      {/* Role Switcher */}
+      {/* Role Badge */}
       <div className="p-3 border-b border-sidebar-border">
-        <div className={cn("flex gap-1", collapsed && !isMobile && "flex-col")}>
-          <Button
-            variant={role === 'admin' ? 'default' : 'ghost'}
-            size={(collapsed && !isMobile) ? 'icon-sm' : 'sm'}
-            onClick={() => setRole('admin')}
-            className={cn(
-              "flex-1",
-              role === 'admin' 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
+        <div className={cn(
+          "flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-accent/50",
+          isRTL && "flex-row-reverse"
+        )}>
+          {role === 'admin' ? (
+            <ShieldCheck className="w-4 h-4 text-sidebar-primary" />
+          ) : (
+            <GraduationCap className="w-4 h-4 text-sidebar-primary" />
+          )}
+          <AnimatePresence mode="wait">
+            {(!collapsed || isMobile) && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-sm font-medium text-sidebar-foreground"
+              >
+                {role === 'admin' ? t('nav.admin') : t('nav.student')}
+              </motion.span>
             )}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            {(!collapsed || isMobile) && <span className={cn(isRTL ? "mr-1" : "ml-1")}>{t('nav.admin')}</span>}
-          </Button>
-          <Button
-            variant={role === 'student' ? 'default' : 'ghost'}
-            size={(collapsed && !isMobile) ? 'icon-sm' : 'sm'}
-            onClick={() => setRole('student')}
-            className={cn(
-              "flex-1",
-              role === 'student' 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            )}
-          >
-            <GraduationCap className="w-4 h-4" />
-            {(!collapsed || isMobile) && <span className={cn(isRTL ? "mr-1" : "ml-1")}>{t('nav.student')}</span>}
-          </Button>
+          </AnimatePresence>
         </div>
       </div>
 
@@ -259,38 +252,79 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
           </AnimatePresence>
         </button>
 
-        {/* User */}
-        {role === 'student' && (
-          <div className="px-3 py-3 border-t border-sidebar-border">
-            <div className={cn(
-              "flex items-center gap-3", 
-              collapsed && !isMobile && "justify-center",
-              isRTL && "flex-row-reverse"
-            )}>
-              <Avatar className="w-9 h-9">
-                <AvatarImage src={currentStudent.avatar} />
-                <AvatarFallback>{currentStudent.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <AnimatePresence mode="wait">
-                {(!collapsed || isMobile) && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className={cn("flex-1 min-w-0", isRTL && "text-right")}
-                  >
-                    <p className="text-sm font-medium text-sidebar-foreground truncate">
-                      {currentStudent.name}
-                    </p>
-                    <p className="text-xs text-sidebar-foreground/60 truncate">
-                      {t('nav.level')} {currentStudent.level}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+        {/* User Info & Logout */}
+        <div className="px-3 py-3 border-t border-sidebar-border">
+          <div className={cn(
+            "flex items-center gap-3", 
+            collapsed && !isMobile && "justify-center",
+            isRTL && "flex-row-reverse"
+          )}>
+            {role === 'student' && user?.student && (
+              <>
+                <Avatar className="w-9 h-9">
+                  <AvatarImage src={user.student.avatar} />
+                  <AvatarFallback>{user.student.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <AnimatePresence mode="wait">
+                  {(!collapsed || isMobile) && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className={cn("flex-1 min-w-0", isRTL && "text-right")}
+                    >
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">
+                        {user.student.name}
+                      </p>
+                      <p className="text-xs text-sidebar-foreground/60 truncate">
+                        {t('nav.level')} {user.student.level}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
+            {role === 'admin' && (
+              <>
+                <Avatar className="w-9 h-9">
+                  <AvatarFallback>A</AvatarFallback>
+                </Avatar>
+                <AnimatePresence mode="wait">
+                  {(!collapsed || isMobile) && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className={cn("flex-1 min-w-0", isRTL && "text-right")}
+                    >
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">
+                        {user?.email}
+                      </p>
+                      <p className="text-xs text-sidebar-foreground/60 truncate">
+                        {t('nav.admin')}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
           </div>
-        )}
+          {/* Logout button */}
+          <Button
+            variant="ghost"
+            size={collapsed && !isMobile ? 'icon' : 'sm'}
+            onClick={logout}
+            className={cn(
+              "w-full mt-2 text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10",
+              isRTL && "flex-row-reverse"
+            )}
+          >
+            <LogOut className="w-4 h-4" />
+            {(!collapsed || isMobile) && (
+              <span className={cn(isRTL ? "mr-2" : "ml-2")}>{t('nav.logout')}</span>
+            )}
+          </Button>
+        </div>
 
         {/* Collapse toggle (desktop only) */}
         {!isMobile && (
