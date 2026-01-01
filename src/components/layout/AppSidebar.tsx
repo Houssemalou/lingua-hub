@@ -19,12 +19,14 @@ import {
   Globe,
   ClipboardList,
   FileCheck,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useRole } from '@/contexts/RoleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { currentStudent } from '@/data/mockData';
 
@@ -40,12 +42,14 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const { role, setRole } = useRole();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t, isRTL } = useLanguage();
+  const { settings } = usePlatform();
 
   const adminNavItems = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/rooms', icon: DoorOpen, label: t('nav.rooms') },
     { to: '/admin/students', icon: Users, label: t('nav.students') },
     { to: '/admin/quiz-results', icon: FileCheck, label: t('nav.quizResults') },
+    { to: '/admin/settings', icon: Settings, label: t('nav.settings') },
   ];
 
   const studentNavItems = [
@@ -89,16 +93,26 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
               exit={{ opacity: 0 }}
               className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
             >
-              <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
-                <Languages className="w-5 h-5 text-sidebar-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg text-sidebar-foreground">LinguaAI</span>
+              {settings.logoUrl && role === 'student' ? (
+                <img src={settings.logoUrl} alt="Logo" className="h-8 max-w-[140px] object-contain" />
+              ) : (
+                <>
+                  <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
+                    <Languages className="w-5 h-5 text-sidebar-primary-foreground" />
+                  </div>
+                  <span className="font-bold text-lg text-sidebar-foreground">LinguaAI</span>
+                </>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
         {collapsed && !isMobile && (
           <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center mx-auto">
-            <Languages className="w-5 h-5 text-sidebar-primary-foreground" />
+            {settings.logoUrl && role === 'student' ? (
+              <img src={settings.logoUrl} alt="Logo" className="h-6 w-6 object-contain rounded" />
+            ) : (
+              <Languages className="w-5 h-5 text-sidebar-primary-foreground" />
+            )}
           </div>
         )}
         {isMobile && (
