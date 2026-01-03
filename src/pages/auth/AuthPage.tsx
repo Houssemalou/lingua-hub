@@ -41,7 +41,12 @@ export default function AuthPage() {
   const [level, setLevel] = useState<'A1' | 'A2' | 'B1' | 'B2'>('A1');
 
   if (isAuthenticated && user) {
-    return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} replace />;
+    const dashboardPath = user.role === 'admin' 
+      ? '/admin/dashboard' 
+      : user.role === 'professor' 
+      ? '/professor/dashboard' 
+      : '/student/dashboard';
+    return <Navigate to={dashboardPath} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {

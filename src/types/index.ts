@@ -17,6 +17,19 @@ export interface Student {
   hoursLearned: number;
 }
 
+export interface Professor {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  bio: string;
+  languages: string[];
+  specialization: string;
+  joinedAt: string;
+  totalSessions: number;
+  rating: number;
+}
+
 export interface Room {
   id: string;
   name: string;
@@ -30,6 +43,8 @@ export interface Room {
   invitedStudents: string[];
   joinedStudents: string[];
   createdAt: string;
+  animatorType: 'ai' | 'professor';
+  professorId?: string;
 }
 
 export interface Session {
@@ -43,6 +58,8 @@ export interface Session {
   duration: number;
   status: 'scheduled' | 'live' | 'completed';
   participantsCount: number;
+  animatorType: 'ai' | 'professor';
+  professorId?: string;
 }
 
 export interface ChatMessage {
@@ -54,4 +71,4 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-export type UserRole = 'admin' | 'student';
+export type UserRole = 'admin' | 'student' | 'professor';

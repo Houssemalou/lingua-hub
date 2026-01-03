@@ -20,6 +20,7 @@ import {
   ClipboardList,
   FileCheck,
   Settings,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,18 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/student/profile', icon: User, label: t('nav.profile') },
   ];
 
-  const navItems = role === 'admin' ? adminNavItems : studentNavItems;
+  const professorNavItems = [
+    { to: '/professor/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { to: '/professor/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/professor/quizzes', icon: ClipboardList, label: t('nav.quiz') },
+    { to: '/professor/profile', icon: User, label: t('nav.profile') },
+  ];
+
+  const navItems = role === 'admin' 
+    ? adminNavItems 
+    : role === 'professor' 
+    ? professorNavItems 
+    : studentNavItems;
 
   const handleNavClick = () => {
     if (isMobile && onClose) {
@@ -71,6 +83,28 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
 
   const toggleLanguage = () => {
     setLanguage(language === 'fr' ? 'ar' : 'fr');
+  };
+
+  const getRoleIcon = () => {
+    switch (role) {
+      case 'admin':
+        return <ShieldCheck className="w-4 h-4 text-sidebar-primary" />;
+      case 'professor':
+        return <BookOpen className="w-4 h-4 text-sidebar-primary" />;
+      default:
+        return <GraduationCap className="w-4 h-4 text-sidebar-primary" />;
+    }
+  };
+
+  const getRoleLabel = () => {
+    switch (role) {
+      case 'admin':
+        return t('nav.admin');
+      case 'professor':
+        return isRTL ? 'أستاذ' : 'Professeur';
+      default:
+        return t('nav.student');
+    }
   };
 
   return (
@@ -134,11 +168,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
           "flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-accent/50",
           isRTL && "flex-row-reverse"
         )}>
-          {role === 'admin' ? (
-            <ShieldCheck className="w-4 h-4 text-sidebar-primary" />
-          ) : (
-            <GraduationCap className="w-4 h-4 text-sidebar-primary" />
-          )}
+          {getRoleIcon()}
           <AnimatePresence mode="wait">
             {(!collapsed || isMobile) && (
               <motion.span
@@ -147,7 +177,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
                 exit={{ opacity: 0 }}
                 className="text-sm font-medium text-sidebar-foreground"
               >
-                {role === 'admin' ? t('nav.admin') : t('nav.student')}
+                {getRoleLabel()}
               </motion.span>
             )}
           </AnimatePresence>
@@ -278,6 +308,31 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
                       </p>
                       <p className="text-xs text-sidebar-foreground/60 truncate">
                         {t('nav.level')} {user.student.level}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
+            {role === 'professor' && user?.professor && (
+              <>
+                <Avatar className="w-9 h-9">
+                  <AvatarImage src={user.professor.avatar} />
+                  <AvatarFallback>{user.professor.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <AnimatePresence mode="wait">
+                  {(!collapsed || isMobile) && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className={cn("flex-1 min-w-0", isRTL && "text-right")}
+                    >
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">
+                        {user.professor.name}
+                      </p>
+                      <p className="text-xs text-sidebar-foreground/60 truncate">
+                        {user.professor.specialization}
                       </p>
                     </motion.div>
                   )}
