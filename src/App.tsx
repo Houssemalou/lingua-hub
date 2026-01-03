@@ -20,6 +20,10 @@ import StudentLiveRoom from "./pages/student/StudentLiveRoom";
 import StudentProfile from "./pages/student/StudentProfile";
 import StudentProgress from "./pages/student/StudentProgress";
 import StudentQuiz from "./pages/student/StudentQuiz";
+import ProfessorDashboard from "./pages/professor/ProfessorDashboard";
+import ProfessorSessions from "./pages/professor/ProfessorSessions";
+import ProfessorQuizzes from "./pages/professor/ProfessorQuizzes";
+import ProfessorProfile from "./pages/professor/ProfessorProfile";
 import AuthPage from "./pages/auth/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -53,6 +57,12 @@ const App = () => (
                     <Route path="/student/profile" element={<StudentProfile />} />
                     <Route path="/student/progress" element={<StudentProgress />} />
                     <Route path="/student/quiz" element={<StudentQuiz />} />
+                    {/* Professor Routes */}
+                    <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
+                    <Route path="/professor/sessions" element={<ProfessorSessions />} />
+                    <Route path="/professor/quizzes" element={<ProfessorQuizzes />} />
+                    <Route path="/professor/profile" element={<ProfessorProfile />} />
+                    <Route path="/professor/room/:roomId" element={<StudentLiveRoom />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

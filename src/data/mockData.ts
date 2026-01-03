@@ -1,4 +1,4 @@
-import { Student, Room, ChatMessage } from '@/types';
+import { Student, Room, ChatMessage, Professor } from '@/types';
 
 export const mockStudents: Student[] = [
   {
@@ -81,6 +81,45 @@ export const mockStudents: Student[] = [
   },
 ];
 
+export const mockProfessors: Professor[] = [
+  {
+    id: 'prof-1',
+    name: 'Marie Dubois',
+    email: 'marie.dubois@example.com',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marie',
+    bio: 'Professeur de français avec 10 ans d\'expérience',
+    languages: ['French', 'English', 'Spanish'],
+    specialization: 'Conversation et grammaire',
+    joinedAt: '2023-01-15',
+    totalSessions: 156,
+    rating: 4.8,
+  },
+  {
+    id: 'prof-2',
+    name: 'John Smith',
+    email: 'john.smith@example.com',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
+    bio: 'Native English speaker specialized in business English',
+    languages: ['English', 'German'],
+    specialization: 'Business English',
+    joinedAt: '2023-03-20',
+    totalSessions: 98,
+    rating: 4.6,
+  },
+  {
+    id: 'prof-3',
+    name: 'Carmen Rodriguez',
+    email: 'carmen.rodriguez@example.com',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carmen',
+    bio: 'Professeur d\'espagnol passionnée par la culture hispanique',
+    languages: ['Spanish', 'French', 'Portuguese'],
+    specialization: 'Culture et conversation',
+    joinedAt: '2023-06-01',
+    totalSessions: 72,
+    rating: 4.9,
+  },
+];
+
 export const mockRooms: Room[] = [
   {
     id: '1',
@@ -95,6 +134,8 @@ export const mockRooms: Room[] = [
     invitedStudents: ['1', '5', '6'],
     joinedStudents: [],
     createdAt: new Date().toISOString(),
+    animatorType: 'professor',
+    professorId: 'prof-3',
   },
   {
     id: '2',
@@ -109,6 +150,8 @@ export const mockRooms: Room[] = [
     invitedStudents: ['2', '4'],
     joinedStudents: ['2'],
     createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    animatorType: 'professor',
+    professorId: 'prof-1',
   },
   {
     id: '3',
@@ -123,6 +166,7 @@ export const mockRooms: Room[] = [
     invitedStudents: ['3', '5'],
     joinedStudents: ['3', '5'],
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    animatorType: 'ai',
   },
   {
     id: '4',
@@ -137,6 +181,7 @@ export const mockRooms: Room[] = [
     invitedStudents: ['4'],
     joinedStudents: [],
     createdAt: new Date().toISOString(),
+    animatorType: 'ai',
   },
   {
     id: '5',
@@ -151,6 +196,8 @@ export const mockRooms: Room[] = [
     invitedStudents: ['5', '6'],
     joinedStudents: [],
     createdAt: new Date().toISOString(),
+    animatorType: 'professor',
+    professorId: 'prof-1',
   },
 ];
 
@@ -187,6 +234,10 @@ export const getStudentById = (id: string): Student | undefined => {
   return mockStudents.find((s) => s.id === id);
 };
 
+export const getProfessorById = (id: string): Professor | undefined => {
+  return mockProfessors.find((p) => p.id === id);
+};
+
 export const getRoomById = (id: string): Room | undefined => {
   return mockRooms.find((r) => r.id === id);
 };
@@ -205,5 +256,27 @@ export const getStudentSessions = (studentId: string) => {
       duration: room.duration,
       status: room.status,
       participantsCount: room.invitedStudents.length,
+      animatorType: room.animatorType,
+      professorId: room.professorId,
+    }));
+};
+
+export const getProfessorSessions = (professorId: string) => {
+  return mockRooms
+    .filter((room) => room.professorId === professorId)
+    .map((room) => ({
+      id: room.id,
+      roomId: room.id,
+      roomName: room.name,
+      language: room.language,
+      level: room.level,
+      objective: room.objective,
+      scheduledAt: room.scheduledAt,
+      duration: room.duration,
+      status: room.status,
+      participantsCount: room.invitedStudents.length,
+      animatorType: room.animatorType,
+      professorId: room.professorId,
+      students: room.invitedStudents,
     }));
 };
