@@ -9,24 +9,26 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound } from 'lucide-react';
+import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen } from 'lucide-react';
 import { avatarOptions } from '@/data/avatars';
 import { cn } from '@/lib/utils';
 
 type AuthMode = 'login' | 'signup';
-type SignupRole = 'admin' | 'student' | null;
+type SignupRole = 'admin' | 'student' | 'professor' | null;
 type StudentStep = 'role' | 'avatar' | 'info' | 'token';
+type ProfessorStep = 'role' | 'avatar' | 'info' | 'token';
 
 const levelOptions: Array<'A1' | 'A2' | 'B1' | 'B2'> = ['A1', 'A2', 'B1', 'B2'];
 
 export default function AuthPage() {
-  const { isAuthenticated, login, signupAdmin, signupStudent, user } = useAuth();
+  const { isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, user } = useAuth();
   const { t, language, setLanguage, isRTL } = useLanguage();
   const { theme, toggleTheme } = useTheme();
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [signupRole, setSignupRole] = useState<SignupRole>(null);
   const [studentStep, setStudentStep] = useState<StudentStep>('role');
+  const [professorStep, setProfessorStep] = useState<ProfessorStep>('role');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -39,6 +41,10 @@ export default function AuthPage() {
   const [selectedAvatar, setSelectedAvatar] = useState(avatarOptions[0].url);
   const [accessToken, setAccessToken] = useState('');
   const [level, setLevel] = useState<'A1' | 'A2' | 'B1' | 'B2'>('A1');
+  
+  // Professor-specific fields
+  const [languages, setLanguages] = useState<string[]>(['Français']);
+  const [specialization, setSpecialization] = useState('');
 
   if (isAuthenticated && user) {
     const dashboardPath = user.role === 'admin' 
@@ -102,10 +108,35 @@ export default function AuthPage() {
     setLoading(false);
   };
 
+  const handleProfessorSignup = async () => {
+    setLoading(true);
+    setError('');
+    
+    const result = await signupProfessor({
+      email,
+      password,
+      name,
+      bio,
+      avatar: selectedAvatar,
+      languages,
+      specialization,
+      accessToken,
+    });
+    
+    if (result.success) {
+      resetForm();
+      setMode('login');
+    } else {
+      setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
+    }
+    setLoading(false);
+  };
+
   const resetForm = () => {
     setMode('login');
     setSignupRole(null);
     setStudentStep('role');
+    setProfessorStep('role');
     setEmail('');
     setPassword('');
     setName('');
@@ -114,6 +145,8 @@ export default function AuthPage() {
     setSelectedAvatar(avatarOptions[0].url);
     setAccessToken('');
     setLevel('A1');
+    setLanguages(['Français']);
+    setSpecialization('');
     setError('');
   };
 
@@ -197,7 +230,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -213,6 +246,24 @@ export default function AuthPage() {
               <h3 className="font-semibold text-lg">{isRTL ? 'مشرف' : 'Administrateur'}</h3>
               <p className="text-sm text-muted-foreground mt-2">
                 {isRTL ? 'إدارة الطلاب والغرف والجلسات' : 'Gérer les étudiants, salles et sessions'}
+              </p>
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setSignupRole('professor');
+                setProfessorStep('avatar');
+              }}
+              className="p-6 rounded-xl border-2 border-border hover:border-secondary bg-card transition-all text-center"
+            >
+              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-secondary/10 flex items-center justify-center">
+                <BookOpen className="w-7 h-7 text-secondary-foreground" />
+              </div>
+              <h3 className="font-semibold text-lg">{isRTL ? 'أستاذ' : 'Professeur'}</h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                {isRTL ? 'تقديم الجلسات وإدارة الطلاب' : 'Animer les sessions et gérer vos étudiants'}
               </p>
             </motion.button>
             
@@ -540,12 +591,260 @@ export default function AuthPage() {
     </motion.div>
   );
 
+  const renderProfessorAvatarSelection = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      <Card className="w-full max-w-2xl mx-auto glass-card">
+        <CardHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("w-fit gap-2", isRTL && "flex-row-reverse")}
+            onClick={() => {
+              setSignupRole(null);
+              setProfessorStep('role');
+            }}
+          >
+            {isRTL ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+            {isRTL ? 'رجوع' : 'Retour'}
+          </Button>
+          <CardTitle className="text-2xl">{isRTL ? 'اختر صورتك الرمزية' : 'Choisissez votre avatar'}</CardTitle>
+          <CardDescription>
+            {isRTL ? 'اختر صورة تمثلك كأستاذ' : 'Sélectionnez une image qui vous représente en tant que professeur'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-6">
+            {avatarOptions.map((avatar) => (
+              <motion.button
+                key={avatar.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSelectedAvatar(avatar.url)}
+                className={cn(
+                  "relative p-2 rounded-xl border-2 transition-all",
+                  selectedAvatar === avatar.url
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50 bg-card"
+                )}
+              >
+                <img
+                  src={avatar.url}
+                  alt={avatar.name}
+                  className="w-full aspect-square rounded-lg"
+                />
+                {selectedAvatar === avatar.url && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-3 h-3 text-primary-foreground" />
+                  </div>
+                )}
+              </motion.button>
+            ))}
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => setProfessorStep('info')}
+          >
+            {isRTL ? 'التالي' : 'Continuer'}
+            {isRTL ? <ArrowLeft className="w-4 h-4 mr-2" /> : <ArrowRight className="w-4 h-4 ml-2" />}
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
+  const renderProfessorInfo = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      <Card className="w-full max-w-md mx-auto glass-card">
+        <CardHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("w-fit gap-2", isRTL && "flex-row-reverse")}
+            onClick={() => setProfessorStep('avatar')}
+          >
+            {isRTL ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+            {isRTL ? 'رجوع' : 'Retour'}
+          </Button>
+          <div className="flex items-center gap-4">
+            <img src={selectedAvatar} alt="Avatar" className="w-16 h-16 rounded-xl" />
+            <div>
+              <CardTitle className="text-2xl">{isRTL ? 'معلوماتك المهنية' : 'Vos informations professionnelles'}</CardTitle>
+              <CardDescription>
+                {isRTL ? 'أكمل ملفك الشخصي كأستاذ' : 'Complétez votre profil professeur'}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="prof-name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
+            <Input
+              id="prof-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="prof-email">Email</Label>
+            <Input
+              id="prof-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              dir="ltr"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="prof-password">{isRTL ? 'كلمة المرور' : 'Mot de passe'}</Label>
+            <Input
+              id="prof-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              dir="ltr"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="prof-specialization">{isRTL ? 'التخصص' : 'Spécialisation'}</Label>
+            <Input
+              id="prof-specialization"
+              value={specialization}
+              onChange={(e) => setSpecialization(e.target.value)}
+              placeholder={isRTL ? 'مثال: المحادثة، القواعد...' : 'Ex: Conversation, Grammaire...'}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{isRTL ? 'اللغات التي تدرسها' : 'Langues enseignées'}</Label>
+            <div className="flex flex-wrap gap-2">
+              {['Français', 'Anglais', 'Espagnol', 'Arabe', 'Allemand'].map((lang) => (
+                <Button
+                  key={lang}
+                  type="button"
+                  variant={languages.includes(lang) ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    if (languages.includes(lang)) {
+                      setLanguages(languages.filter(l => l !== lang));
+                    } else {
+                      setLanguages([...languages, lang]);
+                    }
+                  }}
+                >
+                  {lang}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="prof-bio">{isRTL ? 'نبذة عنك' : 'Bio'}</Label>
+            <Textarea
+              id="prof-bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder={isRTL ? 'أخبرنا عن خبرتك في التدريس...' : 'Parlez-nous de votre expérience d\'enseignement...'}
+              rows={3}
+            />
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => setProfessorStep('token')}
+            disabled={!name || !email || !password || !specialization || languages.length === 0}
+          >
+            {isRTL ? 'التالي' : 'Continuer'}
+            {isRTL ? <ArrowLeft className="w-4 h-4 mr-2" /> : <ArrowRight className="w-4 h-4 ml-2" />}
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
+  const renderProfessorTokenValidation = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      <Card className="w-full max-w-md mx-auto glass-card">
+        <CardHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("w-fit gap-2", isRTL && "flex-row-reverse")}
+            onClick={() => setProfessorStep('info')}
+          >
+            {isRTL ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+            {isRTL ? 'رجوع' : 'Retour'}
+          </Button>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-secondary/10 flex items-center justify-center">
+            <KeyRound className="w-8 h-8 text-secondary-foreground" />
+          </div>
+          <CardTitle className="text-2xl text-center">{isRTL ? 'رمز وصول الأستاذ' : 'Token d\'accès Professeur'}</CardTitle>
+          <CardDescription className="text-center">
+            {isRTL ? 'أدخل رمز الوصول الخاص بالأساتذة' : 'Entrez le token d\'accès professeur fourni par l\'administrateur'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="prof-token">{isRTL ? 'رمز الوصول' : 'Token'}</Label>
+            <Input
+              id="prof-token"
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              placeholder="PROF-XXXX-XXXX"
+              className="text-center text-lg tracking-wider"
+              dir="ltr"
+            />
+          </div>
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
+          <Button
+            className="w-full"
+            onClick={handleProfessorSignup}
+            disabled={loading || !accessToken}
+          >
+            {loading ? (isRTL ? 'جاري الإنشاء...' : 'Création...') : (isRTL ? 'إنشاء الحساب' : 'Créer mon compte')}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            {isRTL ? 'رموز الأستاذ تبدأ بـ PROF' : 'Les tokens professeur commencent par PROF (ex: PROF2024)'}
+          </p>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
   const renderContent = () => {
     if (mode === 'login') return renderLogin();
     
     if (signupRole === null) return renderRoleSelection();
     
     if (signupRole === 'admin') return renderAdminSignup();
+    
+    // Professor signup flow
+    if (signupRole === 'professor') {
+      switch (professorStep) {
+        case 'avatar':
+          return renderProfessorAvatarSelection();
+        case 'info':
+          return renderProfessorInfo();
+        case 'token':
+          return renderProfessorTokenValidation();
+        default:
+          return renderRoleSelection();
+      }
+    }
     
     // Student signup flow
     switch (studentStep) {
