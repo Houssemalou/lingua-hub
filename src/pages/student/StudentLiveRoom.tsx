@@ -1,28 +1,51 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, Target, Mic, MicOff, MessageSquare, Send, Volume2 } from 'lucide-react';
+import { ArrowLeft, Users, Target, MessageSquare, Send, Volume2, Mic, MicOff, Video, VideoOff, MonitorUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getRoomById, getStudentById, mockChatMessages, currentStudent } from '@/data/mockData';
+import { getRoomById, getStudentById, mockChatMessages, currentStudent, getProfessorById } from '@/data/mockData';
 import { QuizModal } from '@/components/quiz/QuizModal';
 import { getQuizForSession } from '@/data/quizzes';
+import { MediaControlsLabeled } from '@/components/session/MediaControls';
+import { VideoGrid } from '@/components/session/VideoGrid';
+import { useMediaStream } from '@/hooks/useMediaStream';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function StudentLiveRoom() {
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const room = getRoomById(roomId || '');
   
-  const [isMuted, setIsMuted] = useState(true);
   const [messages, setMessages] = useState(mockChatMessages);
   const [newMessage, setNewMessage] = useState('');
   const [showQuiz, setShowQuiz] = useState(false);
   
   const quiz = getQuizForSession(roomId || '');
+
+  const {
+    isMuted,
+    isCameraOn,
+    isScreenSharing,
+    toggleMute,
+    toggleCamera,
+    toggleScreenShare,
+    localVideoRef,
+  } = useMediaStream({
+    onError: (error) => {
+      toast({
+        title: 'Erreur média',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   const handleLeaveRoom = () => {
     if (quiz && !quiz.completed) {
@@ -60,7 +83,52 @@ export default function StudentLiveRoom() {
     setNewMessage('');
   };
 
-  const participants = room.joinedStudents.map(id => getStudentById(id)).filter(Boolean);
+  const otherStudents = room.joinedStudents.map(id => getStudentById(id)).filter(Boolean);
+  
+  // Get professor if session is animated by one
+  const professor = room.animatorType === 'professor' && room.professorId 
+    ? getProfessorById(room.professorId) 
+    : null;
+
+  // Build participants list for video grid
+  const participants = [
+    // Host (Professor or AI)
+    {
+      id: professor?.id || 'host',
+      name: professor?.name || 'AI Teacher',
+      avatar: professor?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=AITeacher',
+      isMuted: false,
+      isCameraOn: professor ? true : false,
+      isScreenSharing: false,
+      isHost: true,
+      isCurrentUser: false,
+      role: professor ? 'professor' as const : undefined,
+    },
+    // Current student (me)
+    {
+      id: currentStudent.id,
+      name: currentStudent.name,
+      avatar: currentStudent.avatar,
+      isMuted,
+      isCameraOn,
+      isScreenSharing,
+      isHost: false,
+      isCurrentUser: true,
+      role: 'student' as const,
+    },
+    // Other students
+    ...otherStudents.filter(s => s && s.id !== currentStudent.id).map(student => ({
+      id: student!.id,
+      name: student!.name,
+      avatar: student!.avatar,
+      isMuted: true,
+      isCameraOn: false,
+      isScreenSharing: false,
+      isHost: false,
+      isCurrentUser: false,
+      role: 'student' as const,
+    })),
+  ];
 
   return (
     <motion.div
@@ -85,6 +153,39 @@ export default function StudentLiveRoom() {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-2 lg:order-1">
+          {/* Video Grid */}
+          <Card>
+            <CardHeader className="pb-3 border-b border-border">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Participants ({participants.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <VideoGrid
+                participants={participants}
+                localVideoRef={localVideoRef}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Media Controls */}
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="text-center space-y-4">
+                <h3 className="text-base sm:text-lg font-medium text-foreground">Contrôles média</h3>
+                <MediaControlsLabeled
+                  isMuted={isMuted}
+                  isCameraOn={isCameraOn}
+                  isScreenSharing={isScreenSharing}
+                  onToggleMute={toggleMute}
+                  onToggleCamera={toggleCamera}
+                  onToggleScreenShare={toggleScreenShare}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Session Objective */}
           <Card className="gradient-accent">
             <CardContent className="p-4 sm:p-6">
@@ -95,41 +196,6 @@ export default function StudentLiveRoom() {
                 <div>
                   <h3 className="font-semibold text-sidebar-primary-foreground text-base sm:text-lg">Session Objective</h3>
                   <p className="text-sidebar-primary-foreground/90 mt-1 text-sm sm:text-base">{room.objective}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Push to Talk */}
-          <Card>
-            <CardContent className="p-4 sm:p-6 lg:p-8">
-              <div className="text-center space-y-4 sm:space-y-6">
-                <h3 className="text-base sm:text-lg font-medium text-foreground">Voice Control</h3>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsMuted(!isMuted)}
-                  className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto flex items-center justify-center transition-all duration-200 ${
-                    isMuted 
-                      ? 'bg-muted hover:bg-muted/80' 
-                      : 'bg-destructive hover:bg-destructive/90 animate-pulse-ring'
-                  }`}
-                >
-                  {isMuted ? (
-                    <MicOff className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground" />
-                  ) : (
-                    <Mic className="w-10 h-10 sm:w-12 sm:h-12 text-destructive-foreground" />
-                  )}
-                </motion.button>
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  {isMuted ? 'Click to unmute and speak' : 'Speaking... Click to mute'}
-                </p>
-                <div className="flex justify-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-2 text-xs sm:text-sm">
-                    <Volume2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Audio Settings</span>
-                    <span className="sm:hidden">Audio</span>
-                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -189,64 +255,66 @@ export default function StudentLiveRoom() {
 
         {/* Sidebar */}
         <div className="space-y-4 sm:space-y-6 order-1 lg:order-2">
-          {/* Participants */}
+          {/* Participants List */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-success" />
-                Participants ({participants.length + 1})
+                Participants ({participants.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Teacher */}
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Teacher" />
-                  <AvatarFallback>T</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">Teacher</p>
-                  <p className="text-xs text-muted-foreground">Host</p>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
-                  <Volume2 className="w-4 h-4 text-success" />
-                </div>
-              </div>
-
-              {/* Current Student (Me) */}
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-accent/10 border border-accent/20">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={currentStudent.avatar} />
-                  <AvatarFallback>{currentStudent.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{currentStudent.name} (You)</p>
-                  <p className="text-xs text-muted-foreground">{currentStudent.level}</p>
-                </div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isMuted ? 'bg-muted' : 'bg-destructive/20'
-                }`}>
-                  {isMuted ? (
-                    <MicOff className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <Mic className="w-4 h-4 text-destructive" />
+              {participants.map((participant) => (
+                <div 
+                  key={participant.id} 
+                  className={cn(
+                    "flex items-center gap-3 p-2 rounded-lg border",
+                    participant.isHost 
+                      ? "bg-primary/10 border-primary/20"
+                      : participant.isCurrentUser
+                      ? "bg-accent/10 border-accent/20"
+                      : "bg-muted/50 border-border"
                   )}
-                </div>
-              </div>
-
-              {/* Other Participants */}
-              {participants.filter(p => p && p.id !== currentStudent.id).map((student) => student && (
-                <div key={student.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 border border-border">
+                >
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={student.avatar} />
-                    <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={participant.avatar} />
+                    <AvatarFallback>{participant.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{student.name}</p>
-                    <p className="text-xs text-muted-foreground">{student.level}</p>
+                    <p className="font-medium text-sm truncate">
+                      {participant.name}
+                      {participant.isCurrentUser && ' (You)'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {participant.isHost ? 'Host' : participant.role === 'student' ? 'Student' : ''}
+                    </p>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                    <MicOff className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex items-center gap-1">
+                    {participant.isScreenSharing && (
+                      <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
+                        <MonitorUp className="w-3 h-3 text-success" />
+                      </div>
+                    )}
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center",
+                      participant.isCameraOn ? "bg-primary/20" : "bg-muted"
+                    )}>
+                      {participant.isCameraOn ? (
+                        <Video className="w-3 h-3 text-primary" />
+                      ) : (
+                        <VideoOff className="w-3 h-3 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center",
+                      participant.isMuted ? "bg-muted" : "bg-destructive/20"
+                    )}>
+                      {participant.isMuted ? (
+                        <MicOff className="w-3 h-3 text-muted-foreground" />
+                      ) : (
+                        <Mic className="w-3 h-3 text-destructive" />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
