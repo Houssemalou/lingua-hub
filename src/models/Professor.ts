@@ -1,0 +1,47 @@
+// ============================================
+// Professor Model
+// ============================================
+
+export interface ProfessorModel {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  bio: string;
+  languages: string[];
+  specialization: string;
+  joinedAt: string;
+  totalSessions: number;
+  rating: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateProfessorDTO {
+  name: string;
+  email: string;
+  password: string;
+  bio?: string;
+  languages: string[];
+  specialization: string;
+}
+
+export interface UpdateProfessorDTO {
+  name?: string;
+  bio?: string;
+  avatar?: string;
+  languages?: string[];
+  specialization?: string;
+}
+
+export interface ProfessorFilters {
+  language?: string;
+  specialization?: string;
+  search?: string;
+  minRating?: number;
+  sortBy?: 'name' | 'rating' | 'totalSessions' | 'joinedAt';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
