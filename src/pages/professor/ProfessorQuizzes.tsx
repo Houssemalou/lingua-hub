@@ -7,20 +7,17 @@ import {
   Users,
   CheckCircle,
   XCircle,
-  Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProfessorSessions, getStudentById } from '@/data/mockData';
+import { getProfessorSessions } from '@/data/mockData';
 import { mockQuizResults } from '@/data/quizzes';
+import { QuizCreator } from '@/components/quiz/QuizCreator';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -39,12 +36,6 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: number;
-}
-
 export default function ProfessorQuizzes() {
   const { user } = useAuth();
   const { language, isRTL } = useLanguage();
@@ -52,12 +43,6 @@ export default function ProfessorQuizzes() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedSession, setSelectedSession] = useState('');
-  const [quizTitle, setQuizTitle] = useState('');
-  const [quizDescription, setQuizDescription] = useState('');
-  const [questions, setQuestions] = useState<QuizQuestion[]>([
-    { question: '', options: ['', '', '', ''], correctAnswer: 0 }
-  ]);
 
   const sessions = professor ? getProfessorSessions(professor.id) : [];
   const dateLocale = language === 'ar' ? ar : fr;
@@ -73,37 +58,14 @@ export default function ProfessorQuizzes() {
     result.sessionName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const addQuestion = () => {
-    setQuestions([...questions, { question: '', options: ['', '', '', ''], correctAnswer: 0 }]);
-  };
-
-  const removeQuestion = (index: number) => {
-    if (questions.length > 1) {
-      setQuestions(questions.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateQuestion = (index: number, field: string, value: any) => {
-    const updated = [...questions];
-    if (field === 'question') {
-      updated[index].question = value;
-    } else if (field === 'correctAnswer') {
-      updated[index].correctAnswer = value;
-    } else if (field.startsWith('option')) {
-      const optionIndex = parseInt(field.replace('option', ''));
-      updated[index].options[optionIndex] = value;
-    }
-    setQuestions(updated);
-  };
-
-  const handleCreateQuiz = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success(isRTL ? 'تم إنشاء الاختبار بنجاح!' : 'Quiz créé avec succès !');
+  const handleCreateQuiz = (quiz: {
+    title: string;
+    description: string;
+    sessionId: string;
+    questions: Array<{ id: string; question: string; options: string[]; correctAnswer: number }>;
+  }) => {
+    console.log('Quiz created:', quiz);
     setIsCreateDialogOpen(false);
-    setQuizTitle('');
-    setQuizDescription('');
-    setSelectedSession('');
-    setQuestions([{ question: '', options: ['', '', '', ''], correctAnswer: 0 }]);
   };
 
   // Stats
@@ -137,115 +99,16 @@ export default function ProfessorQuizzes() {
               {isRTL ? 'إنشاء اختبار' : 'Créer un Quiz'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{isRTL ? 'إنشاء اختبار جديد' : 'Créer un nouveau Quiz'}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateQuiz} className="space-y-6 mt-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'عنوان الاختبار' : 'Titre du quiz'}</Label>
-                  <Input
-                    value={quizTitle}
-                    onChange={(e) => setQuizTitle(e.target.value)}
-                    placeholder={isRTL ? 'مثال: اختبار القواعد' : 'Ex: Quiz de grammaire'}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'الجلسة' : 'Session'}</Label>
-                  <Select value={selectedSession} onValueChange={setSelectedSession} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isRTL ? 'اختر جلسة' : 'Choisir une session'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sessions.map((session) => (
-                        <SelectItem key={session.id} value={session.id}>
-                          {session.roomName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>{isRTL ? 'الوصف' : 'Description'}</Label>
-                <Textarea
-                  value={quizDescription}
-                  onChange={(e) => setQuizDescription(e.target.value)}
-                  placeholder={isRTL ? 'وصف موجز للاختبار...' : 'Description brève du quiz...'}
-                  rows={2}
-                />
-              </div>
-
-              {/* Questions */}
-              <div className="space-y-4">
-                <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
-                  <Label>{isRTL ? 'الأسئلة' : 'Questions'}</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    {isRTL ? 'إضافة سؤال' : 'Ajouter'}
-                  </Button>
-                </div>
-                
-                {questions.map((q, qIndex) => (
-                  <Card key={qIndex} className="p-4">
-                    <div className={cn("flex items-center justify-between mb-3", isRTL && "flex-row-reverse")}>
-                      <span className="font-medium text-sm">
-                        {isRTL ? `السؤال ${qIndex + 1}` : `Question ${qIndex + 1}`}
-                      </span>
-                      {questions.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeQuestion(qIndex)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <Input
-                        value={q.question}
-                        onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
-                        placeholder={isRTL ? 'نص السؤال' : 'Texte de la question'}
-                        required
-                      />
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {q.options.map((opt, optIndex) => (
-                          <div key={optIndex} className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-                            <input
-                              type="radio"
-                              name={`correct-${qIndex}`}
-                              checked={q.correctAnswer === optIndex}
-                              onChange={() => updateQuestion(qIndex, 'correctAnswer', optIndex)}
-                              className="w-4 h-4"
-                            />
-                            <Input
-                              value={opt}
-                              onChange={(e) => updateQuestion(qIndex, `option${optIndex}`, e.target.value)}
-                              placeholder={`${isRTL ? 'الخيار' : 'Option'} ${optIndex + 1}`}
-                              required
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              <div className={cn("flex justify-end gap-3", isRTL && "flex-row-reverse")}>
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  {isRTL ? 'إلغاء' : 'Annuler'}
-                </Button>
-                <Button type="submit">
-                  {isRTL ? 'إنشاء الاختبار' : 'Créer le Quiz'}
-                </Button>
-              </div>
-            </form>
+            <QuizCreator
+              sessions={sessions.map(s => ({ id: s.id, name: s.roomName }))}
+              onCreateQuiz={handleCreateQuiz}
+              onCancel={() => setIsCreateDialogOpen(false)}
+              isRTL={isRTL}
+            />
           </DialogContent>
         </Dialog>
       </motion.div>

@@ -12,6 +12,8 @@ import {
   Play,
   Pause,
   PhoneOff,
+  Settings2,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,12 +22,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getRoomById, getStudentById, mockChatMessages, getProfessorById } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { MediaControlsLabeled } from '@/components/session/MediaControls';
 import { VideoGrid } from '@/components/session/VideoGrid';
+import { StudentModeration } from '@/components/session/StudentModeration';
+import { StudentEvaluation } from '@/components/session/StudentEvaluation';
 import { useMediaStream } from '@/hooks/useMediaStream';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +47,10 @@ export default function ProfessorLiveRoom() {
   const [isSessionActive, setIsSessionActive] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [messages, setMessages] = useState(mockChatMessages);
+  const [showEvaluationDialog, setShowEvaluationDialog] = useState(false);
+  
+  // Student moderation state
+  const [studentStates, setStudentStates] = useState<Record<string, { isMuted: boolean; isPicked: boolean }>>({});
   const [newMessage, setNewMessage] = useState('');
 
   const {
@@ -80,12 +90,100 @@ export default function ProfessorLiveRoom() {
 
   const progress = room ? (elapsedTime / (room.duration * 60)) * 100 : 0;
 
+  // Initialize student states
+  useEffect(() => {
+    if (room) {
+      const initialStates: Record<string, { isMuted: boolean; isPicked: boolean }> = {};
+      room.joinedStudents.forEach(id => {
+        if (!studentStates[id]) {
+          initialStates[id] = { isMuted: true, isPicked: false };
+        }
+      });
+      if (Object.keys(initialStates).length > 0) {
+        setStudentStates(prev => ({ ...prev, ...initialStates }));
+      }
+    }
+  }, [room?.joinedStudents]);
+
   const handleEndSession = () => {
+    setShowEvaluationDialog(true);
+  };
+
+  const handleConfirmEndSession = () => {
     toast({
       title: isRTL ? 'انتهت الجلسة' : 'Session terminée',
       description: isRTL ? 'لقد أنهيت الجلسة بنجاح' : 'Vous avez terminé la session avec succès',
     });
+    setShowEvaluationDialog(false);
     navigate('/professor/sessions');
+  };
+
+  // Moderation handlers
+  const handleMuteStudent = (studentId: string) => {
+    setStudentStates(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], isMuted: true }
+    }));
+    const student = getStudentById(studentId);
+    toast({
+      title: isRTL ? 'تم كتم الصوت' : 'Micro coupé',
+      description: isRTL ? `تم كتم صوت ${student?.name}` : `${student?.name} a été muté`,
+    });
+  };
+
+  const handleUnmuteStudent = (studentId: string) => {
+    setStudentStates(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], isMuted: false }
+    }));
+  };
+
+  const handlePickStudent = (studentId: string) => {
+    setStudentStates(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], isPicked: true, isMuted: false }
+    }));
+    const student = getStudentById(studentId);
+    toast({
+      title: isRTL ? 'تم اختيار الطالب' : 'Étudiant sélectionné',
+      description: isRTL ? `${student?.name} يمكنه التحدث الآن` : `${student?.name} peut maintenant parler`,
+    });
+  };
+
+  const handleUnpickStudent = (studentId: string) => {
+    setStudentStates(prev => ({
+      ...prev,
+      [studentId]: { ...prev[studentId], isPicked: false }
+    }));
+  };
+
+  const handleMuteAll = () => {
+    const updated: Record<string, { isMuted: boolean; isPicked: boolean }> = {};
+    Object.keys(studentStates).forEach(id => {
+      updated[id] = { ...studentStates[id], isMuted: true };
+    });
+    setStudentStates(updated);
+    toast({
+      title: isRTL ? 'تم كتم الجميع' : 'Tous mutés',
+      description: isRTL ? 'تم كتم صوت جميع الطلاب' : 'Tous les étudiants ont été mutés',
+    });
+  };
+
+  const handleUnmuteAll = () => {
+    const updated: Record<string, { isMuted: boolean; isPicked: boolean }> = {};
+    Object.keys(studentStates).forEach(id => {
+      updated[id] = { ...studentStates[id], isMuted: false };
+    });
+    setStudentStates(updated);
+  };
+
+  const handleSubmitEvaluations = (evaluations: Array<{
+    studentId: string;
+    criteria: Record<string, number>;
+    comment: string;
+  }>) => {
+    console.log('Evaluations submitted:', evaluations);
+    // Here you would save to backend
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -134,12 +232,12 @@ export default function ProfessorLiveRoom() {
       isCurrentUser: true,
       role: 'professor' as const,
     },
-    // Students
+    // Students with moderation state
     ...joinedStudents.map(student => ({
       id: student!.id,
       name: student!.name,
       avatar: student!.avatar,
-      isMuted: true,
+      isMuted: studentStates[student!.id]?.isMuted ?? true,
       isCameraOn: false,
       isScreenSharing: false,
       isHost: false,
@@ -147,6 +245,24 @@ export default function ProfessorLiveRoom() {
       role: 'student' as const,
     })),
   ];
+
+  // Students for moderation panel
+  const studentsForModeration = joinedStudents.map(student => ({
+    id: student!.id,
+    name: student!.name,
+    avatar: student!.avatar,
+    level: student!.level,
+    isMuted: studentStates[student!.id]?.isMuted ?? true,
+    isPicked: studentStates[student!.id]?.isPicked ?? false,
+  }));
+
+  // Students for evaluation
+  const studentsForEvaluation = joinedStudents.map(student => ({
+    id: student!.id,
+    name: student!.name,
+    avatar: student!.avatar,
+    level: student!.level,
+  }));
 
   return (
     <motion.div
@@ -269,57 +385,89 @@ export default function ProfessorLiveRoom() {
 
         {/* Sidebar */}
         <div className="space-y-4 sm:space-y-6">
-          {/* Chat */}
-          <Card className="flex flex-col h-96">
-            <CardHeader className="pb-3 border-b border-border">
-              <CardTitle className={cn("text-lg flex items-center gap-2", isRTL && "flex-row-reverse")}>
-                <MessageSquare className="w-5 h-5 text-primary" />
-                {isRTL ? 'الدردشة' : 'Chat'}
-              </CardTitle>
-            </CardHeader>
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((msg) => {
-                  const isMe = msg.senderId === professor?.id;
-                  return (
-                    <div key={msg.id} className={cn("flex gap-3", isMe ? 'flex-row-reverse' : '', isRTL && !isMe ? 'flex-row-reverse' : '')}>
-                      <Avatar className="w-8 h-8">
-                        <AvatarImage src={msg.senderAvatar} />
-                        <AvatarFallback>{msg.senderName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className={cn("max-w-[70%]", isMe ? 'text-right' : '', isRTL && 'text-right')}>
-                        <div className={cn("flex items-baseline gap-2", isMe ? 'flex-row-reverse' : '')}>
-                          <span className="font-medium text-sm">{isMe ? (isRTL ? 'أنت' : 'Vous') : msg.senderName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+          {/* Moderation & Chat Tabs */}
+          <Card className="flex flex-col">
+            <Tabs defaultValue="moderation" className="flex-1">
+              <CardHeader className="pb-3 border-b border-border">
+                <TabsList className="w-full grid grid-cols-2">
+                  <TabsTrigger value="moderation" className="gap-2">
+                    <Settings2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {isRTL ? 'التحكم' : 'Modération'}
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {isRTL ? 'الدردشة' : 'Chat'}
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </CardHeader>
+
+              {/* Moderation Tab */}
+              <TabsContent value="moderation" className="mt-0">
+                <CardContent className="p-4">
+                  <StudentModeration
+                    students={studentsForModeration}
+                    onMuteStudent={handleMuteStudent}
+                    onUnmuteStudent={handleUnmuteStudent}
+                    onPickStudent={handlePickStudent}
+                    onUnpickStudent={handleUnpickStudent}
+                    onMuteAll={handleMuteAll}
+                    onUnmuteAll={handleUnmuteAll}
+                    isRTL={isRTL}
+                  />
+                </CardContent>
+              </TabsContent>
+
+              {/* Chat Tab */}
+              <TabsContent value="chat" className="mt-0 flex flex-col h-80">
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-4">
+                    {messages.map((msg) => {
+                      const isMe = msg.senderId === professor?.id;
+                      return (
+                        <div key={msg.id} className={cn("flex gap-3", isMe ? 'flex-row-reverse' : '', isRTL && !isMe ? 'flex-row-reverse' : '')}>
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={msg.senderAvatar} />
+                            <AvatarFallback>{msg.senderName.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className={cn("max-w-[70%]", isMe ? 'text-right' : '', isRTL && 'text-right')}>
+                            <div className={cn("flex items-baseline gap-2", isMe ? 'flex-row-reverse' : '')}>
+                              <span className="font-medium text-sm">{isMe ? (isRTL ? 'أنت' : 'Vous') : msg.senderName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className={cn(
+                              "mt-1 p-3 rounded-lg",
+                              isMe 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'bg-muted text-foreground'
+                            )}>
+                              <p className="text-sm">{msg.content}</p>
+                            </div>
+                          </div>
                         </div>
-                        <div className={cn(
-                          "mt-1 p-3 rounded-lg",
-                          isMe 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'bg-muted text-foreground'
-                        )}>
-                          <p className="text-sm">{msg.content}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-            <form onSubmit={handleSendMessage} className={cn("p-3 border-t border-border flex gap-2", isRTL && "flex-row-reverse")}>
-              <Input
-                placeholder={isRTL ? 'اكتب رسالة...' : 'Écrire un message...'}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="flex-1"
-                dir={isRTL ? "rtl" : "ltr"}
-              />
-              <Button type="submit" size="icon">
-                <Send className={cn("w-4 h-4", isRTL && "rotate-180")} />
-              </Button>
-            </form>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <form onSubmit={handleSendMessage} className={cn("p-3 border-t border-border flex gap-2", isRTL && "flex-row-reverse")}>
+                  <Input
+                    placeholder={isRTL ? 'اكتب رسالة...' : 'Écrire un message...'}
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    className="flex-1"
+                    dir={isRTL ? "rtl" : "ltr"}
+                  />
+                  <Button type="submit" size="icon">
+                    <Send className={cn("w-4 h-4", isRTL && "rotate-180")} />
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </Card>
 
           {/* Joined Students */}
@@ -341,6 +489,7 @@ export default function ProfessorLiveRoom() {
                     key={student.id} 
                     className={cn(
                       "flex items-center gap-3 p-2 rounded-lg bg-muted/50 border border-border",
+                      studentStates[student.id]?.isPicked && "bg-primary/10 border-primary/30",
                       isRTL && "flex-row-reverse"
                     )}
                   >
@@ -352,9 +501,22 @@ export default function ProfessorLiveRoom() {
                       <p className="font-medium text-sm truncate">{student.name}</p>
                       <p className="text-xs text-muted-foreground">{student.level}</p>
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {isRTL ? 'متصل' : 'Connecté'}
-                    </Badge>
+                    <div className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
+                      {studentStates[student.id]?.isPicked && (
+                        <Badge variant="default" className="text-xs">
+                          {isRTL ? 'يتحدث' : 'Parole'}
+                        </Badge>
+                      )}
+                      <Badge 
+                        variant={studentStates[student.id]?.isMuted ? "secondary" : "outline"} 
+                        className="text-xs"
+                      >
+                        {studentStates[student.id]?.isMuted 
+                          ? (isRTL ? 'صامت' : 'Muté') 
+                          : (isRTL ? 'متصل' : 'Actif')
+                        }
+                      </Badge>
+                    </div>
                   </div>
                 ))
               )}
@@ -362,6 +524,34 @@ export default function ProfessorLiveRoom() {
           </Card>
         </div>
       </div>
+
+      {/* End Session with Evaluation Dialog */}
+      <Dialog open={showEvaluationDialog} onOpenChange={setShowEvaluationDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              <ClipboardCheck className="w-5 h-5" />
+              {isRTL ? 'تقييم الطلاب قبل إنهاء الجلسة' : 'Évaluer les étudiants avant de terminer'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <StudentEvaluation
+            students={studentsForEvaluation}
+            onSubmitEvaluations={handleSubmitEvaluations}
+            isRTL={isRTL}
+          />
+          
+          <div className={cn("flex justify-end gap-3 pt-4 border-t border-border", isRTL && "flex-row-reverse")}>
+            <Button variant="outline" onClick={() => setShowEvaluationDialog(false)}>
+              {isRTL ? 'متابعة الجلسة' : 'Continuer la session'}
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmEndSession}>
+              <PhoneOff className="w-4 h-4 mr-2" />
+              {isRTL ? 'إنهاء الجلسة' : 'Terminer la session'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
