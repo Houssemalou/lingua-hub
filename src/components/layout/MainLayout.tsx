@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppSidebar } from './AppSidebar';
 import { cn } from '@/lib/utils';
@@ -7,12 +7,16 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
+import { AdminChatbot } from '@/components/admin/AdminChatbot';
 export function MainLayout() {
   const isMobile = useIsMobile();
   const { isRTL } = useLanguage();
+  const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Check if current route is admin
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   // Auto-collapse sidebar on mobile
   useEffect(() => {
@@ -104,6 +108,9 @@ export function MainLayout() {
           <Outlet />
         </div>
       </motion.main>
+
+      {/* Admin Chatbot - Only visible for admin routes */}
+      {isAdminRoute && <AdminChatbot />}
     </div>
   );
 }
