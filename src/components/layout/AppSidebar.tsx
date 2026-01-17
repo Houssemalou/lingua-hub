@@ -21,6 +21,7 @@ import {
   FileCheck,
   Settings,
   BookOpen,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const studentNavItems = [
     { to: '/student/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     { to: '/student/progress', icon: TrendingUp, label: t('nav.progress') },
     { to: '/student/quiz', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
