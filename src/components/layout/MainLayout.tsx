@@ -8,6 +8,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminChatbot } from '@/components/admin/AdminChatbot';
+import { StudentVoiceAssistant } from '@/components/student/StudentVoiceAssistant';
+
 export function MainLayout() {
   const isMobile = useIsMobile();
   const { isRTL } = useLanguage();
@@ -15,8 +17,9 @@ export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Check if current route is admin
+  // Check if current route is admin or student
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isStudentRoute = location.pathname.startsWith('/student');
 
   // Auto-collapse sidebar on mobile
   useEffect(() => {
@@ -111,6 +114,9 @@ export function MainLayout() {
 
       {/* Admin Chatbot - Only visible for admin routes */}
       {isAdminRoute && <AdminChatbot />}
+
+      {/* Student Voice Assistant - Only visible for student routes */}
+      {isStudentRoute && <StudentVoiceAssistant />}
     </div>
   );
 }
