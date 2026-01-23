@@ -67,6 +67,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const professorNavItems = [
     { to: '/professor/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/professor/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/professor/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     { to: '/professor/quizzes', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/professor/profile', icon: User, label: t('nav.profile') },
   ];
