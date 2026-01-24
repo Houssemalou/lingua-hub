@@ -13,7 +13,9 @@ import {
   ChevronUp,
   Plus,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  PlayCircle,
+  CalendarClock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -231,7 +233,8 @@ export default function ProfessorSessionSummaries() {
 
   const dateLocale = language === 'ar' ? ar : fr;
   const sessions = professor ? getProfessorSessions(professor.id) : [];
-  const completedSessions = sessions.filter(s => s.status === 'completed');
+  // Allow summaries for all sessions, not just completed ones
+  const availableSessions = sessions;
   const summaries = professor ? getProfessorSessionSummaries(professor.id) : [];
 
   const filteredSummaries = summaries.filter((summary) => {
@@ -357,7 +360,7 @@ export default function ProfessorSessionSummaries() {
               <p className="text-muted-foreground mb-4">
                 {searchQuery || statusFilter !== 'all'
                   ? (isRTL ? 'حاول تعديل الفلاتر' : 'Essayez d\'ajuster vos filtres')
-                  : (isRTL ? 'ابدأ بكتابة ملخص لجلساتك المكتملة' : 'Commencez par rédiger un résumé pour vos sessions terminées')}
+                  : (isRTL ? 'ابدأ بكتابة ملخص لجلساتك' : 'Commencez par rédiger un résumé pour vos sessions')}
               </p>
               {!searchQuery && statusFilter === 'all' && (
                 <Button onClick={handleCreateNew} className="gap-2">
@@ -410,33 +413,68 @@ export default function ProfessorSessionSummaries() {
                 {isRTL ? 'اختر جلسة لإنشاء ملخص لها:' : 'Sélectionnez une session pour créer un résumé :'}
               </p>
               <div className="grid gap-3 max-h-[60vh] overflow-y-auto">
-                {completedSessions.length > 0 ? (
-                  completedSessions.map((session) => (
-                    <Card
-                      key={session.id}
-                      variant="interactive"
-                      className="cursor-pointer"
-                      onClick={() => handleSelectSession(session.id)}
-                    >
-                      <CardContent className="p-4">
-                        <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
-                          <div>
-                            <h4 className="font-medium">{session.roomName}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(session.scheduledAt), 'PPp', { locale: dateLocale })}
-                            </p>
+                {availableSessions.length > 0 ? (
+                  availableSessions.map((session) => {
+                    const getStatusConfig = (status: string) => {
+                      switch (status) {
+                        case 'completed':
+                          return { 
+                            icon: CheckCircle, 
+                            label: isRTL ? 'مكتملة' : 'Terminée', 
+                            variant: 'default' as const,
+                            className: 'bg-success text-success-foreground'
+                          };
+                        case 'live':
+                          return { 
+                            icon: PlayCircle, 
+                            label: isRTL ? 'مباشر' : 'En direct', 
+                            variant: 'destructive' as const,
+                            className: 'bg-destructive animate-pulse'
+                          };
+                        case 'scheduled':
+                        default:
+                          return { 
+                            icon: CalendarClock, 
+                            label: isRTL ? 'مجدولة' : 'Programmée', 
+                            variant: 'secondary' as const,
+                            className: ''
+                          };
+                      }
+                    };
+                    const statusConfig = getStatusConfig(session.status);
+                    const StatusIcon = statusConfig.icon;
+                    
+                    return (
+                      <Card
+                        key={session.id}
+                        variant="interactive"
+                        className="cursor-pointer"
+                        onClick={() => handleSelectSession(session.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
+                            <div>
+                              <h4 className="font-medium">{session.roomName}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {format(new Date(session.scheduledAt), 'PPp', { locale: dateLocale })}
+                              </p>
+                            </div>
+                            <div className={cn("flex items-center gap-2 flex-wrap", isRTL && "flex-row-reverse")}>
+                              <Badge variant={statusConfig.variant} className={cn("gap-1", statusConfig.className)}>
+                                <StatusIcon className="w-3 h-3" />
+                                {statusConfig.label}
+                              </Badge>
+                              <Badge variant="secondary">{session.language}</Badge>
+                              <Badge variant={session.level.toLowerCase() as any}>{session.level}</Badge>
+                            </div>
                           </div>
-                          <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-                            <Badge variant="secondary">{session.language}</Badge>
-                            <Badge variant={session.level.toLowerCase() as any}>{session.level}</Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    {isRTL ? 'لا توجد جلسات مكتملة' : 'Aucune session terminée'}
+                    {isRTL ? 'لا توجد جلسات' : 'Aucune session disponible'}
                   </p>
                 )}
               </div>
