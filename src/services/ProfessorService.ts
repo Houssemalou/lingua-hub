@@ -11,6 +11,7 @@ import {
   PaginatedResponse,
   ApiResponse 
 } from '@/models';
+import { apiClient } from '@/lib/apiClient';
 import { mockProfessors } from '@/data/mockData';
 
 // ============================================
@@ -26,35 +27,16 @@ import { mockProfessors } from '@/data/mockData';
 export const ProfessorService = {
   // Get all professors with optional filters
   async getAll(filters?: ProfessorFilters): Promise<PaginatedResponse<ProfessorModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const params = new URLSearchParams();
-    //   if (filters?.language) params.append('language', filters.language);
-    //   if (filters?.specialization) params.append('specialization', filters.specialization);
-    //   if (filters?.search) params.append('search', filters.search);
-    //   if (filters?.minRating) params.append('minRating', String(filters.minRating));
-    //   if (filters?.sortBy) params.append('sortBy', filters.sortBy);
-    //   if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
-    //   if (filters?.page) params.append('page', String(filters.page));
-    //   if (filters?.limit) params.append('limit', String(filters.limit));
-    //
-    //   const response = await fetch(`${PROFESSORS_ENDPOINT}?${params.toString()}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to fetch professors');
-    //   return await response.json();
-    // } catch (error) {
-    //   console.error('Error fetching professors:', error);
-    //   throw error;
-    // }
+    try {
+      return await apiClient.get<PaginatedResponse<ProfessorModel>>('/professors', filters as Record<string, unknown>);
+    } catch (error) {
+      console.error('Error fetching professors:', error);
+      throw error;
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     let filtered = [...mockProfessors] as ProfessorModel[];
 
@@ -83,26 +65,17 @@ export const ProfessorService = {
 
   // Get professor by ID
   async getById(id: string): Promise<ApiResponse<ProfessorModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${PROFESSORS_ENDPOINT}/${id}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Professor not found');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching professor:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const data = await apiClient.get<ProfessorModel>(`/professors/${id}`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching professor:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const professor = mockProfessors.find(p => p.id === id);
     if (professor) {
@@ -113,27 +86,17 @@ export const ProfessorService = {
 
   // Create new professor
   async create(data: CreateProfessorDTO): Promise<ApiResponse<ProfessorModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(PROFESSORS_ENDPOINT, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify(data),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to create professor');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error creating professor:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.post<ProfessorModel>('/professors', data);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error creating professor:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const newProfessor: ProfessorModel = {
       id: `prof-${Date.now()}`,
@@ -152,27 +115,17 @@ export const ProfessorService = {
 
   // Update professor
   async update(id: string, data: UpdateProfessorDTO): Promise<ApiResponse<ProfessorModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${PROFESSORS_ENDPOINT}/${id}`, {
-    //     method: 'PATCH',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify(data),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to update professor');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error updating professor:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.put<ProfessorModel>(`/professors/${id}`, data);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error updating professor:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const professor = mockProfessors.find(p => p.id === id);
     if (professor) {
@@ -184,24 +137,17 @@ export const ProfessorService = {
 
   // Delete professor
   async delete(id: string): Promise<ApiResponse<void>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${PROFESSORS_ENDPOINT}/${id}`, {
-    //     method: 'DELETE',
-    //     headers: {
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to delete professor');
-    //   return { success: true };
-    // } catch (error) {
-    //   console.error('Error deleting professor:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      await apiClient.delete<void>(`/professors/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting professor:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const index = mockProfessors.findIndex(p => p.id === id);
     if (index !== -1) {
@@ -212,26 +158,17 @@ export const ProfessorService = {
 
   // Get professor sessions
   async getSessions(professorId: string): Promise<ApiResponse<any[]>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${PROFESSORS_ENDPOINT}/${professorId}/sessions`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to fetch sessions');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching sessions:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const data = await apiClient.get<any[]>(`/professors/${professorId}/sessions`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation - would use getProfessorSessions from mockData
     return { success: true, data: [] };
   },

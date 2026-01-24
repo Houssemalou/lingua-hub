@@ -11,7 +11,24 @@ import {
   PaginatedResponse,
   ApiResponse 
 } from '@/models';
+import { apiClient } from '@/lib/apiClient';
 import { mockRooms } from '@/data/mockData';
+
+// ============================================
+// Types
+// ============================================
+
+export interface RoomParticipant {
+  id: string;
+  roomId: string;
+  studentId: string;
+  studentName?: string;
+  joinedAt: string;
+  isMuted: boolean;
+  isPinged: boolean;
+  pingedAt?: string;
+  handRaised: boolean;
+}
 
 // ============================================
 // API Endpoints (à décommenter pour le backend)
@@ -26,39 +43,16 @@ import { mockRooms } from '@/data/mockData';
 export const RoomService = {
   // Get all rooms with optional filters
   async getAll(filters?: RoomFilters): Promise<PaginatedResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const params = new URLSearchParams();
-    //   if (filters?.status) params.append('status', filters.status);
-    //   if (filters?.language) params.append('language', filters.language);
-    //   if (filters?.level) params.append('level', filters.level);
-    //   if (filters?.professorId) params.append('professorId', filters.professorId);
-    //   if (filters?.animatorType) params.append('animatorType', filters.animatorType);
-    //   if (filters?.fromDate) params.append('fromDate', filters.fromDate);
-    //   if (filters?.toDate) params.append('toDate', filters.toDate);
-    //   if (filters?.search) params.append('search', filters.search);
-    //   if (filters?.sortBy) params.append('sortBy', filters.sortBy);
-    //   if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
-    //   if (filters?.page) params.append('page', String(filters.page));
-    //   if (filters?.limit) params.append('limit', String(filters.limit));
-    //
-    //   const response = await fetch(`${ROOMS_ENDPOINT}?${params.toString()}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to fetch rooms');
-    //   return await response.json();
-    // } catch (error) {
-    //   console.error('Error fetching rooms:', error);
-    //   throw error;
-    // }
+    try {
+      return await apiClient.get<PaginatedResponse<RoomModel>>('/rooms', filters as Record<string, unknown>);
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+      throw error;
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     let filtered = [...mockRooms] as RoomModel[];
 
@@ -93,26 +87,17 @@ export const RoomService = {
 
   // Get room by ID
   async getById(id: string): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${id}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Room not found');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching room:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const data = await apiClient.get<RoomModel>(`/rooms/${id}`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching room:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const room = mockRooms.find(r => r.id === id);
     if (room) {
@@ -123,27 +108,17 @@ export const RoomService = {
 
   // Create new room
   async create(data: CreateRoomDTO): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(ROOMS_ENDPOINT, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify(data),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to create room');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error creating room:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.post<RoomModel>('/rooms', data);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error creating room:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const newRoom: RoomModel = {
       id: `room-${Date.now()}`,
@@ -158,27 +133,17 @@ export const RoomService = {
 
   // Update room
   async update(id: string, data: UpdateRoomDTO): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${id}`, {
-    //     method: 'PATCH',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify(data),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to update room');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error updating room:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.put<RoomModel>(`/rooms/${id}`, data);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error updating room:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const room = mockRooms.find(r => r.id === id);
     if (room) {
@@ -190,24 +155,17 @@ export const RoomService = {
 
   // Delete room
   async delete(id: string): Promise<ApiResponse<void>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${id}`, {
-    //     method: 'DELETE',
-    //     headers: {
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to delete room');
-    //   return { success: true };
-    // } catch (error) {
-    //   console.error('Error deleting room:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      await apiClient.delete<void>(`/rooms/${id}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting room:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const index = mockRooms.findIndex(r => r.id === id);
     if (index !== -1) {
@@ -288,25 +246,17 @@ export const RoomService = {
 
   // Start session (professor only)
   async startSession(roomId: string): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${roomId}/start`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to start session');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error starting session:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.post<RoomModel>(`/rooms/${roomId}/start`);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error starting session:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const room = mockRooms.find(r => r.id === roomId);
     if (room) {
@@ -318,32 +268,92 @@ export const RoomService = {
 
   // End session (professor only)
   async endSession(roomId: string): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${roomId}/end`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to end session');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error ending session:', error);
-    //   return { success: false, error: error.message };
-    // }
-
-    // Mock implementation
-    const room = mockRooms.find(r => r.id === roomId);
-    if (room) {
-      const updated = { ...room, status: 'completed' as const } as RoomModel;
-      return { success: true, data: updated };
+    try {
+      const result = await apiClient.post<RoomModel>(`/rooms/${roomId}/end`);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error ending session:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-    return { success: false, error: 'Room not found' };
+
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
+    // Mock implementation
+    // const room = mockRooms.find(r => r.id === roomId);
+    // if (room) {
+    //   const updated = { ...room, status: 'completed' as const } as RoomModel;
+    //   return { success: true, data: updated };
+    // }
+    // return { success: false, error: 'Room not found' };
+  },
+
+  // Get room participants
+  async getParticipants(roomId: string): Promise<ApiResponse<RoomParticipant[]>> {
+    try {
+      const data = await apiClient.get<RoomParticipant[]>(`/rooms/${roomId}/participants`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
+    // const room = mockRooms.find(r => r.id === roomId);
+    // if (room) {
+    //   return { success: true, data: room.joinedStudents || [] };
+    // }
+    // return { success: false, error: 'Room not found' };
+  },
+
+  // Mute participant
+  async muteParticipant(data: { roomId: string; participantId: string; muted: boolean }): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.post<void>('/rooms/participants/mute', data);
+      return { success: true };
+    } catch (error) {
+      console.error('Error muting participant:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
+    // return { success: true };
+  },
+
+  // Ping participant (attention request)
+  async pingParticipant(data: { roomId: string; participantId: string; message?: string }): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.post<void>('/rooms/participants/ping', data);
+      return { success: true };
+    } catch (error) {
+      console.error('Error pinging participant:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
+    // return { success: true };
+  },
+
+  // Delete ping
+  async deletePing(roomId: string, participantId: string): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.delete<void>('/rooms/participants/ping', { roomId, participantId });
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting ping:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
+    // return { success: true };
   },
 };
 

@@ -12,6 +12,7 @@ import {
   PaginatedResponse,
   ApiResponse 
 } from '@/models';
+import { apiClient } from '@/lib/apiClient';
 
 // ============================================
 // API Endpoints (à décommenter pour le backend)
@@ -29,35 +30,16 @@ const mockEvaluations: EvaluationModel[] = [];
 export const EvaluationService = {
   // Get all evaluations with optional filters
   async getAll(filters?: EvaluationFilters): Promise<PaginatedResponse<EvaluationModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const params = new URLSearchParams();
-    //   if (filters?.sessionId) params.append('sessionId', filters.sessionId);
-    //   if (filters?.studentId) params.append('studentId', filters.studentId);
-    //   if (filters?.professorId) params.append('professorId', filters.professorId);
-    //   if (filters?.fromDate) params.append('fromDate', filters.fromDate);
-    //   if (filters?.toDate) params.append('toDate', filters.toDate);
-    //   if (filters?.minScore) params.append('minScore', String(filters.minScore));
-    //   if (filters?.page) params.append('page', String(filters.page));
-    //   if (filters?.limit) params.append('limit', String(filters.limit));
-    //
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}?${params.toString()}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to fetch evaluations');
-    //   return await response.json();
-    // } catch (error) {
-    //   console.error('Error fetching evaluations:', error);
-    //   throw error;
-    // }
+    try {
+      return await apiClient.get<PaginatedResponse<EvaluationModel>>('/evaluations', filters as Record<string, unknown>);
+    } catch (error) {
+      console.error('Error fetching evaluations:', error);
+      throw error;
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     let filtered = [...mockEvaluations];
 
@@ -85,26 +67,17 @@ export const EvaluationService = {
 
   // Get evaluation by ID
   async getById(id: string): Promise<ApiResponse<EvaluationModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}/${id}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Evaluation not found');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching evaluation:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const data = await apiClient.get<EvaluationModel>(`/evaluations/${id}`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching evaluation:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const evaluation = mockEvaluations.find(e => e.id === id);
     if (evaluation) {
@@ -142,26 +115,17 @@ export const EvaluationService = {
 
   // Get evaluations for a specific student
   async getByStudent(studentId: string): Promise<ApiResponse<EvaluationModel[]>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}/student/${studentId}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to fetch evaluations');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching evaluations:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const data = await apiClient.get<EvaluationModel[]>(`/evaluations/student/${studentId}`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching evaluations:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const evaluations = mockEvaluations.filter(e => e.studentId === studentId);
     return { success: true, data: evaluations };
@@ -169,27 +133,17 @@ export const EvaluationService = {
 
   // Create new evaluation
   async create(data: CreateEvaluationDTO, professorId: string): Promise<ApiResponse<EvaluationModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(EVALUATIONS_ENDPOINT, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify(data),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to create evaluation');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error creating evaluation:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.post<EvaluationModel>('/evaluations', { ...data, professorId });
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error creating evaluation:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const newEvaluation: EvaluationModel = {
       id: `eval-${Date.now()}`,
@@ -210,27 +164,17 @@ export const EvaluationService = {
 
   // Update evaluation
   async update(id: string, data: UpdateEvaluationDTO): Promise<ApiResponse<EvaluationModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}/${id}`, {
-    //     method: 'PATCH',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify(data),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to update evaluation');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error updating evaluation:', error);
-    //   return { success: false, error: error.message };
-    // }
+    try {
+      const result = await apiClient.put<EvaluationModel>(`/evaluations/${id}`, data);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error updating evaluation:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
 
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
     // Mock implementation
     const index = mockEvaluations.findIndex(e => e.id === id);
     if (index !== -1) {
@@ -255,80 +199,68 @@ export const EvaluationService = {
 
   // Delete evaluation
   async delete(id: string): Promise<ApiResponse<void>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}/${id}`, {
-    //     method: 'DELETE',
-    //     headers: {
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to delete evaluation');
-    //   return { success: true };
-    // } catch (error) {
-    //   console.error('Error deleting evaluation:', error);
-    //   return { success: false, error: error.message };
-    // }
-
-    // Mock implementation
-    const index = mockEvaluations.findIndex(e => e.id === id);
-    if (index !== -1) {
-      mockEvaluations.splice(index, 1);
+    try {
+      await apiClient.delete<void>(`/evaluations/${id}`);
       return { success: true };
+    } catch (error) {
+      console.error('Error deleting evaluation:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-    return { success: false, error: 'Evaluation not found' };
+
+    // ============================================
+    // Mock Implementation (fallback)
+    // ============================================
+    // Mock implementation
+    // const index = mockEvaluations.findIndex(e => e.id === id);
+    // if (index !== -1) {
+    //   mockEvaluations.splice(index, 1);
+    //   return { success: true };
+    // }
+    // return { success: false, error: 'Evaluation not found' };
   },
 
-  // Get student progress over time
-  async getStudentProgress(studentId: string): Promise<ApiResponse<{
+  // Get student statistics
+  async getStudentStatistics(studentId: string): Promise<ApiResponse<{
     averageScore: number;
     evaluationCount: number;
     skillsTrend: Record<string, number[]>;
     recentEvaluations: EvaluationModel[];
   }>> {
+    try {
+      const data = await apiClient.get<{
+        averageScore: number;
+        evaluationCount: number;
+        skillsTrend: Record<string, number[]>;
+        recentEvaluations: EvaluationModel[];
+      }>(`/evaluations/student/${studentId}/statistics`);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching student statistics:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+
     // ============================================
-    // Backend Implementation (commenté)
+    // Mock Implementation (fallback)
     // ============================================
-    // try {
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}/student/${studentId}/progress`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
+    // const studentEvals = mockEvaluations.filter(e => e.studentId === studentId);
+    // const averageScore = studentEvals.length > 0
+    //   ? studentEvals.reduce((sum, e) => sum + e.overallScore, 0) / studentEvals.length
+    //   : 0;
     //
-    //   if (!response.ok) throw new Error('Failed to fetch progress');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching progress:', error);
-    //   return { success: false, error: error.message };
-    // }
-
-    // Mock implementation
-    const studentEvals = mockEvaluations.filter(e => e.studentId === studentId);
-    const averageScore = studentEvals.length > 0
-      ? studentEvals.reduce((sum, e) => sum + e.overallScore, 0) / studentEvals.length
-      : 0;
-
-    return {
-      success: true,
-      data: {
-        averageScore: Math.round(averageScore),
-        evaluationCount: studentEvals.length,
-        skillsTrend: {
-          pronunciation: studentEvals.map(e => e.criteria.pronunciation),
-          grammar: studentEvals.map(e => e.criteria.grammar),
-          vocabulary: studentEvals.map(e => e.criteria.vocabulary),
-          fluency: studentEvals.map(e => e.criteria.fluency),
-        },
-        recentEvaluations: studentEvals.slice(-5),
-      },
-    };
+    // return {
+    //   success: true,
+    //   data: {
+    //     averageScore: Math.round(averageScore),
+    //     evaluationCount: studentEvals.length,
+    //     skillsTrend: {
+    //       pronunciation: studentEvals.map(e => e.criteria.pronunciation),
+    //       grammar: studentEvals.map(e => e.criteria.grammar),
+    //       vocabulary: studentEvals.map(e => e.criteria.vocabulary),
+    //       fluency: studentEvals.map(e => e.criteria.fluency),
+    //     },
+    //     recentEvaluations: studentEvals.slice(-5),
+    //   },
+    // };
   },
 };
 

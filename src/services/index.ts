@@ -10,9 +10,14 @@ export { EvaluationService } from './EvaluationService';
 export { ModerationService } from './ModerationService';
 export { ChatService } from './ChatService';
 export { AuthService, getStoredTokens, getStoredUser } from './AuthService';
+export { RecordingService } from './RecordingService';
 
 // Re-export types from AuthService
 export type { AuthUser, LoginCredentials, RegisterData, AuthTokens } from './AuthService';
+
+// Re-export types from RecordingService
+export type { SessionRecording } from './RecordingService';
+export { RecordingStatus } from './RecordingService';
 
 // ============================================
 // API Configuration (à décommenter pour le backend)

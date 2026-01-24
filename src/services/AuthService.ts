@@ -1,9 +1,10 @@
 // ============================================
 // Authentication Service
-// Ready for backend integration
+// Integrated with backend Spring Boot API
 // ============================================
 
 import { ApiResponse } from '@/models';
+import { apiClient, setAuthTokens as setClientTokens } from '@/lib/apiClient';
 
 // ============================================
 // Types
@@ -36,11 +37,10 @@ export interface AuthTokens {
   expiresIn: number;
 }
 
-// ============================================
-// API Endpoints (à décommenter pour le backend)
-// ============================================
-// const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-// const AUTH_ENDPOINT = `${API_BASE_URL}/auth`;
+interface AuthResponse {
+  user: AuthUser;
+  tokens: AuthTokens;
+}
 
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'auth_access_token';
@@ -66,6 +66,7 @@ export const getStoredUser = (): AuthUser | null => {
 const storeTokens = (tokens: AuthTokens) => {
   localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  setClientTokens(tokens.accessToken, tokens.refreshToken);
 };
 
 const storeUser = (user: AuthUser) => {
@@ -76,6 +77,7 @@ const clearAuth = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  setClientTokens('', '');
 };
 
 // ============================================
@@ -85,8 +87,26 @@ const clearAuth = () => {
 export const AuthService = {
   // Login
   async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: AuthUser; tokens: AuthTokens }>> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
+      
+      storeTokens(response.tokens);
+      storeUser(response.user);
+      
+      return {
+        success: true,
+        data: response,
+      };
+    } catch (error) {
+      console.error('Login error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed',
+      };
+    }
+
     // ============================================
-    // Backend Implementation (commenté)
+    // Mock Implementation (fallback)
     // ============================================
     // try {
     //   const response = await fetch(`${AUTH_ENDPOINT}/login`, {
@@ -139,8 +159,26 @@ export const AuthService = {
 
   // Register
   async register(data: RegisterData): Promise<ApiResponse<{ user: AuthUser; tokens: AuthTokens }>> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/register', data);
+      
+      storeTokens(response.tokens);
+      storeUser(response.user);
+      
+      return {
+        success: true,
+        data: response,
+      };
+    } catch (error) {
+      console.error('Registration error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Registration failed',
+      };
+    }
+
     // ============================================
-    // Backend Implementation (commenté)
+    // Mock Implementation (fallback)
     // ============================================
     // try {
     //   const response = await fetch(`${AUTH_ENDPOINT}/register`, {
@@ -166,92 +204,55 @@ export const AuthService = {
     // }
 
     // Mock implementation
-    const authUser: AuthUser = {
-      id: `user-${Date.now()}`,
-      email: data.email,
-      name: data.name,
-      role: data.role,
-    };
-    
-    const tokens: AuthTokens = {
-      accessToken: `mock-token-${Date.now()}`,
-      refreshToken: `mock-refresh-${Date.now()}`,
-      expiresIn: 3600,
-    };
-    
-    storeTokens(tokens);
-    storeUser(authUser);
-    
-    return { success: true, data: { user: authUser, tokens } };
+    // const authUser: AuthUser = {
+    //   id: `user-${Date.now()}`,
+    //   email: data.email,
+    //   name: data.name,
+    //   role: data.role,
+    // };
+    // 
+    // const tokens: AuthTokens = {
+    //   accessToken: `mock-token-${Date.now()}`,
+    //   refreshToken: `mock-refresh-${Date.now()}`,
+    //   expiresIn: 3600,
+    // };
+    // 
+    // storeTokens(tokens);
+    // storeUser(authUser);
+    // 
+    // return { success: true, data: { user: authUser, tokens } };
   },
 
   // Logout
   async logout(): Promise<ApiResponse<void>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const { refreshToken } = getStoredTokens();
-    //   
-    //   await fetch(`${AUTH_ENDPOINT}/logout`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getStoredTokens().accessToken}`,
-    //     },
-    //     body: JSON.stringify({ refreshToken }),
-    //   });
-    // } catch (error) {
-    //   console.error('Logout error:', error);
-    // }
-
     clearAuth();
     return { success: true };
   },
 
   // Refresh token
   async refreshToken(): Promise<ApiResponse<AuthTokens>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const { refreshToken } = getStoredTokens();
-    //   
-    //   if (!refreshToken) {
-    //     return { success: false, error: 'No refresh token' };
-    //   }
-    //
-    //   const response = await fetch(`${AUTH_ENDPOINT}/refresh`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({ refreshToken }),
-    //   });
-    //
-    //   if (!response.ok) {
-    //     clearAuth();
-    //     return { success: false, error: 'Token refresh failed' };
-    //   }
-    //
-    //   const tokens = await response.json();
-    //   storeTokens(tokens);
-    //   return { success: true, data: tokens };
-    // } catch (error) {
-    //   console.error('Token refresh error:', error);
-    //   clearAuth();
-    //   return { success: false, error: 'Network error' };
-    // }
+    try {
+      const { refreshToken } = getStoredTokens();
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
 
-    // Mock implementation
-    const tokens: AuthTokens = {
-      accessToken: `mock-token-${Date.now()}`,
-      refreshToken: `mock-refresh-${Date.now()}`,
-      expiresIn: 3600,
-    };
-    
-    storeTokens(tokens);
-    return { success: true, data: tokens };
+      const response = await apiClient.post<AuthTokens>('/auth/refresh', { refreshToken });
+      
+      storeTokens(response);
+      
+      return {
+        success: true,
+        data: response,
+      };
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      clearAuth();
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Token refresh failed',
+      };
+    }
   },
 
   // Get current user
@@ -366,7 +367,7 @@ export const AuthService = {
   },
 
   // Get auth header
-  getAuthHeader(): { Authorization: string } | {} {
+  getAuthHeader(): { Authorization?: string } {
     const { accessToken } = getStoredTokens();
     return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
   },

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#grad)"/>
+  
+  <!-- Open book -->
+  <path d="M 25 35 Q 25 30 30 30 L 47 30 Q 50 30 50 33 L 50 65 Q 50 68 47 68 L 30 68 Q 25 68 25 63 Z" 
+        fill="white" opacity="0.95"/>
+  <path d="M 75 35 Q 75 30 70 30 L 53 30 Q 50 30 50 33 L 50 65 Q 50 68 53 68 L 70 68 Q 75 68 75 63 Z" 
+        fill="white" opacity="0.95"/>
+  
+  <!-- Book spine -->
+  <rect x="48.5" y="30" width="3" height="38" fill="white" opacity="0.8"/>
+  
+  <!-- Language symbols -->
+  <text x="37" y="48" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#6366f1" text-anchor="middle">A</text>
+  <text x="63" y="48" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#6366f1" text-anchor="middle">あ</text>
+  
+  <!-- Decorative lines -->
+  <line x1="30" y1="52" x2="44" y2="52" stroke="#6366f1" stroke-width="1" opacity="0.6"/>
+  <line x1="30" y1="57" x2="44" y2="57" stroke="#6366f1" stroke-width="1" opacity="0.6"/>
+  <line x1="56" y1="52" x2="70" y2="52" stroke="#6366f1" stroke-width="1" opacity="0.6"/>
+  <line x1="56" y1="57" x2="70" y2="57" stroke="#6366f1" stroke-width="1" opacity="0.6"/>
+  
+  <!-- Graduation cap accent -->
+  <path d="M 50 22 L 65 28 L 50 34 L 35 28 Z" fill="#fbbf24" opacity="0.9"/>
+  <rect x="48" y="28" width="4" height="8" fill="#fbbf24" opacity="0.9"/>
+  <circle cx="52" cy="36" r="2" fill="#fbbf24"/>
+</svg>
