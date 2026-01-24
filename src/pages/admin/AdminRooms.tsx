@@ -31,8 +31,10 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese'];
+const scienceSubjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology'];
+const allSubjects = [...languages, ...scienceSubjects];
 
 export default function AdminRooms() {
   const navigate = useNavigate();
