@@ -22,6 +22,7 @@ import {
   Settings,
   BookOpen,
   FileText,
+  Gamepad2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/student/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
     { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
+    { to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' },
     { to: '/student/progress', icon: TrendingUp, label: t('nav.progress') },
     { to: '/student/quiz', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
@@ -67,6 +69,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const professorNavItems = [
     { to: '/professor/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/professor/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/professor/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     { to: '/professor/quizzes', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/professor/profile', icon: User, label: t('nav.profile') },
   ];

@@ -21,11 +21,13 @@ import StudentProfile from "./pages/student/StudentProfile";
 import StudentProgress from "./pages/student/StudentProgress";
 import StudentQuiz from "./pages/student/StudentQuiz";
 import StudentSessionSummaries from "./pages/student/StudentSessionSummaries";
+import StudentGames from "./pages/student/StudentGames";
 import ProfessorDashboard from "./pages/professor/ProfessorDashboard";
 import ProfessorSessions from "./pages/professor/ProfessorSessions";
 import ProfessorQuizzes from "./pages/professor/ProfessorQuizzes";
 import ProfessorProfile from "./pages/professor/ProfessorProfile";
 import ProfessorLiveRoom from "./pages/professor/ProfessorLiveRoom";
+import ProfessorSessionSummaries from "./pages/professor/ProfessorSessionSummaries";
 import AuthPage from "./pages/auth/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -60,12 +62,14 @@ const App = () => (
                     <Route path="/student/progress" element={<StudentProgress />} />
                     <Route path="/student/quiz" element={<StudentQuiz />} />
                     <Route path="/student/summaries" element={<StudentSessionSummaries />} />
+                    <Route path="/student/games" element={<StudentGames />} />
                     {/* Professor Routes */}
                     <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
                     <Route path="/professor/sessions" element={<ProfessorSessions />} />
                     <Route path="/professor/quizzes" element={<ProfessorQuizzes />} />
                     <Route path="/professor/profile" element={<ProfessorProfile />} />
                     <Route path="/professor/room/:roomId" element={<ProfessorLiveRoom />} />
+                    <Route path="/professor/summaries" element={<ProfessorSessionSummaries />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -21,8 +21,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { getStudentSessionSummaries, SessionSummary } from '@/data/sessionSummaries';
-import { currentStudent } from '@/data/mockData';
+import { getStudentVisibleSummaries, ProfessorSessionSummary } from '@/data/professorSummaries';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -40,7 +40,7 @@ const item = {
 };
 
 interface SummaryCardProps {
-  summary: SessionSummary;
+  summary: ProfessorSessionSummary;
 }
 
 function SummaryCard({ summary }: SummaryCardProps) {
@@ -253,7 +253,8 @@ function SummaryCard({ summary }: SummaryCardProps) {
 }
 
 export default function StudentSessionSummaries() {
-  const summaries = getStudentSessionSummaries(currentStudent.id);
+  const { user } = useAuth();
+  const summaries = user?.student ? getStudentVisibleSummaries(user.student.id) : [];
   
   // Calculate overall stats
   const averageScore = Math.round(
