@@ -28,6 +28,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.quizResults': 'Résultats Quiz',
     'nav.settings': 'Paramètres',
     'nav.summaries': 'Résumés',
+    'nav.games': 'Jeux',
     
     // Auth
     'auth.login': 'Connexion',
@@ -293,6 +294,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.quizResults': 'نتائج الاختبارات',
     'nav.settings': 'الإعدادات',
     'nav.summaries': 'الملخصات',
+    'nav.games': 'ألعاب',
     
     // Auth
     'auth.login': 'تسجيل الدخول',

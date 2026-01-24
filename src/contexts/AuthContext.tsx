@@ -72,6 +72,24 @@ const mockUsers: AuthUser[] = [
       rating: 4.8,
     },
   },
+  {
+    id: 'student-1',
+    email: 'student@example.com',
+    role: 'student',
+    student: {
+      id: '1',
+      name: 'Sarah Johnson',
+      email: 'student@example.com',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+      nickname: 'Sarah',
+      bio: 'Étudiante passionnée par les langues et les sciences',
+      level: 'B1',
+      joinedAt: '2024-01-10',
+      skills: { pronunciation: 72, grammar: 68, vocabulary: 75, fluency: 65 },
+      totalSessions: 12,
+      hoursLearned: 18,
+    },
+  },
 ];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

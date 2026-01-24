@@ -21,6 +21,7 @@ import StudentProfile from "./pages/student/StudentProfile";
 import StudentProgress from "./pages/student/StudentProgress";
 import StudentQuiz from "./pages/student/StudentQuiz";
 import StudentSessionSummaries from "./pages/student/StudentSessionSummaries";
+import StudentGames from "./pages/student/StudentGames";
 import ProfessorDashboard from "./pages/professor/ProfessorDashboard";
 import ProfessorSessions from "./pages/professor/ProfessorSessions";
 import ProfessorQuizzes from "./pages/professor/ProfessorQuizzes";
@@ -61,6 +62,7 @@ const App = () => (
                     <Route path="/student/progress" element={<StudentProgress />} />
                     <Route path="/student/quiz" element={<StudentQuiz />} />
                     <Route path="/student/summaries" element={<StudentSessionSummaries />} />
+                    <Route path="/student/games" element={<StudentGames />} />
                     {/* Professor Routes */}
                     <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
                     <Route path="/professor/sessions" element={<ProfessorSessions />} />
