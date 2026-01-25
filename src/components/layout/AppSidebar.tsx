@@ -23,6 +23,7 @@ import {
   BookOpen,
   FileText,
   Gamepad2,
+  Swords,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/professor/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/professor/sessions', icon: CalendarCheck, label: t('nav.sessions') },
     { to: '/professor/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
+    { to: '/professor/challenges', icon: Swords, label: t('nav.challenges') || 'Défis' },
     { to: '/professor/quizzes', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/professor/profile', icon: User, label: t('nav.profile') },
   ];
