@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Gamepad2, Trophy, Flame, Star, Zap, 
-  TrendingUp, Medal, Target, Gift 
+  TrendingUp, Medal, Target, Swords
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,9 @@ import { MiniGameCard } from '@/components/gamification/MiniGameCard';
 import { DailyChallenges } from '@/components/gamification/DailyChallenges';
 import { Leaderboard } from '@/components/gamification/Leaderboard';
 import { MathPuzzleGame } from '@/components/gamification/MathPuzzleGame';
+import { ChallengeCard } from '@/components/gamification/ChallengeCard';
+import { ChallengeGame } from '@/components/gamification/ChallengeGame';
+import { ChallengeLeaderboard } from '@/components/gamification/ChallengeLeaderboard';
 
 // Data
 import { 
@@ -29,6 +32,12 @@ import {
   getStudentStats,
   getPointsForNextLevel
 } from '@/data/gamification';
+import {
+  mockProfessorChallenges,
+  mockChallengeLeaderboard,
+  getActiveChallenges,
+  ProfessorChallenge
+} from '@/data/professorChallenges';
 
 const container = {
   hidden: { opacity: 0 },
@@ -47,59 +56,74 @@ export default function StudentGames() {
   const { language, isRTL } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('games');
+  const [activeTab, setActiveTab] = useState('challenges');
   const [mathGameOpen, setMathGameOpen] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [challengeGameOpen, setChallengeGameOpen] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState<ProfessorChallenge | null>(null);
 
   const studentStats = getStudentStats(user?.id || '1');
   const pointsForNext = getPointsForNextLevel(studentStats.level);
   const currentProgress = (studentStats.points % 200) / 200 * 100;
+  const activeChallenges = getActiveChallenges();
 
   const labels = {
     fr: {
       title: 'Centre de Jeux',
-      subtitle: 'Apprends en t\'amusant avec des jeux éducatifs',
+      subtitle: 'Apprends en t\'amusant avec des jeux et défis',
       games: 'Jeux',
       achievements: 'Succès',
       leaderboard: 'Classement',
-      challenges: 'Défis',
+      challenges: 'Défis Profs',
+      dailyChallenges: 'Défis du Jour',
       level: 'Niveau',
       points: 'Points',
       streak: 'Série',
       days: 'jours',
       unlockedAchievements: 'Succès débloqués',
       inProgress: 'En cours',
-      pointsToNext: 'points pour le prochain niveau'
+      pointsToNext: 'points pour le prochain niveau',
+      professorChallenges: 'Défis des Professeurs',
+      noChallenges: 'Aucun défi disponible',
+      checkBack: 'Revenez plus tard pour de nouveaux défis!'
     },
     ar: {
       title: 'مركز الألعاب',
-      subtitle: 'تعلم وأنت تستمتع بالألعاب التعليمية',
+      subtitle: 'تعلم وأنت تستمتع بالألعاب والتحديات',
       games: 'ألعاب',
       achievements: 'الإنجازات',
-      leaderboard: 'لوحة المتصدرين',
-      challenges: 'التحديات',
+      leaderboard: 'التصنيف',
+      challenges: 'تحديات الأساتذة',
+      dailyChallenges: 'تحديات اليوم',
       level: 'المستوى',
       points: 'نقاط',
       streak: 'سلسلة',
       days: 'أيام',
       unlockedAchievements: 'الإنجازات المفتوحة',
       inProgress: 'قيد التقدم',
-      pointsToNext: 'نقطة للمستوى التالي'
+      pointsToNext: 'نقطة للمستوى التالي',
+      professorChallenges: 'تحديات الأساتذة',
+      noChallenges: 'لا توجد تحديات متاحة',
+      checkBack: 'عد لاحقاً للتحديات الجديدة!'
     },
     en: {
       title: 'Game Center',
-      subtitle: 'Learn while having fun with educational games',
+      subtitle: 'Learn while having fun with games and challenges',
       games: 'Games',
       achievements: 'Achievements',
       leaderboard: 'Leaderboard',
-      challenges: 'Challenges',
+      challenges: 'Prof Challenges',
+      dailyChallenges: 'Daily Challenges',
       level: 'Level',
       points: 'Points',
       streak: 'Streak',
       days: 'days',
       unlockedAchievements: 'Unlocked achievements',
       inProgress: 'In progress',
-      pointsToNext: 'points to next level'
+      pointsToNext: 'points to next level',
+      professorChallenges: 'Professor Challenges',
+      noChallenges: 'No challenges available',
+      checkBack: 'Check back later for new challenges!'
     }
   };
 
@@ -111,6 +135,24 @@ export default function StudentGames() {
       setSelectedDifficulty(game.difficulty);
       setMathGameOpen(true);
     }
+  };
+
+  const handlePlayChallenge = (challengeId: string) => {
+    const challenge = activeChallenges.find(c => c.id === challengeId);
+    if (challenge) {
+      setSelectedChallenge(challenge);
+      setChallengeGameOpen(true);
+    }
+  };
+
+  const handleChallengeComplete = (challengeId: string, pointsEarned: number, attempts: number) => {
+    setChallengeGameOpen(false);
+    toast({
+      title: language === 'fr' ? 'Défi terminé!' : language === 'ar' ? 'تم التحدي!' : 'Challenge complete!',
+      description: pointsEarned > 0 
+        ? `${language === 'fr' ? 'Tu as gagné' : language === 'ar' ? 'لقد ربحت' : 'You earned'} ${pointsEarned} XP!`
+        : language === 'fr' ? 'Pas de points cette fois' : language === 'ar' ? 'لا نقاط هذه المرة' : 'No points this time',
+    });
   };
 
   const handleGameComplete = (score: number) => {
@@ -212,14 +254,18 @@ export default function StudentGames() {
       {/* Tabs */}
       <motion.div variants={item}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="challenges" className="gap-2">
+              <Swords className="w-4 h-4" />
+              <span className="hidden sm:inline">{t.challenges}</span>
+            </TabsTrigger>
             <TabsTrigger value="games" className="gap-2">
               <Gamepad2 className="w-4 h-4" />
               <span className="hidden sm:inline">{t.games}</span>
             </TabsTrigger>
-            <TabsTrigger value="challenges" className="gap-2">
+            <TabsTrigger value="daily" className="gap-2">
               <Target className="w-4 h-4" />
-              <span className="hidden sm:inline">{t.challenges}</span>
+              <span className="hidden sm:inline">{t.dailyChallenges}</span>
             </TabsTrigger>
             <TabsTrigger value="achievements" className="gap-2">
               <Trophy className="w-4 h-4" />
@@ -231,6 +277,52 @@ export default function StudentGames() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Professor Challenges Tab */}
+          <TabsContent value="challenges" className="space-y-6">
+            <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                <Swords className="w-5 h-5 text-primary" />
+              </motion.div>
+              <h2 className="text-xl font-bold">{t.professorChallenges}</h2>
+              <Badge variant="secondary">{activeChallenges.length}</Badge>
+            </div>
+
+            {activeChallenges.length === 0 ? (
+              <Card className="p-12 text-center">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Target className="w-16 h-16 mx-auto text-muted-foreground/50" />
+                </motion.div>
+                <h3 className="text-xl font-semibold mt-4">{t.noChallenges}</h3>
+                <p className="text-muted-foreground mt-2">{t.checkBack}</p>
+              </Card>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {activeChallenges.map((challenge) => (
+                  <ChallengeCard
+                    key={challenge.id}
+                    challenge={challenge}
+                    studentId={user?.id || '1'}
+                    onPlay={handlePlayChallenge}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Challenge Leaderboard */}
+            <div className="mt-8">
+              <ChallengeLeaderboard 
+                entries={mockChallengeLeaderboard} 
+                currentStudentId={user?.id} 
+              />
+            </div>
+          </TabsContent>
+
           <TabsContent value="games" className="space-y-4">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {mockMiniGames.map((game) => (
@@ -239,7 +331,7 @@ export default function StudentGames() {
             </div>
           </TabsContent>
 
-          <TabsContent value="challenges">
+          <TabsContent value="daily">
             <DailyChallenges 
               challenges={mockDailyChallenges} 
               onStartChallenge={handleStartChallenge} 
@@ -279,6 +371,14 @@ export default function StudentGames() {
         onClose={() => setMathGameOpen(false)}
         onComplete={handleGameComplete}
         difficulty={selectedDifficulty}
+      />
+
+      {/* Challenge Game Modal */}
+      <ChallengeGame
+        isOpen={challengeGameOpen}
+        onClose={() => setChallengeGameOpen(false)}
+        challenge={selectedChallenge}
+        onComplete={handleChallengeComplete}
       />
     </motion.div>
   );
