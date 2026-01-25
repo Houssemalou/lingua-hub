@@ -1,10 +1,12 @@
 package com.lingua.hub.service;
 
-import com.lingua.hub.dto.auth.AuthResponse;
-import com.lingua.hub.dto.auth.LoginRequest;
-import com.lingua.hub.dto.auth.RegisterRequest;
+import com.lingua.hub.dto.auth.*;
+import com.lingua.hub.entity.Professor;
+import com.lingua.hub.entity.Student;
 import com.lingua.hub.entity.User;
 import com.lingua.hub.exception.BadRequestException;
+import com.lingua.hub.repository.ProfessorRepository;
+import com.lingua.hub.repository.StudentRepository;
 import com.lingua.hub.repository.UserRepository;
 import com.lingua.hub.security.JwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -30,11 +35,175 @@ public class AuthService {
     private UserRepository userRepository;
 
     @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
+    private ProfessorRepository professorRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtTokenProvider tokenProvider;
 
+    // Valid access tokens for registration
+    private static final List<String> VALID_STUDENT_TOKENS = Arrays.asList(
+        "STUDENT2024", "LANG-ABC123", "EDU-TOKEN-01", "ACCESS-2024-XYZ"
+    );
+
+    private static final List<String> VALID_PROFESSOR_TOKENS = Arrays.asList(
+        "PROF2024", "TEACHER-ABC", "PROF-TOKEN-01"
+    );
+
+    private static final List<String> VALID_ADMIN_TOKENS = Arrays.asList(
+        "ADMIN2024", "ADMIN-TOKEN-01", "SUPER-ADMIN"
+    );
+
+    @Transactional
+    public AuthResponse registerStudent(StudentRegisterRequest request) {
+        // Validate access token
+        if (!VALID_STUDENT_TOKENS.contains(request.getAccessToken().toUpperCase().trim())) {
+            throw new BadRequestException("Invalid access token");
+        }
+
+        // Check if email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BadRequestException("Email already in use");
+        }
+
+        // Create new user
+        User user = User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(User.UserRole.STUDENT)
+                .avatar(request.getAvatar())
+                .isActive(true)
+                .build();
+
+        user = userRepository.save(user);
+
+        // Create student profile
+        Student student = Student.builder()
+                .user(user)
+                .nickname(request.getNickname())
+                .bio(request.getBio())
+                .level(Student.LanguageLevel.valueOf(request.getLevel().toUpperCase()))
+                .joinedAt(LocalDateTime.now())
+                .build();
+
+        studentRepository.save(student);
+
+        // Generate tokens
+        String token = tokenProvider.generateTokenFromUsername(user.getEmail());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
+
+        log.info("Student registered successfully: {}", user.getEmail());
+
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .userId(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole().name())
+                .expiresIn(tokenProvider.getJwtExpirationMs())
+                .build();
+    }
+
+    @Transactional
+    public AuthResponse registerProfessor(ProfessorRegisterRequest request) {
+        // Validate access token
+        if (!VALID_PROFESSOR_TOKENS.contains(request.getAccessToken().toUpperCase().trim())) {
+            throw new BadRequestException("Invalid professor access token");
+        }
+
+        // Check if email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BadRequestException("Email already in use");
+        }
+
+        // Create new user
+        User user = User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(User.UserRole.PROFESSOR)
+                .avatar(request.getAvatar())
+                .isActive(true)
+                .build();
+
+        user = userRepository.save(user);
+
+        // Create professor profile
+        Professor professor = Professor.builder()
+                .user(user)
+                .bio(request.getBio())
+                .languages(request.getLanguages())
+                .specialization(request.getSpecialization())
+                .joinedAt(LocalDateTime.now())
+                .build();
+
+        professorRepository.save(professor);
+
+        // Generate tokens
+        String token = tokenProvider.generateTokenFromUsername(user.getEmail());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
+
+        log.info("Professor registered successfully: {}", user.getEmail());
+
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .userId(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole().name())
+                .expiresIn(tokenProvider.getJwtExpirationMs())
+                .build();
+    }
+
+    @Transactional
+    public AuthResponse registerAdmin(AdminRegisterRequest request) {
+        // Validate access token
+        if (!VALID_ADMIN_TOKENS.contains(request.getAccessToken().toUpperCase().trim())) {
+            throw new BadRequestException("Invalid admin access token");
+        }
+
+        // Check if email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BadRequestException("Email already in use");
+        }
+
+        // Create new user
+        User user = User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(User.UserRole.ADMIN)
+                .isActive(true)
+                .build();
+
+        user = userRepository.save(user);
+
+        // Generate tokens
+        String token = tokenProvider.generateTokenFromUsername(user.getEmail());
+        String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
+
+        log.info("Admin registered successfully: {}", user.getEmail());
+
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .userId(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .role(user.getRole().name())
+                .expiresIn(tokenProvider.getJwtExpirationMs())
+                .build();
+    }
+
+    // Keep the old method for backward compatibility (simple registration)
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         // Check if email already exists

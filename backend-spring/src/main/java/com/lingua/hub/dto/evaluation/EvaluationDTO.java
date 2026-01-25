@@ -21,7 +21,7 @@ public class EvaluationDTO {
     private String studentName;
     private UUID professorId;
     private String professorName;
-    private EvaluationCriteriaDTO criteria;
+    private List<EvaluationCriteriaDTO> criteria;
     private Integer overallScore;
     private String feedback;
     private List<String> strengths;

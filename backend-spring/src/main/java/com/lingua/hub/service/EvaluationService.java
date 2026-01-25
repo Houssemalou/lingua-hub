@@ -56,11 +56,11 @@ public class EvaluationService {
                 .student(student)
                 .professor(professor)
                 .criteria(criteria)
-                .overallScore(overallScore)
-                .comments(request.getComments())
+                .overallScore((int) Math.round(overallScore))
+                .feedback(request.getFeedback())
                 .strengths(request.getStrengths())
-                .improvements(request.getImprovements())
-                .evaluatedAt(LocalDateTime.now())
+                .areasToImprove(request.getAreasToImprove())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         evaluation = evaluationRepository.save(evaluation);
@@ -78,13 +78,13 @@ public class EvaluationService {
             double overallScore = request.getCriteria().values().stream()
                     .mapToInt(Integer::intValue)
                     .average()
-                    .orElse(evaluation.getOverallScore());
-            evaluation.setOverallScore(overallScore);
+                    .orElse(evaluation.getOverallScore().doubleValue());
+            evaluation.setOverallScore((int) Math.round(overallScore));
         }
         
-        if (request.getComments() != null) evaluation.setComments(request.getComments());
+        if (request.getFeedback() != null) evaluation.setFeedback(request.getFeedback());
         if (request.getStrengths() != null) evaluation.setStrengths(request.getStrengths());
-        if (request.getImprovements() != null) evaluation.setImprovements(request.getImprovements());
+        if (request.getAreasToImprove() != null) evaluation.setAreasToImprove(request.getAreasToImprove());
 
         evaluation = evaluationRepository.save(evaluation);
         return mapToDTO(evaluation);
@@ -151,9 +151,9 @@ public class EvaluationService {
                 .orElse(0.0);
 
         List<Map<String, Object>> progress = evaluations.stream()
-                .sorted((e1, e2) -> e1.getEvaluatedAt().compareTo(e2.getEvaluatedAt()))
+                .sorted((e1, e2) -> e1.getCreatedAt().compareTo(e2.getCreatedAt()))
                 .map(e -> Map.<String, Object>of(
-                    "date", e.getEvaluatedAt(),
+                    "date", e.getCreatedAt(),
                     "score", e.getOverallScore(),
                     "sessionName", e.getSession().getName()
                 ))
@@ -193,10 +193,11 @@ public class EvaluationService {
                 .professorName(evaluation.getProfessor().getUser().getName())
                 .criteria(criteria)
                 .overallScore(evaluation.getOverallScore())
-                .comments(evaluation.getComments())
+                .feedback(evaluation.getFeedback())
                 .strengths(evaluation.getStrengths())
-                .improvements(evaluation.getImprovements())
-                .evaluatedAt(evaluation.getEvaluatedAt())
+                .areasToImprove(evaluation.getAreasToImprove())
+                .createdAt(evaluation.getCreatedAt())
+                .updatedAt(evaluation.getUpdatedAt())
                 .build();
     }
 }

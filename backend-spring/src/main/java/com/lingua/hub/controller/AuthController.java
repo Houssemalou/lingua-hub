@@ -1,9 +1,6 @@
 package com.lingua.hub.controller;
 
-import com.lingua.hub.dto.auth.AuthResponse;
-import com.lingua.hub.dto.auth.LoginRequest;
-import com.lingua.hub.dto.auth.RegisterRequest;
-import com.lingua.hub.dto.auth.RefreshTokenRequest;
+import com.lingua.hub.dto.auth.*;
 import com.lingua.hub.dto.common.ApiResponse;
 import com.lingua.hub.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +42,69 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.ok(ApiResponse.success("Registration successful", response));
+    }
+
+    @PostMapping("/register/student")
+    @Operation(
+        summary = "Inscription d'un étudiant",
+        description = "Crée un nouveau compte étudiant avec profil complet et retourne un token JWT"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Inscription étudiante réussie",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "Token invalide, email déjà utilisé ou données invalides"
+        )
+    })
+    public ResponseEntity<ApiResponse<AuthResponse>> registerStudent(@Valid @RequestBody StudentRegisterRequest request) {
+        AuthResponse response = authService.registerStudent(request);
+        return ResponseEntity.ok(ApiResponse.success("Student registration successful", response));
+    }
+
+    @PostMapping("/register/professor")
+    @Operation(
+        summary = "Inscription d'un professeur",
+        description = "Crée un nouveau compte professeur avec profil complet et retourne un token JWT"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Inscription professeur réussie",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "Token invalide, email déjà utilisé ou données invalides"
+        )
+    })
+    public ResponseEntity<ApiResponse<AuthResponse>> registerProfessor(@Valid @RequestBody ProfessorRegisterRequest request) {
+        AuthResponse response = authService.registerProfessor(request);
+        return ResponseEntity.ok(ApiResponse.success("Professor registration successful", response));
+    }
+
+    @PostMapping("/register/admin")
+    @Operation(
+        summary = "Inscription d'un administrateur",
+        description = "Crée un nouveau compte administrateur et retourne un token JWT"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Inscription admin réussie",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "Token invalide, email déjà utilisé ou données invalides"
+        )
+    })
+    public ResponseEntity<ApiResponse<AuthResponse>> registerAdmin(@Valid @RequestBody AdminRegisterRequest request) {
+        AuthResponse response = authService.registerAdmin(request);
+        return ResponseEntity.ok(ApiResponse.success("Admin registration successful", response));
     }
 
     @PostMapping("/login")

@@ -1,6 +1,6 @@
 package com.lingua.hub.controller;
 
-import com.lingua.hub.dto.ApiResponse;
+import com.lingua.hub.dto.common.ApiResponse;
 import com.lingua.hub.dto.SessionRecordingDTO;
 import com.lingua.hub.service.RecordingService;
 import io.swagger.v3.oas.annotations.Operation;
