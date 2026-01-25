@@ -29,6 +29,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.settings': 'Paramètres',
     'nav.summaries': 'Résumés',
     'nav.games': 'Jeux',
+    'nav.challenges': 'Défis',
     
     // Auth
     'auth.login': 'Connexion',
@@ -295,6 +296,7 @@ const translations: Record<Language, Record<string, string>> = {
     'nav.settings': 'الإعدادات',
     'nav.summaries': 'الملخصات',
     'nav.games': 'ألعاب',
+    'nav.challenges': 'التحديات',
     
     // Auth
     'auth.login': 'تسجيل الدخول',
