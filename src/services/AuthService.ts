@@ -19,13 +19,13 @@ export interface AuthUser {
 }
 
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface StudentRegisterData {
   name: string;
-  email: string;
+  uniqueCode: string;
   password: string;
   nickname: string;
   bio?: string;
@@ -257,8 +257,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      // Note: Don't store tokens automatically after registration
-      // User should login manually to get tokens
+      storeTokens(tokens);
+      storeUser(user);
 
       return {
         success: true,
@@ -310,8 +310,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      // Note: Don't store tokens automatically after registration
-      // User should login manually to get tokens
+      storeTokens(tokens);
+      storeUser(user);
 
       return {
         success: true,
@@ -363,8 +363,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      // Note: Don't store tokens automatically after registration
-      // User should login manually to get tokens
+      storeTokens(tokens);
+      storeUser(user);
 
       return {
         success: true,

@@ -15,7 +15,7 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signupAdmin: (data: AdminRegisterData) => Promise<{ success: boolean; error?: string }>;
   signupStudent: (data: StudentSignupData) => Promise<{ success: boolean; error?: string }>;
   signupProfessor: (data: ProfessorSignupData) => Promise<{ success: boolean; error?: string }>;
@@ -100,9 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            validAdminTokens.includes(token.toUpperCase().trim());
   };
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await AuthService.login({ email, password });
+      const response = await AuthService.login({ username, password });
 
       if (response.success && response.data) {
         let authUser: AuthUser;
@@ -113,13 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: response.data.user.name,
             email: response.data.user.email,
             avatar: response.data.user.avatar || '',
-            nickname: '', // Will be fetched separately if needed
-            bio: '',
-            level: 'A1',
+            nickname: localStorage.getItem('temp_student_nickname') || '', // Will be fetched s
+            level: (localStorage.getItem('temp_student_level') as 'A1' | 'A2' | 'B1' | 'B2') || 'A1',
             joinedAt: new Date().toISOString(),
             skills: { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
             totalSessions: 0,
             hoursLearned: 0,
+            bio: localStorage.getItem('temp_student_bio') || '',
           };
           authUser = {
             id: response.data.user.id,
@@ -132,10 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: response.data.user.id,
             name: response.data.user.name,
             email: response.data.user.email,
-            avatar: response.data.user.avatar || '',
-            bio: '',
-            languages: [],
-            specialization: '',
+            avatar: localStorage.getItem('temp_professor_avatar') || '',
+            bio: localStorage.getItem('temp_professor_bio') || '',
+            languages: JSON.parse(localStorage.getItem('temp_professor_languages') || '[]'),
+            specialization: localStorage.getItem('temp_professor_specialization') || '',
             joinedAt: new Date().toISOString(),
             totalSessions: 0,
             rating: 0,
@@ -171,7 +171,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await AuthService.registerAdmin(data);
 
       if (response.success) {
-        // Registration successful, user should login manually
         return { success: true };
       } else {
         return { success: false, error: response.error };
@@ -185,9 +184,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signupStudent = async (data: StudentSignupData): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await AuthService.registerStudent(data);
+      localStorage.setItem('temp_student_bio', data.bio || '');
+      localStorage.setItem('temp_student_nickname', data.nickname || '');
+      localStorage.setItem('temp_student_level', data.level || 'A1');
+      localStorage.setItem('temp_student_avatar', data.avatar || '');
+     
 
       if (response.success) {
-        // Registration successful, user should login manually
+        
         return { success: true };
       } else {
         return { success: false, error: response.error };
@@ -201,10 +205,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signupProfessor = async (data: ProfessorSignupData): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await AuthService.registerProfessor(data);
+      localStorage.setItem('temp_professor_bio', data.bio || '');
+      localStorage.setItem('temp_professor_languages', JSON.stringify(data.languages || []));
+      localStorage.setItem('temp_professor_specialization', data.specialization || '');
+      localStorage.setItem('temp_professor_avatar', data.avatar || '');
 
       if (response.success) {
-        // Registration successful, user should login manually
-        return { success: true };
+       return { success: true };
       } else {
         return { success: false, error: response.error };
       }

@@ -34,6 +34,7 @@ export default function AuthPage() {
 
   // Form states
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
@@ -41,7 +42,7 @@ export default function AuthPage() {
   const [selectedAvatar, setSelectedAvatar] = useState(avatarOptions[0].url);
   const [accessToken, setAccessToken] = useState('');
   const [level, setLevel] = useState<'A1' | 'A2' | 'B1' | 'B2'>('A1');
-  
+  const [uniqueCode, setUniqueCode] = useState('');
   // Professor-specific fields
   const [languages, setLanguages] = useState<string[]>(['Français']);
   const [specialization, setSpecialization] = useState('');
@@ -60,18 +61,8 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
     
-    const result = await login(email, password);
-    console.log('Login result:', result);
-    console.log('Is authenticated after login:', isAuthenticated);
-    console.log('User after login:', user);
-    
-    if (result.success) {
-      console.log('Login successful, should redirect now');
-      // Force a re-render by triggering state update
-      setTimeout(() => {
-        console.log('After timeout - isAuthenticated:', !!user);
-      }, 100);
-    } else {
+    const result = await login(username, password);
+    if (!result.success) {
       setError(result.error || 'Erreur de connexion');
     }
     setLoading(false);
@@ -82,7 +73,12 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
     
-    const result = await signupAdmin({ email, password, name, accessToken });
+    const result = await signupAdmin({
+      name,
+      email,
+      password,
+      accessToken,
+    });
     if (result.success) {
       // Redirect to login after successful signup
       resetForm();
@@ -98,7 +94,7 @@ export default function AuthPage() {
     setError('');
     
     const result = await signupStudent({
-      email,
+      uniqueCode,
       password,
       name,
       nickname,
@@ -134,7 +130,6 @@ export default function AuthPage() {
     });
     
     if (result.success) {
-      console.log(result.success);
       resetForm();
       setMode('login');
     } else {
@@ -156,6 +151,7 @@ export default function AuthPage() {
     setSelectedAvatar(avatarOptions[0].url);
     setAccessToken('');
     setLevel('A1');
+    setUniqueCode('');
     setLanguages(['Français']);
     setSpecialization('');
     setError('');
@@ -185,8 +181,8 @@ export default function AuthPage() {
                 id="email"
                 type="email"
                 placeholder={isRTL ? 'votre@email.com' : 'votre@email.com'}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 dir="ltr"
               />
@@ -363,24 +359,21 @@ export default function AuthPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-token">{isRTL ? 'رمز الوصول' : 'Token d\'accès'}</Label>
+              <Label htmlFor="accessToken">{isRTL ? 'رمز الوصول' : 'Token d\'accès'}</Label>
               <Input
-                id="admin-token"
+                id="accessToken"
+                type="text"
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="ADMIN-XXXX-XXXX"
-                className="text-center text-lg tracking-wider"
+                placeholder={isRTL ? 'أدخل رمز الوصول' : 'Entrez le token d\'accès'}
                 required
                 dir="ltr"
               />
             </div>
-            <p className="text-xs text-muted-foreground text-center">
-              {isRTL ? 'رموز المشرف تبدأ بـ ADMIN' : 'Les tokens administrateur commencent par ADMIN'}
-            </p>
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !name || !email || !password || !accessToken}>
               {loading ? (isRTL ? 'جاري الإنشاء...' : 'Création...') : (isRTL ? 'إنشاء الحساب' : 'Créer le compte')}
             </Button>
           </form>
@@ -502,12 +495,13 @@ export default function AuthPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="uniqueCode">{isRTL ? 'رمز الوصول الفريد' : 'Code d\'accès unique'}</Label>
             <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="uniqueCode"
+              type="text"
+              value={uniqueCode}
+              onChange={(e) => setUniqueCode(e.target.value)}
+              placeholder={isRTL ? 'أدخل رمز الوصول الفريد' : 'Entrez votre code d\'accès unique'}
               required
               dir="ltr"
             />
@@ -552,7 +546,7 @@ export default function AuthPage() {
           <Button
             className="w-full"
             onClick={() => setStudentStep('token')}
-            disabled={!name || !nickname || !email || !password}
+            disabled={!name || !nickname || !uniqueCode || !password}
           >
             {isRTL ? 'التالي' : 'Continuer'}
             {isRTL ? <ArrowLeft className="w-4 h-4 mr-2" /> : <ArrowRight className="w-4 h-4 ml-2" />}
