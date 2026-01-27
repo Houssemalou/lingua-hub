@@ -63,7 +63,6 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     { to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' },
     { to: '/student/progress', icon: TrendingUp, label: t('nav.progress') },
-    { to: '/student/quiz', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
   ];
 

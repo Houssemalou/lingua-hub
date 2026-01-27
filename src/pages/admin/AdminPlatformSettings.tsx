@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { AccessTokenGenerator } from '@/components/admin/AccessTokenGenerator';
 
 const colorPresets = [
   { name: 'Bleu Professionnel', primary: '231 48% 48%', sidebar: '222 47% 11%', accent: '174 72% 46%' },
@@ -213,6 +214,9 @@ const AdminPlatformSettings = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Access Token Generator */}
+      <AccessTokenGenerator />
 
       {/* Reset Button */}
       <div className={cn("flex", isRTL ? "justify-start" : "justify-end")}>
