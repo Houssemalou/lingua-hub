@@ -127,8 +127,6 @@ export const AuthService = {
         error: string | null;
       }>('/auth/login', credentials);
 
-      console.log('Raw API response:', response);
-
       if (!response.success) {
         return {
           success: false,
@@ -206,8 +204,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
-      storeUser(user);
+      // Note: Don't store tokens automatically after registration
+      // User should login manually to get tokens
 
       return {
         success: true,
@@ -259,8 +257,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
-      storeUser(user);
+      // Note: Don't store tokens automatically after registration
+      // User should login manually to get tokens
 
       return {
         success: true,
@@ -312,8 +310,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
-      storeUser(user);
+      // Note: Don't store tokens automatically after registration
+      // User should login manually to get tokens
 
       return {
         success: true,
@@ -365,8 +363,8 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
-      storeUser(user);
+      // Note: Don't store tokens automatically after registration
+      // User should login manually to get tokens
 
       return {
         success: true,

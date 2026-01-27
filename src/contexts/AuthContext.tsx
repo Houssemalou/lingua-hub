@@ -102,24 +102,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log('Calling AuthService.login with:', { email, password });
       const response = await AuthService.login({ email, password });
-      console.log('AuthService.login response:', response);
 
       if (response.success && response.data) {
-        // Convert service response to context format
-        const authUser: AuthUser = {
-          id: response.data.user.id,
-          email: response.data.user.email,
-          role: response.data.user.role as AuthRole,
-          // Note: student/professor profiles would need to be fetched separately
-        };
-        console.log('Setting user in context:', authUser);
+        let authUser: AuthUser;
+
+        if (response.data.user.role === 'student') {
+          const studentProfile: Student = {
+            id: response.data.user.id,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            avatar: response.data.user.avatar || '',
+            nickname: '', // Will be fetched separately if needed
+            bio: '',
+            level: 'A1',
+            joinedAt: new Date().toISOString(),
+            skills: { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
+            totalSessions: 0,
+            hoursLearned: 0,
+          };
+          authUser = {
+            id: response.data.user.id,
+            email: response.data.user.email,
+            role: response.data.user.role,
+            student: studentProfile,
+          };
+        } else if (response.data.user.role === 'professor') {
+          const professorProfile: Professor = {
+            id: response.data.user.id,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            avatar: response.data.user.avatar || '',
+            bio: '',
+            languages: [],
+            specialization: '',
+            joinedAt: new Date().toISOString(),
+            totalSessions: 0,
+            rating: 0,
+          };
+          authUser = {
+            id: response.data.user.id,
+            email: response.data.user.email,
+            role: response.data.user.role,
+            professor: professorProfile,
+          };
+        } else {
+          // Admin
+          authUser = {
+            id: response.data.user.id,
+            email: response.data.user.email,
+            role: response.data.user.role,
+          };
+        }
+
         setUser(authUser);
-        console.log('User set, isAuthenticated should be true');
         return { success: true };
       } else {
-        console.log('Login failed:', response.error);
         return { success: false, error: response.error };
       }
     } catch (error) {
@@ -132,13 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await AuthService.registerAdmin(data);
 
-      if (response.success && response.data) {
-        const authUser: AuthUser = {
-          id: response.data.user.id,
-          email: response.data.user.email,
-          role: response.data.user.role,
-        };
-        setUser(authUser);
+      if (response.success) {
+        // Registration successful, user should login manually
         return { success: true };
       } else {
         return { success: false, error: response.error };
@@ -153,28 +186,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await AuthService.registerStudent(data);
 
-      if (response.success && response.data) {
-        const studentProfile: Student = {
-          id: response.data.user.id,
-          name: data.name,
-          email: data.email,
-          avatar: data.avatar,
-          nickname: data.nickname,
-          bio: data.bio || '',
-          level: data.level,
-          joinedAt: new Date().toISOString(),
-          skills: { pronunciation: 20, grammar: 20, vocabulary: 20, fluency: 20 },
-          totalSessions: 0,
-          hoursLearned: 0,
-        };
-
-        const authUser: AuthUser = {
-          id: response.data.user.id,
-          email: response.data.user.email,
-          role: response.data.user.role,
-          student: studentProfile,
-        };
-        setUser(authUser);
+      if (response.success) {
+        // Registration successful, user should login manually
         return { success: true };
       } else {
         return { success: false, error: response.error };
@@ -189,27 +202,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await AuthService.registerProfessor(data);
 
-      if (response.success && response.data) {
-        const professorProfile: Professor = {
-          id: response.data.user.id,
-          name: data.name,
-          email: data.email,
-          avatar: data.avatar,
-          bio: data.bio || '',
-          languages: data.languages,
-          specialization: data.specialization,
-          joinedAt: new Date().toISOString(),
-          totalSessions: 0,
-          rating: 0,
-        };
-
-        const authUser: AuthUser = {
-          id: response.data.user.id,
-          email: response.data.user.email,
-          role: response.data.user.role,
-          professor: professorProfile,
-        };
-        setUser(authUser);
+      if (response.success) {
+        // Registration successful, user should login manually
         return { success: true };
       } else {
         return { success: false, error: response.error };

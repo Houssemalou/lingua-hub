@@ -134,6 +134,7 @@ export default function AuthPage() {
     });
     
     if (result.success) {
+      console.log(result.success);
       resetForm();
       setMode('login');
     } else {
