@@ -123,13 +123,16 @@ export const AuthService = {
           name: string;
           role: string;
           expiresIn: number;
-        }
+        };
+        error: string | null;
       }>('/auth/login', credentials);
+
+      console.log('Raw API response:', response);
 
       if (!response.success) {
         return {
           success: false,
-          error: response.message || 'Login failed',
+          error: response.message || response.error || 'Login failed',
         };
       }
 
@@ -148,6 +151,10 @@ export const AuthService = {
 
       storeTokens(tokens);
       storeUser(user);
+      console.log('Login successful - Tokens stored:', tokens);
+      console.log('Login successful - User stored:', user);
+      console.log('Login successful - localStorage accessToken:', !!localStorage.getItem(ACCESS_TOKEN_KEY));
+      console.log('Login successful - localStorage user:', !!localStorage.getItem(USER_KEY));
 
       return {
         success: true,

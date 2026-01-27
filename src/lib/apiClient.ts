@@ -3,7 +3,7 @@
 // Centralized HTTP client for all backend requests
 // ============================================
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
 
 export interface ApiRequestConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -79,11 +79,12 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
   // Parse successful response
   const data = await response.json();
   
-  // Handle Spring Boot ApiResponse wrapper
-  if (data.success !== undefined) {
-    return data.data;
+  // For ApiResponse wrapper, return the full object so services can check success/error
+  if (data.success !== undefined && data.message !== undefined) {
+    return data as T;
   }
   
+  // For other responses, return data directly
   return data;
 };
 

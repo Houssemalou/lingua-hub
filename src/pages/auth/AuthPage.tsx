@@ -61,7 +61,17 @@ export default function AuthPage() {
     setError('');
     
     const result = await login(email, password);
-    if (!result.success) {
+    console.log('Login result:', result);
+    console.log('Is authenticated after login:', isAuthenticated);
+    console.log('User after login:', user);
+    
+    if (result.success) {
+      console.log('Login successful, should redirect now');
+      // Force a re-render by triggering state update
+      setTimeout(() => {
+        console.log('After timeout - isAuthenticated:', !!user);
+      }, 100);
+    } else {
       setError(result.error || 'Erreur de connexion');
     }
     setLoading(false);
@@ -72,7 +82,7 @@ export default function AuthPage() {
     setLoading(true);
     setError('');
     
-    const result = await signupAdmin(email, password, name);
+    const result = await signupAdmin({ email, password, name, accessToken });
     if (result.success) {
       // Redirect to login after successful signup
       resetForm();
@@ -351,6 +361,21 @@ export default function AuthPage() {
                 dir="ltr"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="admin-token">{isRTL ? 'رمز الوصول' : 'Token d\'accès'}</Label>
+              <Input
+                id="admin-token"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                placeholder="ADMIN-XXXX-XXXX"
+                className="text-center text-lg tracking-wider"
+                required
+                dir="ltr"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              {isRTL ? 'رموز المشرف تبدأ بـ ADMIN' : 'Les tokens administrateur commencent par ADMIN'}
+            </p>
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}

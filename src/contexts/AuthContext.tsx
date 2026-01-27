@@ -102,19 +102,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log('Calling AuthService.login with:', { email, password });
       const response = await AuthService.login({ email, password });
+      console.log('AuthService.login response:', response);
 
       if (response.success && response.data) {
         // Convert service response to context format
         const authUser: AuthUser = {
           id: response.data.user.id,
           email: response.data.user.email,
-          role: response.data.user.role,
+          role: response.data.user.role as AuthRole,
           // Note: student/professor profiles would need to be fetched separately
         };
+        console.log('Setting user in context:', authUser);
         setUser(authUser);
+        console.log('User set, isAuthenticated should be true');
         return { success: true };
       } else {
+        console.log('Login failed:', response.error);
         return { success: false, error: response.error };
       }
     } catch (error) {

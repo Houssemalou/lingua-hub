@@ -266,7 +266,7 @@ export function SessionSummaryEditor({
           <div className={cn("flex items-center gap-2 mt-1 flex-wrap", isRTL && "flex-row-reverse")}>
             <Badge variant="outline">{roomName}</Badge>
             <Badge variant="secondary">{language}</Badge>
-            <Badge variant={level.toLowerCase() as any}>{level}</Badge>
+            <Badge variant="outline">{level}</Badge>
           </div>
         </div>
       </div>
