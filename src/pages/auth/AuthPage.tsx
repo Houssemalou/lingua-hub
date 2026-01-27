@@ -176,11 +176,11 @@ export default function AuthPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{isRTL ? 'البريد الإلكتروني' : 'Email'}</Label>
+              <Label htmlFor="username">{isRTL ? 'اسم المستخدم' : 'Nom d\'utilisateur'}</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder={isRTL ? 'votre@email.com' : 'votre@email.com'}
+                id="username"
+                type="text"
+                placeholder={isRTL ? 'votre nom d\'utilisateur' : 'votre nom d\'utilisateur'}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required

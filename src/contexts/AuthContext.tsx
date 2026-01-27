@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: response.data.user.id,
             name: response.data.user.name,
             email: response.data.user.email,
-            avatar: response.data.user.avatar || '',
+            avatar: localStorage.getItem('temp_student_avatar') || '',
             nickname: localStorage.getItem('temp_student_nickname') || '', // Will be fetched s
             level: (localStorage.getItem('temp_student_level') as 'A1' | 'A2' | 'B1' | 'B2') || 'A1',
             joinedAt: new Date().toISOString(),
