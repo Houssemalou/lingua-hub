@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,60 +21,74 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import jsPDF from 'jspdf';
+import { AuthService } from '@/services/AuthService';
 
 interface GeneratedToken {
-  id: string;
   token: string;
-  role: 'student' | 'professor';
-  createdAt: Date;
-  used: boolean;
+  role: 'STUDENT' | 'PROFESSOR' | 'ADMIN';
+  expiresAt: string;
+  createdAt: string;
 }
-
-// Mock existing tokens
-const mockExistingTokens: GeneratedToken[] = [
-  { id: '1', token: 'STUDENT2024', role: 'student', createdAt: new Date('2024-01-01'), used: true },
-  { id: '2', token: 'LANG-ABC123', role: 'student', createdAt: new Date('2024-01-05'), used: false },
-  { id: '3', token: 'PROF2024', role: 'professor', createdAt: new Date('2024-01-01'), used: true },
-  { id: '4', token: 'TEACHER-ABC', role: 'professor', createdAt: new Date('2024-01-10'), used: false },
-];
-
-const generateRandomToken = (prefix: string): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = prefix + '-';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
 
 export const AccessTokenGenerator: React.FC = () => {
   const { isRTL } = useLanguage();
-  const [tokens, setTokens] = useState<GeneratedToken[]>(mockExistingTokens);
-  const [studentCount, setStudentCount] = useState(5);
-  const [professorCount, setProfessorCount] = useState(3);
+  const [studentTokens, setStudentTokens] = useState<GeneratedToken[]>([]);
+  const [professorTokens, setProfessorTokens] = useState<GeneratedToken[]>([]);
+  const [adminTokens, setAdminTokens] = useState<GeneratedToken[]>([]);
+  const [loading, setLoading] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
 
-  const generateTokens = (role: 'student' | 'professor', count: number) => {
-    const prefix = role === 'student' ? 'STU' : 'PROF';
-    const newTokens: GeneratedToken[] = [];
-    
-    for (let i = 0; i < count; i++) {
-      newTokens.push({
-        id: `${Date.now()}-${i}`,
-        token: generateRandomToken(prefix),
-        role,
-        createdAt: new Date(),
-        used: false,
-      });
+  // Load tokens on component mount
+  useEffect(() => {
+    loadTokens();
+  }, []);
+
+  const loadTokens = async () => {
+    setLoading(true);
+    try {
+      const [studentRes, professorRes, adminRes] = await Promise.all([
+        AuthService.getAvailableAccessTokens('STUDENT'),
+        AuthService.getAvailableAccessTokens('PROFESSOR'),
+        AuthService.getAvailableAccessTokens('ADMIN'),
+      ]);
+
+      if (studentRes.success) setStudentTokens(studentRes.data.map(token => ({ ...token, role: token.role as 'STUDENT' })));
+      if (professorRes.success) setProfessorTokens(professorRes.data.map(token => ({ ...token, role: token.role as 'PROFESSOR' })));
+      if (adminRes.success) setAdminTokens(adminRes.data.map(token => ({ ...token, role: token.role as 'ADMIN' })));
+    } catch (error) {
+      toast.error(isRTL ? 'فشل في تحميل الرموز' : 'Failed to load tokens');
+    } finally {
+      setLoading(false);
     }
-    
-    setTokens(prev => [...prev, ...newTokens]);
-    toast.success(
-      isRTL 
-        ? `تم إنشاء ${count} رمز ${role === 'student' ? 'طالب' : 'أستاذ'}` 
-        : `${count} token${count > 1 ? 's' : ''} ${role === 'student' ? 'étudiant' : 'professeur'} généré${count > 1 ? 's' : ''}`
-    );
+  };
+
+  const generateToken = async (role: 'STUDENT' | 'PROFESSOR' | 'ADMIN') => {
+    setLoading(true);
+    try {
+      const response = await AuthService.generateAccessToken(role);
+      if (response.success) {
+        const newToken = response.data;
+        const typedToken: GeneratedToken = {
+          ...newToken,
+          role: newToken.role as 'STUDENT' | 'PROFESSOR' | 'ADMIN'
+        };
+        if (role === 'STUDENT') {
+          setStudentTokens(prev => [...prev, typedToken]);
+        } else if (role === 'PROFESSOR') {
+          setProfessorTokens(prev => [...prev, typedToken]);
+        } else {
+          setAdminTokens(prev => [...prev, typedToken]);
+        }
+        toast.success(isRTL ? 'تم إنشاء الرمز بنجاح' : 'Token generated successfully');
+      } else {
+        toast.error(response.error || 'Failed to generate token');
+      }
+    } catch (error) {
+      toast.error(isRTL ? 'فشل في إنشاء الرمز' : 'Failed to generate token');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const copyToken = (token: string) => {
@@ -84,30 +98,41 @@ export const AccessTokenGenerator: React.FC = () => {
     toast.success(isRTL ? 'تم نسخ الرمز' : 'Token copié');
   };
 
-  const deleteToken = (id: string) => {
-    setTokens(prev => prev.filter(t => t.id !== id));
-    toast.success(isRTL ? 'تم حذف الرمز' : 'Token supprimé');
-  };
-
-  const toggleSelectToken = (id: string) => {
+  const toggleSelectToken = (token: string) => {
     setSelectedTokens(prev => 
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+      prev.includes(token) ? prev.filter(t => t !== token) : [...prev, token]
     );
   };
 
-  const selectAllTokens = (role: 'student' | 'professor') => {
-    const roleTokens = tokens.filter(t => t.role === role && !t.used).map(t => t.id);
+  const selectAllTokens = (role: 'STUDENT' | 'PROFESSOR' | 'ADMIN') => {
+    const roleTokens = getTokensByRole(role).map(t => t.token);
     setSelectedTokens(prev => {
-      const otherRoleSelected = prev.filter(id => {
-        const token = tokens.find(t => t.id === id);
-        return token?.role !== role;
+      const otherRoleSelected = prev.filter(token => {
+        const tokenRole = getTokenRole(token);
+        return tokenRole !== role;
       });
       return [...otherRoleSelected, ...roleTokens];
     });
   };
 
-  const exportToPDF = (role: 'student' | 'professor') => {
-    const roleTokens = tokens.filter(t => t.role === role && !t.used);
+  const getTokensByRole = (role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): GeneratedToken[] => {
+    switch (role) {
+      case 'STUDENT': return studentTokens;
+      case 'PROFESSOR': return professorTokens;
+      case 'ADMIN': return adminTokens;
+      default: return [];
+    }
+  };
+
+  const getTokenRole = (token: string): 'STUDENT' | 'PROFESSOR' | 'ADMIN' | null => {
+    if (studentTokens.some(t => t.token === token)) return 'STUDENT';
+    if (professorTokens.some(t => t.token === token)) return 'PROFESSOR';
+    if (adminTokens.some(t => t.token === token)) return 'ADMIN';
+    return null;
+  };
+
+  const exportToPDF = (role: 'STUDENT' | 'PROFESSOR' | 'ADMIN') => {
+    const roleTokens = getTokensByRole(role);
     
     if (roleTokens.length === 0) {
       toast.error(isRTL ? 'لا توجد رموز للتصدير' : 'Aucun token à exporter');
@@ -115,9 +140,11 @@ export const AccessTokenGenerator: React.FC = () => {
     }
 
     const doc = new jsPDF();
-    const title = role === 'student' 
+    const title = role === 'STUDENT' 
       ? (isRTL ? 'رموز الوصول للطلاب' : 'Tokens d\'accès Étudiants')
-      : (isRTL ? 'رموز الوصول للأساتذة' : 'Tokens d\'accès Professeurs');
+      : role === 'PROFESSOR'
+      ? (isRTL ? 'رموز الوصول للأساتذة' : 'Tokens d\'accès Professeurs')
+      : (isRTL ? 'رموز الوصول للإداريين' : 'Tokens d\'accès Administrateurs');
 
     // Header
     doc.setFontSize(20);
@@ -162,7 +189,7 @@ export const AccessTokenGenerator: React.FC = () => {
       doc.setFont('courier', 'normal');
       doc.text(token.token, 40, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(token.createdAt.toLocaleDateString(), 120, y);
+      doc.text(new Date(token.createdAt).toLocaleDateString(), 120, y);
       
       y += lineHeight;
     });
@@ -177,7 +204,7 @@ export const AccessTokenGenerator: React.FC = () => {
       { align: 'center' }
     );
 
-    doc.save(`tokens-${role}-${Date.now()}.pdf`);
+    doc.save(`tokens-${role.toLowerCase()}-${Date.now()}.pdf`);
     toast.success(isRTL ? 'تم تصدير PDF' : 'PDF exporté avec succès');
   };
 
@@ -187,7 +214,11 @@ export const AccessTokenGenerator: React.FC = () => {
       return;
     }
 
-    const selectedTokensData = tokens.filter(t => selectedTokens.includes(t.id));
+    const selectedTokensData = [
+      ...studentTokens.filter(t => selectedTokens.includes(t.token)),
+      ...professorTokens.filter(t => selectedTokens.includes(t.token)),
+      ...adminTokens.filter(t => selectedTokens.includes(t.token)),
+    ];
     
     const doc = new jsPDF();
     
@@ -232,8 +263,9 @@ export const AccessTokenGenerator: React.FC = () => {
       doc.setFont('courier', 'normal');
       doc.text(token.token, 40, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(token.role === 'student' ? 'Étudiant' : 'Professeur', 100, y);
-      doc.text(token.createdAt.toLocaleDateString(), 140, y);
+      const roleText = token.role === 'STUDENT' ? 'Étudiant' : token.role === 'PROFESSOR' ? 'Professeur' : 'Administrateur';
+      doc.text(roleText, 100, y);
+      doc.text(new Date(token.createdAt).toLocaleDateString(), 140, y);
       
       y += lineHeight;
     });
@@ -252,30 +284,26 @@ export const AccessTokenGenerator: React.FC = () => {
     toast.success(isRTL ? 'تم تصدير PDF' : 'PDF exporté avec succès');
   };
 
-  const studentTokens = tokens.filter(t => t.role === 'student');
-  const professorTokens = tokens.filter(t => t.role === 'professor');
-  const availableStudentTokens = studentTokens.filter(t => !t.used).length;
-  const availableProfessorTokens = professorTokens.filter(t => !t.used).length;
+  const availableStudentTokens = studentTokens.length;
+  const availableProfessorTokens = professorTokens.length;
+  const availableAdminTokens = adminTokens.length;
 
-  const TokenCard = ({ token }: { token: GeneratedToken }) => (
+  const TokenCard = ({ token, role }: { token: GeneratedToken; role: 'STUDENT' | 'PROFESSOR' | 'ADMIN' }) => (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       className={cn(
         "flex items-center justify-between p-3 rounded-lg border transition-all",
-        token.used 
-          ? "bg-muted/50 opacity-60" 
-          : "bg-card hover:border-primary/50",
-        selectedTokens.includes(token.id) && "border-primary ring-2 ring-primary/20"
+        "bg-card hover:border-primary/50",
+        selectedTokens.includes(token.token) && "border-primary ring-2 ring-primary/20"
       )}
     >
       <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
         <input
           type="checkbox"
-          checked={selectedTokens.includes(token.id)}
-          onChange={() => toggleSelectToken(token.id)}
-          disabled={token.used}
+          checked={selectedTokens.includes(token.token)}
+          onChange={() => toggleSelectToken(token.token)}
           className="w-4 h-4 rounded border-gray-300"
         />
         <div className={isRTL ? "text-right" : ""}>
@@ -283,39 +311,26 @@ export const AccessTokenGenerator: React.FC = () => {
             {token.token}
           </code>
           <p className="text-xs text-muted-foreground">
-            {token.createdAt.toLocaleDateString()}
+            {new Date(token.createdAt).toLocaleDateString()} • Expires: {new Date(token.expiresAt).toLocaleDateString()}
           </p>
         </div>
       </div>
       <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-        {token.used ? (
-          <Badge variant="secondary" className="text-xs">
-            {isRTL ? 'مستخدم' : 'Utilisé'}
-          </Badge>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => copyToken(token.token)}
-            >
-              {copiedToken === token.token ? (
-                <CheckCircle className="w-4 h-4 text-green-500" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-              onClick={() => deleteToken(token.id)}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </>
-        )}
+        <Badge variant="outline" className="text-xs">
+          {role}
+        </Badge>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => copyToken(token.token)}
+        >
+          {copiedToken === token.token ? (
+            <CheckCircle className="w-4 h-4 text-green-500" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </Button>
       </div>
     </motion.div>
   );
@@ -341,20 +356,15 @@ export const AccessTokenGenerator: React.FC = () => {
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{studentTokens.length}</p>
             <p className="text-xs text-muted-foreground">{isRTL ? 'رموز الطلاب' : 'Tokens étudiants'}</p>
           </div>
-          <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 text-center">
-            <CheckCircle className="w-6 h-6 mx-auto text-green-600 dark:text-green-400 mb-2" />
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{availableStudentTokens}</p>
-            <p className="text-xs text-muted-foreground">{isRTL ? 'متاح' : 'Disponibles'}</p>
-          </div>
           <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-center">
             <GraduationCap className="w-6 h-6 mx-auto text-purple-600 dark:text-purple-400 mb-2" />
             <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{professorTokens.length}</p>
             <p className="text-xs text-muted-foreground">{isRTL ? 'رموز الأساتذة' : 'Tokens professeurs'}</p>
           </div>
           <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-center">
-            <CheckCircle className="w-6 h-6 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{availableProfessorTokens}</p>
-            <p className="text-xs text-muted-foreground">{isRTL ? 'متاح' : 'Disponibles'}</p>
+            <Key className="w-6 h-6 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{adminTokens.length}</p>
+            <p className="text-xs text-muted-foreground">{isRTL ? 'رموز الإداريين' : 'Tokens admins'}</p>
           </div>
         </div>
 
@@ -379,7 +389,7 @@ export const AccessTokenGenerator: React.FC = () => {
         </AnimatePresence>
 
         <Tabs defaultValue="students" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="students" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
               <Users className="w-4 h-4" />
               {isRTL ? 'الطلاب' : 'Étudiants'}
@@ -388,36 +398,48 @@ export const AccessTokenGenerator: React.FC = () => {
               <GraduationCap className="w-4 h-4" />
               {isRTL ? 'الأساتذة' : 'Professeurs'}
             </TabsTrigger>
+            <TabsTrigger value="admins" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              <Key className="w-4 h-4" />
+              {isRTL ? 'الإداريون' : 'Admins'}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="students" className="space-y-4">
             {/* Generate Section */}
             <div className={cn("flex flex-col sm:flex-row gap-3 p-4 bg-muted/50 rounded-lg", isRTL && "sm:flex-row-reverse")}>
               <div className="flex-1">
-                <Label htmlFor="student-count" className="text-sm mb-2 block">
-                  {isRTL ? 'عدد الرموز' : 'Nombre de tokens'}
-                </Label>
-                <Input
-                  id="student-count"
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={studentCount}
-                  onChange={(e) => setStudentCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                  className="w-full"
-                />
+                <p className="text-sm text-muted-foreground">
+                  {isRTL ? 'انقر على الزر لإنشاء رمز وصول جديد للطلاب' : 'Cliquez sur le bouton pour générer un nouveau token d\'accès pour les étudiants'}
+                </p>
               </div>
               <div className={cn("flex gap-2 items-end", isRTL && "flex-row-reverse")}>
-                <Button onClick={() => generateTokens('student', studentCount)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {isRTL ? 'إنشاء' : 'Générer'}
+                <Button 
+                  onClick={() => generateToken('STUDENT')} 
+                  disabled={loading}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  {isRTL ? 'إنشاء رمز طالب' : 'Générer token étudiant'}
                 </Button>
-                <Button variant="outline" onClick={() => exportToPDF('student')}>
-                  <Download className="w-4 h-4 mr-2" />
-                  PDF
+                <Button 
+                  variant="outline" 
+                  onClick={() => selectAllTokens('STUDENT')}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  {isRTL ? 'تحديد الكل' : 'Tout sélectionner'}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => selectAllTokens('student')}>
-                  <RefreshCw className="w-4 h-4" />
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportToPDF('STUDENT')}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  <Download className="w-4 h-4" />
+                  {isRTL ? 'تصدير PDF' : 'Exporter PDF'}
                 </Button>
               </div>
             </div>
@@ -426,7 +448,7 @@ export const AccessTokenGenerator: React.FC = () => {
             <div className="space-y-2 max-h-64 overflow-y-auto">
               <AnimatePresence>
                 {studentTokens.map(token => (
-                  <TokenCard key={token.id} token={token} />
+                  <TokenCard key={token.token} token={token} role="STUDENT" />
                 ))}
               </AnimatePresence>
               {studentTokens.length === 0 && (
@@ -442,30 +464,38 @@ export const AccessTokenGenerator: React.FC = () => {
             {/* Generate Section */}
             <div className={cn("flex flex-col sm:flex-row gap-3 p-4 bg-muted/50 rounded-lg", isRTL && "sm:flex-row-reverse")}>
               <div className="flex-1">
-                <Label htmlFor="professor-count" className="text-sm mb-2 block">
-                  {isRTL ? 'عدد الرموز' : 'Nombre de tokens'}
-                </Label>
-                <Input
-                  id="professor-count"
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={professorCount}
-                  onChange={(e) => setProfessorCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                  className="w-full"
-                />
+                <p className="text-sm text-muted-foreground">
+                  {isRTL ? 'انقر على الزر لإنشاء رمز وصول جديد للأساتذة' : 'Cliquez sur le bouton pour générer un nouveau token d\'accès pour les professeurs'}
+                </p>
               </div>
               <div className={cn("flex gap-2 items-end", isRTL && "flex-row-reverse")}>
-                <Button onClick={() => generateTokens('professor', professorCount)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  {isRTL ? 'إنشاء' : 'Générer'}
+                <Button 
+                  onClick={() => generateToken('PROFESSOR')} 
+                  disabled={loading}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  {isRTL ? 'إنشاء رمز أستاذ' : 'Générer token professeur'}
                 </Button>
-                <Button variant="outline" onClick={() => exportToPDF('professor')}>
-                  <Download className="w-4 h-4 mr-2" />
-                  PDF
+                <Button 
+                  variant="outline" 
+                  onClick={() => selectAllTokens('PROFESSOR')}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  {isRTL ? 'تحديد الكل' : 'Tout sélectionner'}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => selectAllTokens('professor')}>
-                  <RefreshCw className="w-4 h-4" />
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportToPDF('PROFESSOR')}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  <Download className="w-4 h-4" />
+                  {isRTL ? 'تصدير PDF' : 'Exporter PDF'}
                 </Button>
               </div>
             </div>
@@ -474,13 +504,69 @@ export const AccessTokenGenerator: React.FC = () => {
             <div className="space-y-2 max-h-64 overflow-y-auto">
               <AnimatePresence>
                 {professorTokens.map(token => (
-                  <TokenCard key={token.id} token={token} />
+                  <TokenCard key={token.token} token={token} role="PROFESSOR" />
                 ))}
               </AnimatePresence>
               {professorTokens.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <GraduationCap className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>{isRTL ? 'لا توجد رموز للأساتذة' : 'Aucun token professeur'}</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="admins" className="space-y-4">
+            {/* Generate Section */}
+            <div className={cn("flex flex-col sm:flex-row gap-3 p-4 bg-muted/50 rounded-lg", isRTL && "sm:flex-row-reverse")}>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">
+                  {isRTL ? 'انقر على الزر لإنشاء رمز وصول جديد للإداريين' : 'Cliquez sur le bouton pour générer un nouveau token d\'accès pour les administrateurs'}
+                </p>
+              </div>
+              <div className={cn("flex gap-2 items-end", isRTL && "flex-row-reverse")}>
+                <Button 
+                  onClick={() => generateToken('ADMIN')} 
+                  disabled={loading}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  {isRTL ? 'إنشاء رمز إداري' : 'Générer token admin'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => selectAllTokens('ADMIN')}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  {isRTL ? 'تحديد الكل' : 'Tout sélectionner'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportToPDF('ADMIN')}
+                  className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}
+                >
+                  <Download className="w-4 h-4" />
+                  {isRTL ? 'تصدير PDF' : 'Exporter PDF'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Token List */}
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              <AnimatePresence>
+                {adminTokens.map(token => (
+                  <TokenCard key={token.token} token={token} role="ADMIN" />
+                ))}
+              </AnimatePresence>
+              {adminTokens.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Key className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>{isRTL ? 'لا توجد رموز للإداريين' : 'Aucun token admin'}</p>
                 </div>
               )}
             </div>

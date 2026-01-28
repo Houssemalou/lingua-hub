@@ -487,4 +487,74 @@ export const AuthService = {
       };
     }
   },
+
+  // Generate Access Token
+  async generateAccessToken(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<{ token: string; role: string; expiresAt: string; createdAt: string }>> {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: {
+          token: string;
+          role: string;
+          expiresAt: string;
+          createdAt: string;
+        };
+        error: string | null;
+      }>('/auth/generate-access-token', { role });
+
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.message || response.error || 'Failed to generate access token',
+        };
+      }
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error('Generate access token error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate access token',
+      };
+    }
+  },
+
+  // Get Available Access Tokens
+  async getAvailableAccessTokens(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<Array<{ token: string; role: string; expiresAt: string; createdAt: string }>>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: Array<{
+          token: string;
+          role: string;
+          expiresAt: string;
+          createdAt: string;
+        }>;
+        error: string | null;
+      }>(`/auth/access-tokens/${role}`);
+
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.message || response.error || 'Failed to fetch access tokens',
+        };
+      }
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error('Get access tokens error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch access tokens',
+      };
+    }
+  },
 };
