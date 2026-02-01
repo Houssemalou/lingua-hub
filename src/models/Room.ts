@@ -16,8 +16,8 @@ export interface RoomModel {
   duration: number; // in minutes
   maxStudents: number;
   status: RoomStatus;
-  invitedStudents: string[];
-  joinedStudents: string[];
+  invitedStudents?: string[];
+  joinedStudents?: string[];
   createdAt: string;
   animatorType: AnimatorType;
   professorId?: string;

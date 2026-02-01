@@ -12,6 +12,9 @@ interface AuthUser {
   professor?: Professor;
 }
 
+export interface StudentSignupData extends StudentRegisterData {}
+export interface ProfessorSignupData extends ProfessorRegisterData {}
+
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -22,10 +25,6 @@ interface AuthContextType {
   logout: () => void;
   validateAccessToken: (token: string) => boolean;
 }
-
-export interface StudentSignupData extends StudentRegisterData {}
-
-export interface ProfessorSignupData extends ProfessorRegisterData {}
 
 // Valid access tokens for registration
 const validAccessTokens = ['STUDENT2024', 'LANG-ABC123', 'EDU-TOKEN-01', 'ACCESS-2024-XYZ'];

@@ -41,48 +41,25 @@ export interface RoomParticipant {
 // ============================================
 
 export const RoomService = {
-  // Get all rooms with optional filters
-  async getAll(filters?: RoomFilters): Promise<PaginatedResponse<RoomModel>> {
+  // Get all rooms (no backend filtering, filtering done on frontend)
+  async getAll(): Promise<PaginatedResponse<RoomModel>> {
     try {
-      return await apiClient.get<PaginatedResponse<RoomModel>>('/rooms', filters as Record<string, unknown>);
+      return await apiClient.get<PaginatedResponse<RoomModel>>('/rooms');
     } catch (error) {
       console.error('Error fetching rooms:', error);
       throw error;
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    let filtered = [...mockRooms] as RoomModel[];
+  },
 
-    if (filters?.status) {
-      filtered = filtered.filter(r => r.status === filters.status);
+  // Get my sessions (filtered by user role and invitation)
+  async getMySessions(): Promise<PaginatedResponse<RoomModel>> {
+    try {
+      return await apiClient.get<PaginatedResponse<RoomModel>>('/rooms/my-sessions');
+    } catch (error) {
+      console.error('Error fetching my sessions:', error);
+      throw error;
     }
-    if (filters?.language) {
-      filtered = filtered.filter(r => r.language === filters.language);
-    }
-    if (filters?.level) {
-      filtered = filtered.filter(r => r.level === filters.level);
-    }
-    if (filters?.professorId) {
-      filtered = filtered.filter(r => r.professorId === filters.professorId);
-    }
-    if (filters?.search) {
-      const search = filters.search.toLowerCase();
-      filtered = filtered.filter(r => 
-        r.name.toLowerCase().includes(search) || 
-        r.objective.toLowerCase().includes(search)
-      );
-    }
-
-    return {
-      data: filtered,
-      total: filtered.length,
-      page: filters?.page || 1,
-      limit: filters?.limit || 10,
-      totalPages: Math.ceil(filtered.length / (filters?.limit || 10)),
-    };
   },
 
   // Get room by ID
@@ -95,15 +72,7 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const room = mockRooms.find(r => r.id === id);
-    if (room) {
-      return { success: true, data: room as RoomModel };
-    }
-    return { success: false, error: 'Room not found' };
+    
   },
 
   // Create new room
@@ -116,19 +85,7 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const newRoom: RoomModel = {
-      id: `room-${Date.now()}`,
-      ...data,
-      status: 'scheduled',
-      invitedStudents: data.invitedStudents || [],
-      joinedStudents: [],
-      createdAt: new Date().toISOString(),
-    };
-    return { success: true, data: newRoom };
+    
   },
 
   // Update room
@@ -141,16 +98,7 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const room = mockRooms.find(r => r.id === id);
-    if (room) {
-      const updated = { ...room, ...data } as RoomModel;
-      return { success: true, data: updated };
-    }
-    return { success: false, error: 'Room not found' };
+  
   },
 
   // Delete room
@@ -163,50 +111,29 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const index = mockRooms.findIndex(r => r.id === id);
-    if (index !== -1) {
-      return { success: true };
-    }
-    return { success: false, error: 'Room not found' };
+    
   },
 
   // Join room
-  async join(roomId: string, studentId: string): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${roomId}/join`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify({ studentId }),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to join room');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error joining room:', error);
-    //   return { success: false, error: error.message };
-    // }
-
-    // Mock implementation
-    const room = mockRooms.find(r => r.id === roomId);
-    if (room) {
-      const updated = { 
-        ...room, 
-        joinedStudents: [...room.joinedStudents, studentId] 
-      } as RoomModel;
-      return { success: true, data: updated };
+  async join(roomId: string): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.post<void>(`/rooms/${roomId}/join`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error joining room:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-    return { success: false, error: 'Room not found' };
+  },
+
+  // Check if user can join room
+  async canJoin(roomId: string): Promise<ApiResponse<boolean>> {
+    try {
+      const result = await apiClient.get<boolean>(`/rooms/${roomId}/can-join`);
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error checking join permission:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error', data: false };
+    }
   },
 
   // Leave room
@@ -245,25 +172,31 @@ export const RoomService = {
   },
 
   // Start session (professor only)
-  async startSession(roomId: string): Promise<ApiResponse<RoomModel>> {
+  async startSession(roomId: string): Promise<ApiResponse<void>> {
     try {
-      const result = await apiClient.post<RoomModel>(`/rooms/${roomId}/start`);
-      return { success: true, data: result };
+      await apiClient.post<void>(`/rooms/${roomId}/start`);
+      return { success: true };
     } catch (error) {
       console.error('Error starting session:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
+  },
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const room = mockRooms.find(r => r.id === roomId);
-    if (room) {
-      const updated = { ...room, status: 'live' as const } as RoomModel;
-      return { success: true, data: updated };
+  // Start session and get token (professor only)
+  async startAndJoin(roomId: string, userId: string): Promise<ApiResponse<LiveKitTokenResponse>> {
+    try {
+      // First start the room
+      await apiClient.post<void>(`/rooms/${roomId}/start`);
+      
+      // Then join and get token
+      await apiClient.post<void>(`/rooms/${roomId}/join`);
+      const token = await apiClient.post<LiveKitTokenResponse>('/livekit/token', { roomId, userId });
+      
+      return { success: true, data: token };
+    } catch (error) {
+      console.error('Error starting and joining session:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-    return { success: false, error: 'Room not found' };
   },
 
   // End session (professor only)
@@ -276,16 +209,7 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    // const room = mockRooms.find(r => r.id === roomId);
-    // if (room) {
-    //   const updated = { ...room, status: 'completed' as const } as RoomModel;
-    //   return { success: true, data: updated };
-    // }
-    // return { success: false, error: 'Room not found' };
+    
   },
 
   // Get room participants
@@ -298,14 +222,6 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // const room = mockRooms.find(r => r.id === roomId);
-    // if (room) {
-    //   return { success: true, data: room.joinedStudents || [] };
-    // }
-    // return { success: false, error: 'Room not found' };
   },
 
   // Mute participant
@@ -318,10 +234,6 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // return { success: true };
   },
 
   // Ping participant (attention request)
@@ -334,10 +246,7 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // return { success: true };
+    
   },
 
   // Delete ping
@@ -350,11 +259,23 @@ export const RoomService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // return { success: true };
+  },
+
+  // Get LiveKit token for joining a room
+  async getLiveKitToken(roomId: string, userId: string): Promise<ApiResponse<LiveKitTokenResponse>> {
+    try {
+      const data = await apiClient.post<LiveKitTokenResponse>('/livekit/token', { roomId, userId });
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error getting LiveKit token:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   },
 };
+
+interface LiveKitTokenResponse {
+  token: string;
+  serverUrl: string;
+}
 
 export default RoomService;

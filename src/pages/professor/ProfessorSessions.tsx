@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CalendarCheck, 
@@ -10,6 +10,7 @@ import {
   Filter,
   Bot,
   UserCircle,
+  DoorOpen,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,11 +19,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProfessorSessions } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { RoomService } from '@/services/RoomService';
+import { RoomModel } from '@/models';
+import { toast } from 'sonner';
+import { canStartRoom, canJoinRoom } from '@/lib/roomUtils';
 
 const container = {
   hidden: { opacity: 0 },
@@ -45,13 +49,40 @@ export default function ProfessorSessions() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sessions, setSessions] = useState<RoomModel[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const sessions = professor ? getProfessorSessions(professor.id) : [];
   const dateLocale = language === 'ar' ? ar : fr;
 
-  const filteredSessions = sessions.filter((session) => {
-    const matchesSearch = session.roomName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.language.toLowerCase().includes(searchQuery.toLowerCase());
+  // Load sessions from backend
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        setLoading(true);
+        const response = await RoomService.getMySessions();
+        if (response && (response as any).success !== undefined) {
+          if ((response as any).success) {
+            setSessions((response as any).data?.data || []);
+          } else {
+            toast.error((response as any).message || 'Failed to load sessions');
+          }
+        } else {
+          setSessions((response as any)?.data || []);
+        }
+      } catch (err) {
+        console.error('Error loading sessions:', err);
+        toast.error(isRTL ? 'فشل في تحميل الجلسات' : 'Échec du chargement des sessions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSessions();
+  }, [isRTL]);
+
+  const filteredSessions = (Array.isArray(sessions) ? sessions : []).filter((session) => {
+    const matchesSearch = (session.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (session.language || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -65,6 +96,38 @@ export default function ProfessorSessions() {
       default:
         return <Eye className="w-4 h-4" />;
     }
+  };
+
+  const handleStartAndJoinRoom = async (session: RoomModel) => {
+    const startCheck = canStartRoom(session);
+    if (!startCheck.canStart) {
+      toast.error(startCheck.reason);
+      return;
+    }
+
+    try {
+      // Start the room
+      const response = await RoomService.startSession(session.id);
+      if (response && response.success) {
+        toast.success(isRTL ? 'تم بدء الجلسة بنجاح!' : 'Session started successfully!');
+        // Navigate to room
+        navigate(`/professor/room/${session.id}`);
+      } else {
+        toast.error(response.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));
+      }
+    } catch (err) {
+      console.error('Error starting room:', err);
+      toast.error(isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session');
+    }
+  };
+
+  const handleJoinRoom = (session: RoomModel) => {
+    const joinCheck = canJoinRoom(session);
+    if (!joinCheck.canJoin) {
+      toast.error(joinCheck.reason);
+      return;
+    }
+    navigate(`/professor/room/${session.id}`);
   };
 
   return (
@@ -112,69 +175,126 @@ export default function ProfessorSessions() {
 
       {/* Sessions Grid */}
       <motion.div variants={item} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredSessions.map((session) => (
-          <Card
-            key={session.id}
-            variant="interactive"
-            className={cn(session.status === 'live' && 'border-destructive/50')}
-            onClick={() => navigate(`/professor/room/${session.roomId}`)}
-          >
-            <CardHeader className="pb-3">
-              <div className={cn("flex items-start justify-between", isRTL && "flex-row-reverse")}>
-                <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    session.status === 'live' ? 'bg-destructive/20' : 'bg-muted'
-                  )}>
-                    <UserCircle className={cn(
-                      "w-5 h-5",
-                      session.status === 'live' ? 'text-destructive' : 'text-muted-foreground'
-                    )} />
+        {loading ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">{isRTL ? 'جاري التحميل...' : 'Chargement...'}</p>
+          </div>
+        ) : (
+          filteredSessions.map((session) => {
+            const startCheck = canStartRoom(session);
+            const joinCheck = canJoinRoom(session);
+            const statusLower = session.status.toLowerCase();
+            
+            return (
+              <Card
+                key={session.id}
+                variant="interactive"
+                className={cn(statusLower === 'live' && 'border-destructive/50')}
+              >
+                <CardHeader className="pb-3">
+                  <div className={cn("flex items-start justify-between", isRTL && "flex-row-reverse")}>
+                    <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+                      <div className={cn(
+                        "w-10 h-10 rounded-lg flex items-center justify-center",
+                        statusLower === 'live' ? 'bg-destructive/20' : 'bg-muted'
+                      )}>
+                        <UserCircle className={cn(
+                          "w-5 h-5",
+                          statusLower === 'live' ? 'text-destructive' : 'text-muted-foreground'
+                        )} />
+                      </div>
+                      <div className={isRTL ? 'text-right' : ''}>
+                        <CardTitle className="text-lg">{session.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{session.language}</p>
+                      </div>
+                    </div>
+                    <Badge variant={statusLower as any} className="capitalize">
+                      {getStatusIcon(statusLower)}
+                      <span className={cn(isRTL ? "mr-1" : "ml-1")}>
+                        {statusLower === 'live' 
+                          ? (isRTL ? 'مباشر' : 'En direct')
+                          : statusLower === 'scheduled'
+                          ? (isRTL ? 'مجدول' : 'Planifié')
+                          : (isRTL ? 'مكتمل' : 'Terminé')}
+                      </span>
+                    </Badge>
                   </div>
-                  <div className={isRTL ? 'text-right' : ''}>
-                    <CardTitle className="text-lg">{session.roomName}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{session.language}</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className={cn("text-sm text-muted-foreground line-clamp-2", isRTL && "text-right")}>
+                    {session.objective}
+                  </p>
+                  <div className={cn("flex items-center justify-between text-sm", isRTL && "flex-row-reverse")}>
+                    <div className={cn("flex items-center gap-4 text-muted-foreground", isRTL && "flex-row-reverse")}>
+                      <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
+                        <Users className="w-4 h-4" />
+                        {statusLower === 'live' 
+                          ? (session.joinedStudents?.length || 0)
+                          : (session.invitedStudents?.length || 0)}/{session.maxStudents}
+                      </span>
+                      <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
+                        <Clock className="w-4 h-4" />
+                        {session.duration}m
+                      </span>
+                    </div>
+                    <Badge variant={session.level.toLowerCase() as any}>{session.level}</Badge>
                   </div>
-                </div>
-                <Badge variant={session.status as any} className="capitalize">
-                  {getStatusIcon(session.status)}
-                  <span className={cn(isRTL ? "mr-1" : "ml-1")}>
-                    {session.status === 'live' 
-                      ? (isRTL ? 'مباشر' : 'En direct')
-                      : session.status === 'scheduled'
-                      ? (isRTL ? 'مجدول' : 'Planifié')
-                      : (isRTL ? 'مكتمل' : 'Terminé')}
-                  </span>
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className={cn("text-sm text-muted-foreground line-clamp-2", isRTL && "text-right")}>
-                {session.objective}
-              </p>
-              <div className={cn("flex items-center justify-between text-sm", isRTL && "flex-row-reverse")}>
-                <div className={cn("flex items-center gap-4 text-muted-foreground", isRTL && "flex-row-reverse")}>
-                  <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
-                    <Users className="w-4 h-4" />
-                    {session.participantsCount}
-                  </span>
-                  <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
-                    <Clock className="w-4 h-4" />
-                    {session.duration}m
-                  </span>
-                </div>
-                <Badge variant={session.level.toLowerCase() as any}>{session.level}</Badge>
-              </div>
-              <div className={cn("pt-2 border-t border-border", isRTL && "text-right")}>
-                <p className="text-xs text-muted-foreground">
-                  {session.status === 'scheduled'
-                    ? `${isRTL ? 'تبدأ' : 'Commence'} ${formatDistanceToNow(new Date(session.scheduledAt), { addSuffix: true, locale: dateLocale })}`
-                    : format(new Date(session.scheduledAt), 'PPp', { locale: dateLocale })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  <div className={cn("pt-2 border-t border-border", isRTL && "text-right")}>
+                    <p className="text-xs text-muted-foreground">
+                      {statusLower === 'scheduled'
+                        ? `${isRTL ? 'تبدأ' : 'Commence'} ${formatDistanceToNow(new Date(session.scheduledAt), { addSuffix: true, locale: dateLocale })}`
+                        : format(new Date(session.scheduledAt), 'PPp', { locale: dateLocale })}
+                    </p>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className={cn("flex gap-2 pt-2", isRTL && "flex-row-reverse")}>
+                    {statusLower === 'scheduled' && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartAndJoinRoom(session);
+                        }}
+                        disabled={!startCheck.canStart}
+                        className="flex-1"
+                        variant={startCheck.canStart ? "default" : "outline"}
+                      >
+                        <DoorOpen className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                        {isRTL ? 'بدء الجلسة' : 'Start Session'}
+                      </Button>
+                    )}
+                    {statusLower === 'live' && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJoinRoom(session);
+                        }}
+                        className="flex-1"
+                        variant="live"
+                      >
+                        <Play className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                        {isRTL ? 'انضم الآن' : 'Join Now'}
+                      </Button>
+                    )}
+                    {statusLower === 'completed' && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/professor/summaries`);
+                        }}
+                        className="flex-1"
+                        variant="secondary"
+                      >
+                        <Eye className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                        {isRTL ? 'عرض الملخص' : 'View Summary'}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </motion.div>
 
       {filteredSessions.length === 0 && (

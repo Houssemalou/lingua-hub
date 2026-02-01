@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   MonitorUp,
   ChevronLeft,
   ChevronRight,
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ParticipantCard, Participant } from './ParticipantCard';
+import { LiveKitParticipant } from '@/hooks/useLiveKitRoom';
 import {
   Carousel,
   CarouselContent,
@@ -19,7 +20,7 @@ import {
 } from '@/components/ui/carousel';
 
 interface VideoGridProps {
-  participants: Participant[];
+  participants: (Participant | LiveKitParticipant)[];
   screenShareStream?: MediaStream | null;
   localVideoRef?: React.RefObject<HTMLVideoElement>;
   isRTL?: boolean;

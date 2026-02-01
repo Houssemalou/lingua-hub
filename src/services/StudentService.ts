@@ -25,39 +25,16 @@ import { mockStudents } from '@/data/mockData';
 // ============================================
 
 export const StudentService = {
-  // Get all students with optional filters
-  async getAll(filters?: StudentFilters): Promise<PaginatedResponse<StudentModel>> {
+  // Get all students (no backend filtering, filtering done on frontend)
+  async getAll(): Promise<PaginatedResponse<StudentModel>> {
     try {
-      return await apiClient.get<PaginatedResponse<StudentModel>>('/students', filters as Record<string, unknown>);
+      return await apiClient.get<PaginatedResponse<StudentModel>>('/students');
     } catch (error) {
       console.error('Error fetching students:', error);
       throw error;
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    let filtered = [...mockStudents] as StudentModel[];
-
-    if (filters?.level) {
-      filtered = filtered.filter(s => s.level === filters.level);
-    }
-    if (filters?.search) {
-      const search = filters.search.toLowerCase();
-      filtered = filtered.filter(s => 
-        s.name.toLowerCase().includes(search) || 
-        s.email.toLowerCase().includes(search)
-      );
-    }
-
-    return {
-      data: filtered,
-      total: filtered.length,
-      page: filters?.page || 1,
-      limit: filters?.limit || 10,
-      totalPages: Math.ceil(filtered.length / (filters?.limit || 10)),
-    };
+    
   },
 
   // Get student by ID
@@ -70,15 +47,7 @@ export const StudentService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const student = mockStudents.find(s => s.id === id);
-    if (student) {
-      return { success: true, data: student as StudentModel };
-    }
-    return { success: false, error: 'Student not found' };
+   
   },
 
   // Create new student
@@ -91,24 +60,7 @@ export const StudentService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const newStudent: StudentModel = {
-      id: `student-${Date.now()}`,
-      name: data.name,
-      email: data.email,
-      nickname: data.nickname,
-      bio: data.bio || '',
-      level: data.level,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.name}`,
-      joinedAt: new Date().toISOString(),
-      skills: { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
-      totalSessions: 0,
-      hoursLearned: 0,
-    };
-    return { success: true, data: newStudent };
+    
   },
 
   // Update student
@@ -121,16 +73,6 @@ export const StudentService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const student = mockStudents.find(s => s.id === id);
-    if (student) {
-      const updated = { ...student, ...data } as StudentModel;
-      return { success: true, data: updated };
-    }
-    return { success: false, error: 'Student not found' };
   },
 
   // Delete student
@@ -143,15 +85,7 @@ export const StudentService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const index = mockStudents.findIndex(s => s.id === id);
-    if (index !== -1) {
-      return { success: true };
-    }
-    return { success: false, error: 'Student not found' };
+    
   },
 
   // Update student skills
@@ -167,19 +101,7 @@ export const StudentService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    // const student = mockStudents.find(s => s.id === id);
-    // if (student) {
-    //   const updated = { 
-    //     ...student, 
-    //     skills: { ...student.skills, ...skills } 
-    //   } as StudentModel;
-    //   return { success: true, data: updated };
-    // }
-    // return { success: false, error: 'Student not found' };
+  
   },
 
   // Get multiple students by IDs (batch)
@@ -192,11 +114,7 @@ export const StudentService = {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // const students = mockStudents.filter(s => ids.includes(s.id));
-    // return { success: true, data: students as StudentModel[] };
+   
   },
 };
 
