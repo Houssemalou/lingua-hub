@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,6 +24,7 @@ export default function AuthPage() {
   const { isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, user } = useAuth();
   const { t, language, setLanguage, isRTL } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [signupRole, setSignupRole] = useState<SignupRole>(null);
@@ -31,6 +32,7 @@ export default function AuthPage() {
   const [professorStep, setProfessorStep] = useState<ProfessorStep>('role');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   // Form states
   const [email, setEmail] = useState('');
@@ -47,14 +49,27 @@ export default function AuthPage() {
   const [languages, setLanguages] = useState<string[]>(['Français']);
   const [specialization, setSpecialization] = useState('');
 
-  if (isAuthenticated && user) {
-    const dashboardPath = user.role === 'admin' 
-      ? '/admin/dashboard' 
-      : user.role === 'professor' 
-      ? '/professor/dashboard' 
-      : '/student/dashboard';
-    return <Navigate to={dashboardPath} replace />;
-  }
+  // Redirection après login réussi uniquement
+  useEffect(() => {
+    if (justLoggedIn && isAuthenticated && user) {
+      const dashboardPath = user.role === 'admin' 
+        ? '/admin/dashboard' 
+        : user.role === 'professor' 
+        ? '/professor/dashboard' 
+        : '/student/dashboard';
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [justLoggedIn, isAuthenticated, user, navigate]);
+
+  // Commenté pour permettre la connexion avec plusieurs profils dans différents onglets
+  // if (isAuthenticated && user) {
+  //   const dashboardPath = user.role === 'admin' 
+  //     ? '/admin/dashboard' 
+  //     : user.role === 'professor' 
+  //     ? '/professor/dashboard' 
+  //     : '/student/dashboard';
+  //   return <Navigate to={dashboardPath} replace />;
+  // }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +79,8 @@ export default function AuthPage() {
     const result = await login(username, password);
     if (!result.success) {
       setError(result.error || 'Erreur de connexion');
+    } else {
+      setJustLoggedIn(true);
     }
     setLoading(false);
   };

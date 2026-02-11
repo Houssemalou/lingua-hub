@@ -264,10 +264,65 @@ export const RoomService = {
   // Get LiveKit token for joining a room
   async getLiveKitToken(roomId: string, userId: string): Promise<ApiResponse<LiveKitTokenResponse>> {
     try {
-      const data = await apiClient.post<LiveKitTokenResponse>('/livekit/token', { roomId, userId });
-      return { success: true, data };
+      console.log('Getting LiveKit token for room:', roomId, 'user:', userId);
+      const response = await apiClient.post<unknown>('/livekit/token', { roomId, userId });
+      
+      // Handle ApiResponse wrapper from backend - use type assertion
+      const responseData = response as { data?: unknown };
+      const rawData = responseData.data ? responseData.data : response;
+      const tokenData = rawData as { token?: string; serverUrl?: string; identity?: string; roomName?: string; expiresAt?: string };
+      
+      console.log('LiveKit token response:', tokenData);
+      
+      if (!tokenData || !tokenData.token || !tokenData.serverUrl) {
+        throw new Error('Invalid token response from server');
+      }
+      
+      return { 
+        success: true, 
+        data: {
+          token: tokenData.token,
+          serverUrl: tokenData.serverUrl,
+          identity: tokenData.identity,
+          roomName: tokenData.roomName,
+          expiresAt: tokenData.expiresAt
+        }
+      };
     } catch (error) {
       console.error('Error getting LiveKit token:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+  
+  // Join a room and get LiveKit token (for any user: admin, professor, student)
+  async joinRoomAndGetToken(roomId: string): Promise<ApiResponse<LiveKitTokenResponse>> {
+    try {
+      console.log('Joining room and getting token:', roomId);
+      const response = await apiClient.post<unknown>(`/rooms/${roomId}/join`);
+      
+      // Handle ApiResponse wrapper from backend - use type assertion
+      const responseData = response as { data?: unknown };
+      const rawData = responseData.data ? responseData.data : response;
+      const tokenData = rawData as { token?: string; serverUrl?: string; identity?: string; roomName?: string; expiresAt?: string };
+      
+      console.log('Join room token response:', tokenData);
+      
+      if (!tokenData || !tokenData.token || !tokenData.serverUrl) {
+        throw new Error('Invalid token response from server');
+      }
+      
+      return { 
+        success: true, 
+        data: {
+          token: tokenData.token,
+          serverUrl: tokenData.serverUrl,
+          identity: tokenData.identity,
+          roomName: tokenData.roomName,
+          expiresAt: tokenData.expiresAt
+        }
+      };
+    } catch (error) {
+      console.error('Error joining room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -276,6 +331,9 @@ export const RoomService = {
 interface LiveKitTokenResponse {
   token: string;
   serverUrl: string;
+  identity?: string;
+  roomName?: string;
+  expiresAt?: string;
 }
 
 export default RoomService;

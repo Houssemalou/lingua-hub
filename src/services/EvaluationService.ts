@@ -1,267 +1,178 @@
 // ============================================
 // Evaluation Service
-// Ready for backend integration
+// Gestion des évaluations des étudiants par les professeurs
 // ============================================
 
-import { 
-  EvaluationModel, 
-  CreateEvaluationDTO, 
-  UpdateEvaluationDTO, 
-  EvaluationFilters,
-  calculateOverallScore,
-  PaginatedResponse,
-  ApiResponse 
-} from '@/models';
+import { ApiResponse } from '@/models';
 import { apiClient } from '@/lib/apiClient';
 
 // ============================================
-// API Endpoints (à décommenter pour le backend)
+// Types
 // ============================================
-// const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-// const EVALUATIONS_ENDPOINT = `${API_BASE_URL}/evaluations`;
 
-// Mock storage for evaluations
-const mockEvaluations: EvaluationModel[] = [];
+export interface EvaluationData {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentAvatar: string | null;
+  professorId: string;
+  professorName: string;
+  language: string;
+  pronunciation: number;
+  grammar: number;
+  vocabulary: number;
+  fluency: number;
+  overallScore: number;
+  assignedLevel: string | null;
+  previousLevel: string | null;
+  feedback: string | null;
+  strengths: string[];
+  areasToImprove: string[];
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface CreateEvaluationData {
+  studentId: string;
+  language: string;
+  pronunciation: number;
+  grammar: number;
+  vocabulary: number;
+  fluency: number;
+  assignedLevel?: string;
+  feedback?: string;
+  strengths?: string[];
+  areasToImprove?: string[];
+}
+
+export interface UpdateStudentLevelData {
+  studentId: string;
+  newLevel: string;
+  reason?: string;
+}
+
+export interface StudentData {
+  id: string;
+  name: string;
+  email: string | null;
+  avatar: string | null;
+  nickname: string;
+  bio: string | null;
+  level: string;
+  joinedAt: string | null;
+  totalSessions: number;
+  hoursLearned: number;
+  skills: {
+    pronunciation: number;
+    grammar: number;
+    vocabulary: number;
+    fluency: number;
+  } | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
 
 // ============================================
 // Service Methods
 // ============================================
 
 export const EvaluationService = {
-  // Get all evaluations with optional filters
-  async getAll(filters?: EvaluationFilters): Promise<PaginatedResponse<EvaluationModel>> {
+  // Professor: Create an evaluation
+  async create(data: CreateEvaluationData): Promise<ApiResponse<EvaluationData>> {
     try {
-      return await apiClient.get<PaginatedResponse<EvaluationModel>>('/evaluations', filters as Record<string, unknown>);
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: EvaluationData;
+      }>('/evaluations', data);
+
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error fetching evaluations:', error);
-      throw error;
+      console.error('Create evaluation error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create evaluation' };
     }
-
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    let filtered = [...mockEvaluations];
-
-    if (filters?.sessionId) {
-      filtered = filtered.filter(e => e.sessionId === filters.sessionId);
-    }
-    if (filters?.studentId) {
-      filtered = filtered.filter(e => e.studentId === filters.studentId);
-    }
-    if (filters?.professorId) {
-      filtered = filtered.filter(e => e.professorId === filters.professorId);
-    }
-    if (filters?.minScore) {
-      filtered = filtered.filter(e => e.overallScore >= filters.minScore!);
-    }
-
-    return {
-      data: filtered,
-      total: filtered.length,
-      page: filters?.page || 1,
-      limit: filters?.limit || 10,
-      totalPages: Math.ceil(filtered.length / (filters?.limit || 10)),
-    };
   },
 
-  // Get evaluation by ID
-  async getById(id: string): Promise<ApiResponse<EvaluationModel>> {
+  // Professor: Get all evaluations I created
+  async getMyCreatedEvaluations(): Promise<ApiResponse<EvaluationData[]>> {
     try {
-      const data = await apiClient.get<EvaluationModel>(`/evaluations/${id}`);
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error fetching evaluation:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: EvaluationData[];
+      }>('/evaluations/my-evaluations');
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const evaluation = mockEvaluations.find(e => e.id === id);
-    if (evaluation) {
-      return { success: true, data: evaluation };
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Fetch evaluations error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch evaluations' };
     }
-    return { success: false, error: 'Evaluation not found' };
   },
 
-  // Get evaluations for a specific session
-  async getBySession(sessionId: string): Promise<ApiResponse<EvaluationModel[]>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${EVALUATIONS_ENDPOINT}/session/${sessionId}`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to fetch evaluations');
-    //   const data = await response.json();
-    //   return { success: true, data };
-    // } catch (error) {
-    //   console.error('Error fetching evaluations:', error);
-    //   return { success: false, error: error.message };
-    // }
+  // Professor: Get all students
+  async getAllStudents(): Promise<ApiResponse<StudentData[]>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: StudentData[];
+      }>('/evaluations/students');
 
-    // Mock implementation
-    const evaluations = mockEvaluations.filter(e => e.sessionId === sessionId);
-    return { success: true, data: evaluations };
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Fetch students error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch students' };
+    }
   },
 
-  // Get evaluations for a specific student
-  async getByStudent(studentId: string): Promise<ApiResponse<EvaluationModel[]>> {
+  // Professor: Update student level
+  async updateStudentLevel(data: UpdateStudentLevelData): Promise<ApiResponse<StudentData>> {
     try {
-      const data = await apiClient.get<EvaluationModel[]>(`/evaluations/student/${studentId}`);
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error fetching evaluations:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+      const response = await apiClient.put<{
+        success: boolean;
+        message: string;
+        data: StudentData;
+      }>('/evaluations/update-level', data);
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const evaluations = mockEvaluations.filter(e => e.studentId === studentId);
-    return { success: true, data: evaluations };
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Update level error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to update student level' };
+    }
   },
 
-  // Create new evaluation
-  async create(data: CreateEvaluationDTO, professorId: string): Promise<ApiResponse<EvaluationModel>> {
+  // Student: Get my evaluations
+  async getMyEvaluations(): Promise<ApiResponse<EvaluationData[]>> {
     try {
-      const result = await apiClient.post<EvaluationModel>('/evaluations', { ...data, professorId });
-      return { success: true, data: result };
-    } catch (error) {
-      console.error('Error creating evaluation:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: EvaluationData[];
+      }>('/evaluations/my-results');
 
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const newEvaluation: EvaluationModel = {
-      id: `eval-${Date.now()}`,
-      sessionId: data.sessionId,
-      studentId: data.studentId,
-      professorId,
-      criteria: data.criteria,
-      overallScore: calculateOverallScore(data.criteria),
-      feedback: data.feedback,
-      strengths: data.strengths || [],
-      areasToImprove: data.areasToImprove || [],
-      createdAt: new Date().toISOString(),
-    };
-    
-    mockEvaluations.push(newEvaluation);
-    return { success: true, data: newEvaluation };
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Fetch my evaluations error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch my evaluations' };
+    }
   },
 
-  // Update evaluation
-  async update(id: string, data: UpdateEvaluationDTO): Promise<ApiResponse<EvaluationModel>> {
+  // Student: Get my evaluations by language
+  async getMyEvaluationsByLanguage(language: string): Promise<ApiResponse<EvaluationData[]>> {
     try {
-      const result = await apiClient.put<EvaluationModel>(`/evaluations/${id}`, data);
-      return { success: true, data: result };
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: EvaluationData[];
+      }>(`/evaluations/my-results/${language}`);
+
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error updating evaluation:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      console.error('Fetch evaluations by language error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch evaluations' };
     }
-
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    const index = mockEvaluations.findIndex(e => e.id === id);
-    if (index !== -1) {
-      const existing = mockEvaluations[index];
-      const updatedCriteria = data.criteria 
-        ? { ...existing.criteria, ...data.criteria }
-        : existing.criteria;
-      
-      const updated: EvaluationModel = {
-        ...existing,
-        ...data,
-        criteria: updatedCriteria,
-        overallScore: calculateOverallScore(updatedCriteria),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      mockEvaluations[index] = updated;
-      return { success: true, data: updated };
-    }
-    return { success: false, error: 'Evaluation not found' };
-  },
-
-  // Delete evaluation
-  async delete(id: string): Promise<ApiResponse<void>> {
-    try {
-      await apiClient.delete<void>(`/evaluations/${id}`);
-      return { success: true };
-    } catch (error) {
-      console.error('Error deleting evaluation:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // Mock implementation
-    // const index = mockEvaluations.findIndex(e => e.id === id);
-    // if (index !== -1) {
-    //   mockEvaluations.splice(index, 1);
-    //   return { success: true };
-    // }
-    // return { success: false, error: 'Evaluation not found' };
-  },
-
-  // Get student statistics
-  async getStudentStatistics(studentId: string): Promise<ApiResponse<{
-    averageScore: number;
-    evaluationCount: number;
-    skillsTrend: Record<string, number[]>;
-    recentEvaluations: EvaluationModel[];
-  }>> {
-    try {
-      const data = await apiClient.get<{
-        averageScore: number;
-        evaluationCount: number;
-        skillsTrend: Record<string, number[]>;
-        recentEvaluations: EvaluationModel[];
-      }>(`/evaluations/student/${studentId}/statistics`);
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error fetching student statistics:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-
-    // ============================================
-    // Mock Implementation (fallback)
-    // ============================================
-    // const studentEvals = mockEvaluations.filter(e => e.studentId === studentId);
-    // const averageScore = studentEvals.length > 0
-    //   ? studentEvals.reduce((sum, e) => sum + e.overallScore, 0) / studentEvals.length
-    //   : 0;
-    //
-    // return {
-    //   success: true,
-    //   data: {
-    //     averageScore: Math.round(averageScore),
-    //     evaluationCount: studentEvals.length,
-    //     skillsTrend: {
-    //       pronunciation: studentEvals.map(e => e.criteria.pronunciation),
-    //       grammar: studentEvals.map(e => e.criteria.grammar),
-    //       vocabulary: studentEvals.map(e => e.criteria.vocabulary),
-    //       fluency: studentEvals.map(e => e.criteria.fluency),
-    //     },
-    //     recentEvaluations: studentEvals.slice(-5),
-    //   },
-    // };
   },
 };
 
 export default EvaluationService;
+

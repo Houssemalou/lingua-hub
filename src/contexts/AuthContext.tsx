@@ -223,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     AuthService.logout();
     setUser(null);
+    window.location.href = '/auth';
   };
 
   return (

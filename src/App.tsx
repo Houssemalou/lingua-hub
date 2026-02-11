@@ -28,6 +28,8 @@ import ProfessorProfile from "./pages/professor/ProfessorProfile";
 import ProfessorLiveRoom from "./pages/professor/ProfessorLiveRoom";
 import ProfessorSessionSummaries from "./pages/professor/ProfessorSessionSummaries";
 import ProfessorChallenges from "./pages/professor/ProfessorChallenges";
+import ProfessorEvaluations from "./pages/professor/ProfessorEvaluations";
+import StudentEvaluations from "./pages/student/StudentEvaluations";
 import AuthPage from "./pages/auth/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -62,6 +64,7 @@ const App = () => (
                     <Route path="/student/progress" element={<StudentProgress />} />
                     <Route path="/student/summaries" element={<StudentSessionSummaries />} />
                     <Route path="/student/games" element={<StudentGames />} />
+                    <Route path="/student/evaluations" element={<StudentEvaluations />} />
                     {/* Professor Routes */}
                     <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
                     <Route path="/professor/sessions" element={<ProfessorSessions />} />
@@ -70,6 +73,7 @@ const App = () => (
                     <Route path="/professor/room/:roomId" element={<ProfessorLiveRoom />} />
                     <Route path="/professor/summaries" element={<ProfessorSessionSummaries />} />
                     <Route path="/professor/challenges" element={<ProfessorChallenges />} />
+                    <Route path="/professor/evaluations" element={<ProfessorEvaluations />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

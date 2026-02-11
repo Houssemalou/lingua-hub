@@ -98,9 +98,17 @@ const storeUser = (user: AuthUser) => {
 };
 
 const clearAuth = () => {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  const keysToPreserve = [
+    'temp_student_avatar', 'temp_student_bio', 'temp_student_nickname',
+    'temp_professor_avatar', 'temp_professor_bio',
+  ];
+  const preserved: Record<string, string> = {};
+  keysToPreserve.forEach(key => {
+    const val = localStorage.getItem(key);
+    if (val) preserved[key] = val;
+  });
+  localStorage.clear();
+  Object.entries(preserved).forEach(([key, val]) => localStorage.setItem(key, val));
   setClientTokens('', '');
 };
 

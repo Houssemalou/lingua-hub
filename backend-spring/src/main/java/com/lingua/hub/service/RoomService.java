@@ -1,11 +1,13 @@
 package com.lingua.hub.service;
 
+import com.lingua.hub.dto.livekit.LiveKitTokenResponse;
 import com.lingua.hub.dto.room.*;
 import com.lingua.hub.entity.*;
 import com.lingua.hub.exception.BadRequestException;
 import com.lingua.hub.exception.ResourceNotFoundException;
 import com.lingua.hub.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,9 +34,15 @@ public class RoomService {
 
     @Autowired
     private ProfessorRepository professorRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private LiveKitService liveKitService;
+    
+    @Value("${app.allow-early-join:true}")
+    private boolean allowEarlyJoin;
 
     @Transactional
     public RoomDTO createRoom(CreateRoomRequest request, UUID creatorId) {
@@ -203,6 +211,79 @@ public class RoomService {
         return participants.stream()
                 .map(this::mapParticipantToDTO)
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Join a room and get LiveKit token
+     * Works for any user (admin, professor, student) in dev mode
+     */
+    @Transactional
+    public LiveKitTokenResponse joinRoom(UUID roomId, UUID userId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Check if room is joinable (skip time check in dev mode)
+        if (!allowEarlyJoin) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime scheduledTime = room.getScheduledAt();
+            LocalDateTime allowedJoinTime = scheduledTime.minusMinutes(15);
+            
+            if (now.isBefore(allowedJoinTime)) {
+                throw new BadRequestException("Session has not started yet. You can join 15 minutes before scheduled time.");
+            }
+            
+            if (room.getStatus() == Room.RoomStatus.COMPLETED) {
+                throw new BadRequestException("This session has already ended.");
+            }
+            
+            if (room.getStatus() == Room.RoomStatus.CANCELLED) {
+                throw new BadRequestException("This session has been cancelled.");
+            }
+        }
+        
+        // Create or update participant record if user is a student
+        if (user.getRole() == User.UserRole.STUDENT) {
+            Student student = studentRepository.findByUserId(userId)
+                    .orElseGet(() -> {
+                        // Create student if not exists
+                        Student newStudent = Student.builder()
+                                .user(user)
+                                .level(Student.LanguageLevel.BEGINNER)
+                                .build();
+                        return studentRepository.save(newStudent);
+                    });
+            
+            // Check if participant already exists
+            RoomParticipant participant = participantRepository
+                    .findByRoomIdAndStudentId(roomId, student.getId())
+                    .orElseGet(() -> {
+                        // Create new participant
+                        RoomParticipant newParticipant = RoomParticipant.builder()
+                                .room(room)
+                                .student(student)
+                                .invited(false)
+                                .build();
+                        return participantRepository.save(newParticipant);
+                    });
+            
+            // Update joined time
+            if (participant.getJoinedAt() == null) {
+                participant.setJoinedAt(LocalDateTime.now());
+                participantRepository.save(participant);
+            }
+        }
+        
+        // Auto-start room if scheduled and not already started
+        if (room.getStatus() == Room.RoomStatus.SCHEDULED) {
+            room.setStatus(Room.RoomStatus.LIVE);
+            roomRepository.save(room);
+        }
+        
+        // Generate and return LiveKit token
+        return liveKitService.generateToken(roomId, userId);
     }
 
     @Transactional

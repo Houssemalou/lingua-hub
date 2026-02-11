@@ -157,4 +157,17 @@ public class RoomController {
         roomService.clearPing(roomId, studentId);
         return ResponseEntity.ok(ApiResponse.success("Ping cleared", null));
     }
+    
+    @PostMapping("/{id}/join")
+    @Operation(
+        summary = "Rejoindre une session", 
+        description = "Permet à n'importe quel utilisateur (admin, prof, étudiant) de rejoindre une session et obtenir un token LiveKit"
+    )
+    public ResponseEntity<ApiResponse<com.lingua.hub.dto.livekit.LiveKitTokenResponse>> joinRoom(
+            @PathVariable UUID id,
+            @Parameter(hidden = true) @RequestAttribute("userId") UUID userId
+    ) {
+        com.lingua.hub.dto.livekit.LiveKitTokenResponse tokenResponse = roomService.joinRoom(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Token generated successfully", tokenResponse));
+    }
 }

@@ -43,16 +43,19 @@ export default function AdminLiveSession() {
           const roomPayload = (response.data as any).data ? (response.data as any).data : response.data;
           setRoom(roomPayload);
 
-          // If current user is admin or the assigned professor and room is not live, try to start it automatically
-          const isAdmin = user?.role === 'admin';
+          // Only the assigned professor can auto-start a session, not admin
           const isAssignedProfessor = user?.role === 'professor' && roomPayload.professorId === user?.id;
 
-          if (roomPayload.status !== 'live' && (isAdmin || isAssignedProfessor)) {
+          if (roomPayload.status !== 'live' && isAssignedProfessor) {
             setStarting(true);
             const startRes = await RoomService.startSession(roomPayload.id);
-            if (startRes.success && startRes.data) {
-              const started = (startRes as any).data?.data ? (startRes as any).data.data : startRes.data;
-              setRoom(started);
+            if (startRes.success) {
+              // Reload room to get updated status
+              const updatedResponse = await RoomService.getById(roomPayload.id);
+              if (updatedResponse.success && updatedResponse.data) {
+                const updated = (updatedResponse.data as any).data ? (updatedResponse.data as any).data : updatedResponse.data;
+                setRoom(updated);
+              }
               toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
             } else {
               // Starting failed, keep the loaded room and show error
@@ -115,7 +118,7 @@ export default function AdminLiveSession() {
     );
   }
 
-  // If room is not live, show waiting screen (but allow admin/professor to start it)
+  // If room is not live, show waiting screen (but allow only assigned professor to start it)
   if (room.status !== 'live') {
     const isAdmin = user?.role === 'admin';
     const isAssignedProfessor = user?.role === 'professor' && room.professorId === user?.id;
@@ -141,16 +144,21 @@ export default function AdminLiveSession() {
               {isRTL ? 'العودة إلى الغرف' : 'Back to Rooms'}
             </Button>
 
-            {(isAdmin || isAssignedProfessor) && (
+            {/* Only assigned professor can start the session, not admin */}
+            {isAssignedProfessor && (
               <Button
                 variant="default"
                 onClick={async () => {
                   try {
                     setStarting(true);
                     const startRes = await RoomService.startSession(room.id);
-                    if (startRes.success && startRes.data) {
-                      const started = (startRes as any).data?.data ? (startRes as any).data.data : startRes.data;
-                      setRoom(started);
+                    if (startRes.success) {
+                      // Reload room to get updated status
+                      const updatedResponse = await RoomService.getById(room.id);
+                      if (updatedResponse.success && updatedResponse.data) {
+                        const updated = (updatedResponse.data as any).data ? (updatedResponse.data as any).data : updatedResponse.data;
+                        setRoom(updated);
+                      }
                       toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
                     } else {
                       toast.error(startRes.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));

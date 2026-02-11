@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Room, RoomEvent, Participant, RemoteParticipant, LocalParticipant } from 'livekit-client';
 import { RoomService } from '@/services/RoomService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +27,8 @@ export const useLiveKitRoom = (roomId: string) => {
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const { user } = useAuth();
+  const isConnectingRef = useRef(false);
+  const eventListenersSetupRef = useRef(false);
 
   const updateParticipants = useCallback(() => {
     const participantList: LiveKitParticipant[] = [];
@@ -73,51 +75,24 @@ export const useLiveKitRoom = (roomId: string) => {
     setParticipants(participantList);
   }, [room]);
 
-  const connectToRoom = useCallback(async () => {
-    if (!user?.id) {
-      setError('User not authenticated');
-      return;
-    }
+  // Set up event listeners once
+  useEffect(() => {
+    if (!eventListenersSetupRef.current) {
+      eventListenersSetupRef.current = true;
+      
+      room.on(RoomEvent.Connected, () => {
+        console.log('RoomEvent.Connected fired');
+        setIsConnected(true);
+        updateParticipants();
+      });
 
-    try {
-      // Get token from backend
-      const tokenResponse = await RoomService.getLiveKitToken(roomId, user.id);
-      if (!tokenResponse.success || !tokenResponse.data) {
-        const errorMessage = tokenResponse.error || 'Failed to get LiveKit token';
-        throw new Error(errorMessage);
-      }
-
-      const token = tokenResponse.data.token;
-      const serverUrl = tokenResponse.data.serverUrl;
-
-      // Validate token and serverUrl
-      if (!token || !serverUrl) {
-        throw new Error('Invalid token or server URL received from backend');
-      }
-
-      if (typeof serverUrl !== 'string' || !serverUrl.trim()) {
-        throw new Error('Server URL is empty or invalid');
-      }
-
-      if (typeof token !== 'string' || !token.trim()) {
-        throw new Error('Token is empty or invalid');
-      }
-
-      // Save token + serverUrl for consumers (components) and for debugging
-      setToken(token);
-      setServerUrl(serverUrl);
-
-      // Connect to LiveKit room
-      await room.connect(serverUrl, token);
-      setIsConnected(true);
-      setError(null);
-
-      // Set up event listeners
       room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
+        console.log('Participant connected:', participant.identity);
         updateParticipants();
       });
 
       room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+        console.log('Participant disconnected:', participant.identity);
         updateParticipants();
       });
 
@@ -129,16 +104,79 @@ export const useLiveKitRoom = (roomId: string) => {
         updateParticipants();
       });
 
-      updateParticipants();
+      room.on(RoomEvent.Disconnected, (reason) => {
+        console.log('Disconnected from room, reason:', reason);
+        setIsConnected(false);
+      });
 
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to connect to room';
-      setError(errorMessage);
-      console.error('LiveKit connection error:', err);
+      room.on(RoomEvent.Reconnecting, () => {
+        console.log('Reconnecting to room...');
+      });
+
+      room.on(RoomEvent.Reconnected, () => {
+        console.log('Reconnected to room');
+        setIsConnected(true);
+      });
+
+      room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+        console.log('Connection quality changed:', quality, participant?.identity);
+      });
     }
-  }, [user?.id, roomId, room, updateParticipants]);
+  }, [room, updateParticipants]);
+
+  // Fetch token without connecting (connection is managed by LiveKitRoomComponent)
+  useEffect(() => {
+    const fetchToken = async () => {
+      if (isConnectingRef.current || !user?.id) {
+        return;
+      }
+
+      isConnectingRef.current = true;
+
+      try {
+        console.log('Getting LiveKit token for room:', roomId, 'user:', user.id);
+        
+        const tokenResponse = await RoomService.getLiveKitToken(roomId, user.id);
+        
+        console.log('Token response received:', tokenResponse);
+        
+        if (!tokenResponse.success || !tokenResponse.data) {
+          const errorMessage = tokenResponse.error || 'Failed to get LiveKit token';
+          console.error('Token error:', errorMessage);
+          throw new Error(errorMessage);
+        }
+
+        const { token, serverUrl } = tokenResponse.data;
+
+        if (!token || !serverUrl) {
+          throw new Error('Invalid token or server URL received from backend');
+        }
+
+        console.log('LiveKit credentials ready:', { serverUrl, hasToken: !!token });
+
+        setToken(token);
+        setServerUrl(serverUrl);
+        setError(null);
+
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to get LiveKit token';
+        setError(errorMessage);
+        console.error('LiveKit token error:', err);
+      } finally {
+        isConnectingRef.current = false;
+      }
+    };
+
+    fetchToken();
+  }, [user?.id, roomId]);
+
+  const connectToRoom = useCallback(async () => {
+    // This is now a no-op since LiveKitRoomComponent handles connection
+    console.log('connectToRoom called but connection is managed by LiveKitRoomComponent');
+  }, []);
 
   const disconnectFromRoom = useCallback(async () => {
+    isConnectingRef.current = false;
     await room.disconnect();
     setIsConnected(false);
     setParticipants([]);
@@ -179,11 +217,8 @@ export const useLiveKitRoom = (roomId: string) => {
     }
   }, [room, updateParticipants]);
 
-  useEffect(() => {
-    return () => {
-      room.disconnect();
-    };
-  }, [room]);
+  // Note: cleanup is handled by the component that uses this hook (LiveKitRoom.tsx)
+  // Do not add a useEffect with room.disconnect() here as it causes reconnection loops
 
   return {
     room,

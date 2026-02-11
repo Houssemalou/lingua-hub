@@ -180,3 +180,41 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/40;
 }
+
+/* LiveKit Chat Styles */
+.lk-chat-entry {
+  @apply mb-3 p-3 rounded-lg bg-white shadow-sm border border-gray-100;
+}
+
+.lk-chat-entry-timestamp {
+  @apply text-xs text-gray-500 mb-1;
+}
+
+.lk-chat-entry-name {
+  @apply font-semibold text-sm text-gray-900 mb-1;
+}
+
+.lk-chat-entry-message {
+  @apply text-sm text-gray-700 break-words;
+}
+
+.lk-chat-form {
+  @apply flex gap-2;
+}
+
+.lk-form-control {
+  @apply flex-1;
+}
+
+.chat-messages {
+  @apply space-y-2;
+}
+
+/* Screen Share Styles */
+.screen-share-overlay {
+  @apply absolute inset-0 bg-black/90 z-50;
+}
+
+.pip-container {
+  @apply absolute bottom-6 right-6 z-50 rounded-xl overflow-hidden shadow-2xl;
+}

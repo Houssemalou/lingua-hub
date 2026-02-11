@@ -11,6 +11,7 @@ import {
   PhoneOff,
   Settings2,
   ClipboardCheck,
+  FileText,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { RoomModel } from '@/models';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
+import { RoomSessionSummaryEditor } from '@/components/professor/RoomSessionSummaryEditor';
 
 export default function ProfessorLiveRoom() {
   const { roomId } = useParams();
@@ -38,6 +40,7 @@ export default function ProfessorLiveRoom() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showEvaluationDialog, setShowEvaluationDialog] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [showSummaryEditor, setShowSummaryEditor] = useState(false);
   
   useEffect(() => {
     const loadRoom = async () => {
@@ -175,10 +178,21 @@ export default function ProfessorLiveRoom() {
             </p>
           </div>
         </div>
-        <Badge variant="live" className="animate-pulse">
-          <Play className="w-3 h-3 mr-1" />
-          {isRTL ? 'مباشر' : 'LIVE'}
-        </Badge>
+        <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowSummaryEditor(true)}
+            className={cn("gap-2", isRTL && "flex-row-reverse")}
+          >
+            <FileText className="w-4 h-4" />
+            {isRTL ? 'إنشاء ملخص' : 'Créer résumé'}
+          </Button>
+          <Badge variant="live" className="animate-pulse">
+            <Play className="w-3 h-3 mr-1" />
+            {isRTL ? 'مباشر' : 'LIVE'}
+          </Badge>
+        </div>
       </div>
 
       {/* LiveKit Room */}
@@ -188,6 +202,20 @@ export default function ProfessorLiveRoom() {
           onLeaveRoom={handleLeaveRoom}
         />
       </div>
+
+      {/* Session Summary Editor */}
+      <RoomSessionSummaryEditor
+        roomId={room.id}
+        roomName={room.name}
+        language={room.language}
+        level={room.level}
+        isOpen={showSummaryEditor}
+        onClose={() => setShowSummaryEditor(false)}
+        onSaved={() => {
+          toast.success(isRTL ? 'تم حفظ ملخص الجلسة' : 'Résumé de session sauvegardé');
+        }}
+        isRTL={isRTL}
+      />
     </div>
   );
 }

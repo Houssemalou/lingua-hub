@@ -12,6 +12,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { VideoTrack, AudioTrack } from '@livekit/components-react';
+import { Participant as LiveKitParticipant, TrackPublication, Track } from 'livekit-client';
 
 export interface Participant {
   id: string;
@@ -28,6 +30,7 @@ export interface Participant {
 
 interface ParticipantCardProps {
   participant: Participant;
+  liveKitParticipant?: LiveKitParticipant;
   localVideoRef?: React.RefObject<HTMLVideoElement>;
   isRTL?: boolean;
   size?: 'small' | 'medium' | 'large';
@@ -35,14 +38,27 @@ interface ParticipantCardProps {
 
 export function ParticipantCard({
   participant,
+  liveKitParticipant,
   localVideoRef,
   isRTL = false,
   size = 'medium',
 }: ParticipantCardProps) {
+  // Get video and screen share tracks from LiveKit participant
+  const videoPublication = liveKitParticipant ? Array.from(liveKitParticipant.videoTrackPublications.values())
+    .find(pub => pub.source === Track.Source.Camera) : undefined;
+  const videoTrack = videoPublication?.track;
+  
+  const screenSharePublication = liveKitParticipant ? Array.from(liveKitParticipant.videoTrackPublications.values())
+    .find(pub => pub.source === Track.Source.ScreenShare) : undefined;
+  const screenShareTrack = screenSharePublication?.track;
+  
+  const audioPublication = liveKitParticipant ? Array.from(liveKitParticipant.audioTrackPublications.values())[0] : undefined;
+  const audioTrack = audioPublication?.track;
+  
   const sizeClasses = {
-    small: 'h-24 sm:h-28',
-    medium: 'h-32 sm:h-40',
-    large: 'h-40 sm:h-48 lg:h-56',
+    small: 'h-32 sm:h-40',
+    medium: 'h-48 sm:h-56 lg:h-64',
+    large: 'h-full min-h-[300px]',
   };
 
   const avatarSizes = {
@@ -56,44 +72,46 @@ export function ParticipantCard({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        "relative w-full rounded-xl overflow-hidden border-2 transition-all flex-shrink-0",
+        "relative w-full rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 shadow-md",
         sizeClasses[size],
         participant.isCurrentUser
-          ? "border-primary/50 bg-primary/5"
+          ? "border-blue-400 ring-2 ring-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
           : participant.isHost
-          ? "border-accent/50 bg-accent/5"
+          ? "border-purple-400 ring-2 ring-purple-200 bg-gradient-to-br from-purple-50 to-pink-50"
           : participant.isPicked
-          ? "border-success/50 bg-success/5 ring-2 ring-success/30"
-          : "border-border bg-muted/50",
-        participant.isCameraOn && "bg-card"
+          ? "border-green-400 ring-2 ring-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
+          : "border-gray-200 bg-white",
+        participant.isCameraOn && "bg-black"
       )}
     >
       {/* Video or Avatar placeholder */}
       <div className="absolute inset-0 flex items-center justify-center">
-        {participant.isCameraOn ? (
-          participant.isCurrentUser && localVideoRef ? (
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
+        {/* Display screen share if available */}
+        {participant.isScreenSharing && screenShareTrack ? (
+          <VideoTrack
+            trackRef={{ participant: liveKitParticipant!, publication: screenSharePublication!, source: Track.Source.ScreenShare }}
+            className="w-full h-full object-contain bg-black"
+          />
+        ) : participant.isCameraOn && videoTrack ? (
+          /* Display camera video */
+          <>
+            <VideoTrack
+              trackRef={{ participant: liveKitParticipant!, publication: videoPublication!, source: Track.Source.Camera }}
               className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-              <Avatar className={avatarSizes[size]}>
-                <AvatarImage src={participant.avatar} />
-                <AvatarFallback className="text-xl">
-                  {participant.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          )
+            {audioTrack && audioPublication && (
+              <AudioTrack
+                trackRef={{ participant: liveKitParticipant!, publication: audioPublication, source: Track.Source.Microphone }}
+                volume={participant.isCurrentUser ? 0 : 1}
+              />
+            )}
+          </>
         ) : (
-          <div className="text-center">
+          /* Display avatar when camera is off */
+          <div className="text-center w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
             <Avatar className={avatarSizes[size]}>
               <AvatarImage src={participant.avatar} />
-              <AvatarFallback>
+              <AvatarFallback className="text-xl">
                 {participant.name.charAt(0)}
               </AvatarFallback>
             </Avatar>
@@ -111,50 +129,50 @@ export function ParticipantCard({
       )}
 
       {/* Participant Info Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2 bg-gradient-to-t from-black/70 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
         <div className={cn(
-          "flex items-center justify-between gap-1",
+          "flex items-center justify-between gap-2",
           isRTL && "flex-row-reverse"
         )}>
           <div className={cn(
-            "flex items-center gap-1 min-w-0 flex-1",
+            "flex items-center gap-1.5 min-w-0 flex-1",
             isRTL && "flex-row-reverse"
           )}>
             {participant.isHost && (
-              <Crown className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 flex-shrink-0" />
+              <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0 drop-shadow-lg" />
             )}
-            <span className="text-white text-xs sm:text-sm font-medium truncate">
+            <span className="text-white text-sm sm:text-base font-semibold truncate drop-shadow-md">
               {participant.name}
               {participant.isCurrentUser && ' (Vous)'}
             </span>
           </div>
           <div className={cn(
-            "flex items-center gap-0.5 sm:gap-1 flex-shrink-0",
+            "flex items-center gap-1 sm:gap-1.5 flex-shrink-0",
             isRTL && "flex-row-reverse"
           )}>
             {participant.isScreenSharing && (
-              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-success/80 flex items-center justify-center">
-                <MonitorUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-500 shadow-md flex items-center justify-center">
+                <MonitorUp className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               </div>
             )}
             <div className={cn(
-              "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center",
-              participant.isCameraOn ? "bg-primary/80" : "bg-muted-foreground/50"
+              "w-6 h-6 sm:w-7 sm:h-7 rounded-full shadow-md flex items-center justify-center",
+              participant.isCameraOn ? "bg-green-500" : "bg-red-500"
             )}>
               {participant.isCameraOn ? (
-                <Video className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                <Video className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               ) : (
-                <VideoOff className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                <VideoOff className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               )}
             </div>
             <div className={cn(
-              "w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center",
-              participant.isMuted ? "bg-muted-foreground/50" : "bg-destructive/80"
+              "w-6 h-6 sm:w-7 sm:h-7 rounded-full shadow-md flex items-center justify-center",
+              participant.isMuted ? "bg-red-500" : "bg-green-500"
             )}>
               {participant.isMuted ? (
-                <MicOff className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                <MicOff className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               ) : (
-                <Mic className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+                <Mic className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               )}
             </div>
           </div>
@@ -163,14 +181,14 @@ export function ParticipantCard({
 
       {/* Role Badge */}
       {participant.role && (
-        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
           <Badge 
             variant="secondary" 
             className={cn(
-              "text-[10px] sm:text-xs px-1.5 py-0.5",
-              participant.role === 'professor' && "bg-primary/20 text-primary",
-              participant.role === 'student' && "bg-accent/20 text-accent-foreground",
-              participant.role === 'admin' && "bg-destructive/20 text-destructive"
+              "text-xs sm:text-sm px-2 py-0.5 font-semibold shadow-md",
+              participant.role === 'professor' && "bg-blue-500 text-white border-0",
+              participant.role === 'student' && "bg-green-500 text-white border-0",
+              participant.role === 'admin' && "bg-red-500 text-white border-0"
             )}
           >
             {participant.role === 'professor' ? 'Prof' : 
