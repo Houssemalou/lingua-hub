@@ -139,9 +139,8 @@ export default function ProfessorLiveRoom() {
                   try {
                     setStarting(true);
                     const startRes = await RoomService.startSession(room.id);
-                    if (startRes.success && startRes.data) {
-                      const started = (startRes as any).data?.data ? (startRes as any).data.data : startRes.data;
-                      setRoom(started);
+                    if (startRes.success) {
+                      setRoom({ ...room, status: 'live' });
                       toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
                     } else {
                       toast.error(startRes.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));
