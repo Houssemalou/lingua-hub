@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Award, Target, BarChart3 } from 'lucide-react';
+import { TrendingUp, Award, Target, BarChart3, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { currentStudent } from '@/data/mockData';
+import { StatsService, StudentStats } from '@/services/StatsService';
 
 const container = {
   hidden: { opacity: 0 },
@@ -31,45 +31,65 @@ const levelDescriptions: Record<string, { name: string; description: string; min
 const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export default function StudentProgress() {
-  const averageProgress = Math.round(
-    (currentStudent.skills.pronunciation + 
-     currentStudent.skills.grammar + 
-     currentStudent.skills.vocabulary + 
-     currentStudent.skills.fluency) / 4
-  );
+  const [statsData, setStatsData] = useState<StudentStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const currentLevelIndex = levels.indexOf(currentStudent.level);
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await StatsService.getStudentStats();
+        setStatsData(data);
+      } catch (err) {
+        console.error('Failed to fetch student stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading || !statsData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const averageProgress = Math.round(statsData.overallProgress);
+  const currentLevel = statsData.level;
+  const currentLevelIndex = levels.indexOf(currentLevel);
   const nextLevel = levels[currentLevelIndex + 1];
-  const progressToNextLevel = averageProgress - levelDescriptions[currentStudent.level].minScore;
+  const progressToNextLevel = averageProgress - levelDescriptions[currentLevel].minScore;
   const rangeToNextLevel = nextLevel 
-    ? levelDescriptions[nextLevel].minScore - levelDescriptions[currentStudent.level].minScore
+    ? levelDescriptions[nextLevel].minScore - levelDescriptions[currentLevel].minScore
     : 20;
 
   const skillDetails = [
     { 
       name: 'Pronunciation', 
-      value: currentStudent.skills.pronunciation,
+      value: statsData.skills.pronunciation,
       icon: '🗣️',
       description: 'Your ability to produce sounds accurately',
       color: 'bg-level-a1'
     },
     { 
       name: 'Grammar', 
-      value: currentStudent.skills.grammar,
+      value: statsData.skills.grammar,
       icon: '📝',
       description: 'Understanding and using language rules',
       color: 'bg-level-b1'
     },
     { 
       name: 'Vocabulary', 
-      value: currentStudent.skills.vocabulary,
+      value: statsData.skills.vocabulary,
       icon: '📚',
       description: 'Knowledge of words and their meanings',
       color: 'bg-level-b2'
     },
     { 
       name: 'Fluency', 
-      value: currentStudent.skills.fluency,
+      value: statsData.skills.fluency,
       icon: '💬',
       description: 'Smoothness and flow of speech',
       color: 'bg-level-c1'
@@ -96,14 +116,14 @@ export default function StudentProgress() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
               <div className="flex items-center gap-4 sm:gap-6">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-xl sm:rounded-2xl bg-sidebar-primary-foreground/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                  <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-sidebar-primary-foreground">{currentStudent.level}</span>
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-sidebar-primary-foreground">{currentLevel}</span>
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-sidebar-primary-foreground">
-                    {levelDescriptions[currentStudent.level].name}
+                    {levelDescriptions[currentLevel].name}
                   </h2>
                   <p className="text-sidebar-primary-foreground/80 mt-1 max-w-md text-sm sm:text-base">
-                    {levelDescriptions[currentStudent.level].description}
+                    {levelDescriptions[currentLevel].description}
                   </p>
                 </div>
               </div>

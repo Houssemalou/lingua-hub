@@ -8,6 +8,8 @@ import {
   MonitorUp,
   Crown,
   Hand,
+  Star,
+  Sparkles,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +35,7 @@ interface ParticipantCardProps {
   liveKitParticipant?: LiveKitParticipant;
   localVideoRef?: React.RefObject<HTMLVideoElement>;
   isRTL?: boolean;
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'full';
 }
 
 export function ParticipantCard({
@@ -55,33 +57,41 @@ export function ParticipantCard({
   const audioPublication = liveKitParticipant ? Array.from(liveKitParticipant.audioTrackPublications.values())[0] : undefined;
   const audioTrack = audioPublication?.track;
   
+  const isFull = size === 'full';
+
   const sizeClasses = {
     small: 'h-32 sm:h-40',
     medium: 'h-48 sm:h-56 lg:h-64',
     large: 'h-full min-h-[300px]',
+    full: 'w-full h-full',
   };
 
   const avatarSizes = {
     small: 'w-10 h-10 sm:w-12 sm:h-12',
     medium: 'w-14 h-14 sm:w-16 sm:h-16',
     large: 'w-16 h-16 sm:w-20 sm:h-20',
+    full: 'w-24 h-24 sm:w-32 sm:h-32',
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 200, damping: 20 }}
       className={cn(
-        "relative w-full rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 shadow-md",
+        "relative overflow-hidden transition-all flex-shrink-0",
         sizeClasses[size],
-        participant.isCurrentUser
-          ? "border-blue-400 ring-2 ring-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
-          : participant.isHost
-          ? "border-purple-400 ring-2 ring-purple-200 bg-gradient-to-br from-purple-50 to-pink-50"
-          : participant.isPicked
-          ? "border-green-400 ring-2 ring-green-200 bg-gradient-to-br from-green-50 to-emerald-50"
-          : "border-gray-200 bg-white",
-        participant.isCameraOn && "bg-black"
+        isFull
+          ? "rounded-none border-0 shadow-none"
+          : "w-full rounded-2xl border-2 shadow-lg",
+        !isFull && participant.isCurrentUser
+          ? "border-cyan-400 ring-2 ring-cyan-300/40"
+          : !isFull && participant.isHost
+          ? "border-violet-400 ring-2 ring-violet-300/40"
+          : !isFull && participant.isPicked
+          ? "border-emerald-400 ring-2 ring-emerald-300/40"
+          : !isFull && "border-white/10",
+        participant.isCameraOn ? "bg-black" : "bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-950"
       )}
     >
       {/* Video or Avatar placeholder */}
@@ -107,14 +117,44 @@ export function ParticipantCard({
             )}
           </>
         ) : (
-          /* Display avatar when camera is off */
-          <div className="text-center w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-            <Avatar className={avatarSizes[size]}>
-              <AvatarImage src={participant.avatar} />
-              <AvatarFallback className="text-xl">
-                {participant.name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+          /* Display avatar when camera is off - fun animated background */
+          <div className="text-center w-full h-full bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900 flex items-center justify-center relative overflow-hidden">
+            {/* Animated floating shapes for kid-friendly feel */}
+            <motion.div
+              animate={{ y: [-8, 8, -8], rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute top-[10%] left-[10%] text-yellow-400/20"
+            >
+              <Star className="w-8 h-8 sm:w-12 sm:h-12" fill="currentColor" />
+            </motion.div>
+            <motion.div
+              animate={{ y: [6, -6, 6], rotate: [0, -15, 15, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+              className="absolute bottom-[15%] right-[12%] text-pink-400/20"
+            >
+              <Sparkles className="w-6 h-6 sm:w-10 sm:h-10" />
+            </motion.div>
+            <motion.div
+              animate={{ y: [4, -4, 4], scale: [1, 1.1, 1] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+              className="absolute top-[20%] right-[20%] text-cyan-400/15"
+            >
+              <Star className="w-5 h-5 sm:w-7 sm:h-7" fill="currentColor" />
+            </motion.div>
+            <motion.div
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Avatar className={cn(avatarSizes[size], "ring-4 ring-white/20 shadow-2xl")}>
+                <AvatarImage src={participant.avatar} />
+                <AvatarFallback className={cn(
+                  "bg-gradient-to-br from-cyan-500 to-violet-600 text-white font-bold",
+                  isFull ? "text-5xl" : "text-xl"
+                )}>
+                  {participant.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+            </motion.div>
           </div>
         )}
       </div>
@@ -129,19 +169,33 @@ export function ParticipantCard({
       )}
 
       {/* Participant Info Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
+      <div className={cn(
+        "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent",
+        isFull ? "p-4 sm:p-6" : "p-2 sm:p-3"
+      )}>
         <div className={cn(
           "flex items-center justify-between gap-2",
           isRTL && "flex-row-reverse"
         )}>
           <div className={cn(
-            "flex items-center gap-1.5 min-w-0 flex-1",
+            "flex items-center gap-2 min-w-0 flex-1",
             isRTL && "flex-row-reverse"
           )}>
             {participant.isHost && (
-              <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0 drop-shadow-lg" />
+              <motion.div
+                animate={{ rotate: [0, -10, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <Crown className={cn(
+                  "text-amber-400 flex-shrink-0 drop-shadow-lg",
+                  isFull ? "w-6 h-6 sm:w-7 sm:h-7" : "w-4 h-4 sm:w-5 sm:h-5"
+                )} />
+              </motion.div>
             )}
-            <span className="text-white text-sm sm:text-base font-semibold truncate drop-shadow-md">
+            <span className={cn(
+              "text-white font-semibold truncate drop-shadow-md",
+              isFull ? "text-lg sm:text-xl" : "text-sm sm:text-base"
+            )}>
               {participant.name}
               {participant.isCurrentUser && ' (Vous)'}
             </span>
@@ -179,22 +233,31 @@ export function ParticipantCard({
         </div>
       </div>
 
-      {/* Role Badge */}
+      {/* Role Badge - fun pill style */}
       {participant.role && (
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+        <motion.div
+          initial={{ x: 20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.3, type: 'spring' }}
+          className={cn(
+            "absolute",
+            isFull ? "top-4 right-4 sm:top-5 sm:right-5" : "top-2 right-2 sm:top-3 sm:right-3"
+          )}
+        >
           <Badge 
             variant="secondary" 
             className={cn(
-              "text-xs sm:text-sm px-2 py-0.5 font-semibold shadow-md",
-              participant.role === 'professor' && "bg-blue-500 text-white border-0",
-              participant.role === 'student' && "bg-green-500 text-white border-0",
-              participant.role === 'admin' && "bg-red-500 text-white border-0"
+              "font-bold shadow-lg border-0 backdrop-blur-sm",
+              isFull ? "text-sm sm:text-base px-3 py-1 rounded-full" : "text-xs sm:text-sm px-2 py-0.5 rounded-full",
+              participant.role === 'professor' && "bg-blue-500/90 text-white",
+              participant.role === 'student' && "bg-emerald-500/90 text-white",
+              participant.role === 'admin' && "bg-rose-500/90 text-white"
             )}
           >
-            {participant.role === 'professor' ? 'Prof' : 
-             participant.role === 'student' ? 'Élève' : 'Admin'}
+            {participant.role === 'professor' ? '🎓 Prof' : 
+             participant.role === 'student' ? '⭐ Élève' : '🛡️ Admin'}
           </Badge>
-        </div>
+        </motion.div>
       )}
     </motion.div>
   );

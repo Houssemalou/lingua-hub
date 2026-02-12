@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users } from 'lucide-react';
+import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { fr, ar } from 'date-fns/locale';
-import { canJoinRoom } from '@/lib/roomUtils';
+import { canJoinRoom, formatTimeUntilJoinable } from '@/lib/roomUtils';
 
 const container = {
   hidden: { opacity: 0 },
@@ -34,8 +34,15 @@ export default function StudentSessions() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sessions, setSessions] = useState<RoomModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
   
   const dateLocale = language === 'ar' ? ar : fr;
+
+  // Refresh every 30s so countdowns stay current
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Load sessions from backend
   useEffect(() => {
@@ -206,7 +213,7 @@ export default function StudentSessions() {
                       const joinCheck = canJoinRoom(session);
                       return (
                         <Button 
-                          variant="outline"
+                          variant={joinCheck.canJoin ? "outline" : "secondary"}
                           disabled={!joinCheck.canJoin}
                           onClick={() => {
                             if (!joinCheck.canJoin) {
@@ -215,10 +222,18 @@ export default function StudentSessions() {
                             }
                             navigate(`/student/room/${session.id}`);
                           }}
+                          className={cn(!joinCheck.canJoin && "gap-2")}
                         >
                           {joinCheck.canJoin
                             ? (isRTL ? 'انضم للغرفة' : 'Join Room')
-                            : (isRTL ? 'لم يحن الوقت بعد' : 'Not yet time')}
+                            : (
+                              <>
+                                <Timer className="w-4 h-4" />
+                                {isRTL
+                                  ? `متاح بعد ${joinCheck.minutesLeft} د`
+                                  : formatTimeUntilJoinable(session)}
+                              </>
+                            )}
                         </Button>
                       );
                     })()}

@@ -19,7 +19,8 @@ export function MainLayout() {
 
   // Check if current route is admin or student
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isStudentRoute = location.pathname.startsWith('/student');
+  // Hide student assistant on any live/room page (don't show while inside a session)
+  const isStudentRoute = location.pathname.startsWith('/student') && !location.pathname.startsWith('/student/room');
 
   // Auto-collapse sidebar on mobile
   useEffect(() => {

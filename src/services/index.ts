@@ -11,6 +11,7 @@ export { ModerationService } from './ModerationService';
 export { ChatService } from './ChatService';
 export { AuthService, getStoredTokens, getStoredUser } from './AuthService';
 export { RecordingService } from './RecordingService';
+export { StatsService } from './StatsService';
 
 // Re-export types from AuthService
 export type { AuthUser, LoginCredentials, RegisterData, AuthTokens } from './AuthService';

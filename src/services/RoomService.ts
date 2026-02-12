@@ -137,38 +137,14 @@ export const RoomService = {
   },
 
   // Leave room
-  async leave(roomId: string, studentId: string): Promise<ApiResponse<RoomModel>> {
-    // ============================================
-    // Backend Implementation (commenté)
-    // ============================================
-    // try {
-    //   const response = await fetch(`${ROOMS_ENDPOINT}/${roomId}/leave`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'Authorization': `Bearer ${getAuthToken()}`,
-    //     },
-    //     body: JSON.stringify({ studentId }),
-    //   });
-    //
-    //   if (!response.ok) throw new Error('Failed to leave room');
-    //   const result = await response.json();
-    //   return { success: true, data: result };
-    // } catch (error) {
-    //   console.error('Error leaving room:', error);
-    //   return { success: false, error: error.message };
-    // }
-
-    // Mock implementation
-    const room = mockRooms.find(r => r.id === roomId);
-    if (room) {
-      const updated = { 
-        ...room, 
-        joinedStudents: room.joinedStudents.filter(id => id !== studentId) 
-      } as RoomModel;
-      return { success: true, data: updated };
+  async leave(roomId: string): Promise<ApiResponse<void>> {
+    try {
+      await apiClient.post(`/rooms/${roomId}/leave`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error leaving room:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to leave room' };
     }
-    return { success: false, error: 'Room not found' };
   },
 
   // Start session (professor only)

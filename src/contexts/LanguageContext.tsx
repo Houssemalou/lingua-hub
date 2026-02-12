@@ -98,6 +98,13 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.allTime': 'Tout le temps',
     'dashboard.quizResults': 'Résultats des Quiz',
     'dashboard.noQuizResults': 'Aucun résultat de quiz disponible',
+    // Evaluation / stats
+    'dashboard.evaluationOverview': 'Aperçu des évaluations',
+    'dashboard.totalEvaluations': 'Total évaluations',
+    'dashboard.averageScore': 'Score moyen',
+    'dashboard.totalProfessors': 'Total professeurs',
+    'dashboard.levelDistribution': 'Répartition par niveau',
+    'dashboard.noUpcomingSessions': 'Aucune session à venir',
     
     // Student Dashboard
     'student.welcome': 'Bon retour',
@@ -366,6 +373,13 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.allTime': 'كل الوقت',
     'dashboard.quizResults': 'نتائج الاختبارات',
     'dashboard.noQuizResults': 'لا توجد نتائج اختبارات متاحة',
+    // Evaluation / stats
+    'dashboard.evaluationOverview': 'نظرة عامة على التقييمات',
+    'dashboard.totalEvaluations': 'إجمالي التقييمات',
+    'dashboard.averageScore': 'متوسط النتيجة',
+    'dashboard.totalProfessors': 'إجمالي الأساتذة',
+    'dashboard.levelDistribution': 'توزيع المستويات',
+    'dashboard.noUpcomingSessions': 'لا توجد جلسات قادمة',
     
     // Student Dashboard
     'student.welcome': 'مرحباً بعودتك',

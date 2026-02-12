@@ -149,7 +149,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, c
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Tapez votre message..."
-            className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white rounded-xl"
+            className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white rounded-xl text-black placeholder:text-gray-400 caret-black"
           />
           <Button 
             onClick={sendMessage} 

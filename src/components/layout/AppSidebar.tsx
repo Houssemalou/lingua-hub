@@ -7,7 +7,6 @@ import {
   DoorOpen,
   CalendarCheck,
   User,
-  TrendingUp,
   Moon,
   Sun,
   ChevronLeft,
@@ -18,7 +17,6 @@ import {
   X,
   Globe,
   ClipboardList,
-  FileCheck,
   Settings,
   BookOpen,
   FileText,
@@ -53,7 +51,6 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/admin/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/rooms', icon: DoorOpen, label: t('nav.rooms') },
     { to: '/admin/students', icon: Users, label: t('nav.students') },
-    { to: '/admin/quiz-results', icon: FileCheck, label: t('nav.quizResults') },
     { to: '/admin/settings', icon: Settings, label: t('nav.settings') },
   ];
 
@@ -63,7 +60,6 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     { to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' },
     { to: '/student/evaluations', icon: GraduationCap, label: t('nav.evaluations') || 'Évaluations' },
-    { to: '/student/progress', icon: TrendingUp, label: t('nav.progress') },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
   ];
 

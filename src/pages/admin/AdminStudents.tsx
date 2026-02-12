@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockStudents } from '@/data/mockData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
+import { StudentService } from '@/services/StudentService';
+
+interface StudentData {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+  level: string;
+  totalSessions: number;
+  skills: { pronunciation: number; grammar: number; vocabulary: number; fluency: number } | null;
+}
 
 const container = {
   hidden: { opacity: 0 },
@@ -27,17 +37,70 @@ export default function AdminStudents() {
   const { t, isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [students, setStudents] = useState<StudentData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredStudents = mockStudents.filter((student) => {
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        const response = await StudentService.getAll();
+        // Normalize different possible response shapes:
+        // - PaginatedResponse: { data: [...] }
+        // - direct array: [ ... ]
+        // - ApiResponse wrapper: { data: { data: [...] } } (some backends)
+        let rawList: any[] = [];
+
+        if (Array.isArray(response)) {
+          rawList = response as any[];
+        } else if (Array.isArray((response as any).data)) {
+          rawList = (response as any).data;
+        } else if (Array.isArray((response as any).data?.data)) {
+          rawList = (response as any).data.data;
+        } else {
+          console.warn('Unexpected students response shape:', response);
+          rawList = [];
+        }
+
+        const mapped = rawList.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          email: s.email || '',
+          avatar: s.avatar || '',
+          level: s.level || 'A1',
+          totalSessions: s.totalSessions || 0,
+          skills: s.skills || null,
+        }));
+
+        setStudents(mapped);
+      } catch (err) {
+        console.error('Failed to fetch students:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  const filteredStudents = students.filter((student) => {
     const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLevel = levelFilter === 'all' || student.level === levelFilter;
     return matchesSearch && matchesLevel;
   });
 
-  const getAverageSkill = (skills: { pronunciation: number; grammar: number; vocabulary: number; fluency: number }) => {
+  const getAverageSkill = (skills: { pronunciation: number; grammar: number; vocabulary: number; fluency: number } | null) => {
+    if (!skills) return 0;
     return Math.round((skills.pronunciation + skills.grammar + skills.vocabulary + skills.fluency) / 4);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <motion.div

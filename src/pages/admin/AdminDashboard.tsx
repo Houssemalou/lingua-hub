@@ -1,15 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, DoorOpen, CalendarCheck, TrendingUp, Clock, Activity, FileCheck, CheckCircle, XCircle } from 'lucide-react';
+import { Users, DoorOpen, CalendarCheck, TrendingUp, Clock, Activity, FileCheck, CheckCircle, XCircle, Loader2, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockStudents, mockRooms } from '@/data/mockData';
-import { mockQuizResults } from '@/data/quizzes';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { StatsService, AdminStats } from '@/services/StatsService';
 
 const container = {
   hidden: { opacity: 0 },
@@ -26,45 +25,68 @@ const item = {
 
 export default function AdminDashboard() {
   const { t, isRTL } = useLanguage();
-  
-  const totalStudents = mockStudents.length;
-  const activeRooms = mockRooms.filter(r => r.status === 'live').length;
-  const scheduledSessions = mockRooms.filter(r => r.status === 'scheduled').length;
-  const completedSessions = mockRooms.filter(r => r.status === 'completed').length;
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const upcomingSessions = mockRooms
-    .filter(r => r.status === 'scheduled')
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-    .slice(0, 3);
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const data = await StatsService.getAdminStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Failed to fetch admin stats:', err);
+        setError('Failed to load dashboard statistics');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
-  const liveRooms = mockRooms.filter(r => r.status === 'live');
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const stats = [
+  if (error || !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">{error || 'No data available'}</p>
+      </div>
+    );
+  }
+
+  const statCards = [
     {
       title: t('dashboard.totalStudents'),
-      value: totalStudents,
+      value: stats.totalStudents,
       icon: Users,
       color: 'border-l-primary',
       trend: t('dashboard.thisMonth'),
     },
     {
       title: t('dashboard.activeRooms'),
-      value: activeRooms,
+      value: stats.activeRooms,
       icon: Activity,
       color: 'border-l-destructive',
       trend: t('dashboard.liveNow'),
-      isLive: activeRooms > 0,
+      isLive: stats.activeRooms > 0,
     },
     {
       title: t('dashboard.scheduledSessions'),
-      value: scheduledSessions,
+      value: stats.scheduledSessions,
       icon: CalendarCheck,
       color: 'border-l-accent',
       trend: t('dashboard.thisWeek'),
     },
     {
       title: t('dashboard.completedSessions'),
-      value: completedSessions,
+      value: stats.completedSessions,
       icon: TrendingUp,
       color: 'border-l-success',
       trend: t('dashboard.allTime'),
@@ -88,7 +110,7 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <motion.div variants={item} className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.title} variant="stat" className={stat.color}>
             <CardContent className="p-4 sm:p-6">
               <div className={cn("flex items-start sm:items-center justify-between gap-2", isRTL && "flex-row-reverse")}>
@@ -122,12 +144,12 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {liveRooms.length === 0 ? (
+              {stats.liveRooms.length === 0 ? (
                 <p className={cn("text-muted-foreground text-center py-8", isRTL && "text-right")}>
                   {t('dashboard.noLiveRooms')}
                 </p>
               ) : (
-                liveRooms.map((room) => (
+                stats.liveRooms.map((room) => (
                   <div
                     key={room.id}
                     className="p-4 rounded-lg bg-destructive/5 border border-destructive/20 space-y-3"
@@ -142,7 +164,7 @@ export default function AdminDashboard() {
                     <div className={cn("flex items-center gap-4 text-sm text-muted-foreground", isRTL && "flex-row-reverse")}>
                       <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
                         <Users className="w-4 h-4" />
-                        {room.joinedStudents.length}/{room.maxStudents}
+                        {room.participantCount}/{room.maxStudents}
                       </span>
                       <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
                         <Clock className="w-4 h-4" />
@@ -167,7 +189,12 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {upcomingSessions.map((session) => (
+              {stats.upcomingSessions.length === 0 ? (
+                <p className={cn("text-muted-foreground text-center py-8", isRTL && "text-right")}>
+                  {t('dashboard.noUpcomingSessions') || 'No upcoming sessions'}
+                </p>
+              ) : (
+              stats.upcomingSessions.map((session) => (
                 <div
                   key={session.id}
                   className="p-4 rounded-lg bg-muted/50 border border-border space-y-3"
@@ -182,7 +209,7 @@ export default function AdminDashboard() {
                   <div className={cn("flex items-center gap-4 text-sm text-muted-foreground", isRTL && "flex-row-reverse")}>
                     <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
                       <Users className="w-4 h-4" />
-                      {session.invitedStudents.length}/{session.maxStudents}
+                      {session.participantCount}/{session.maxStudents}
                     </span>
                     <span className={cn("flex items-center gap-1", isRTL && "flex-row-reverse")}>
                       <Clock className="w-4 h-4" />
@@ -194,97 +221,51 @@ export default function AdminDashboard() {
                     {format(new Date(session.scheduledAt), 'PPp')}
                   </p>
                 </div>
-              ))}
+              ))
+              )}
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
-      {/* Quiz Results Section */}
+      {/* Evaluation Stats Section */}
       <motion.div variants={item}>
         <Card>
           <CardHeader>
             <CardTitle className={cn("flex items-center gap-2 text-base sm:text-lg", isRTL && "flex-row-reverse")}>
-              <FileCheck className="w-5 h-5 text-accent" />
-              {t('dashboard.quizResults')}
+              <BarChart3 className="w-5 h-5 text-accent" />
+              {t('dashboard.evaluationOverview') || 'Evaluation Overview'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {mockQuizResults.length === 0 ? (
-              <p className={cn("text-muted-foreground text-center py-8", isRTL && "text-right")}>
-                {t('dashboard.noQuizResults')}
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className={cn("border-b border-border", isRTL && "text-right")}>
-                      <th className={cn("py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground", isRTL ? "text-right" : "text-left")}>
-                        {t('quiz.student')}
-                      </th>
-                      <th className={cn("py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground", isRTL ? "text-right" : "text-left")}>
-                        {t('quiz.session')}
-                      </th>
-                      <th className={cn("py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell", isRTL ? "text-right" : "text-left")}>
-                        {t('rooms.language')}
-                      </th>
-                      <th className={cn("py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground", isRTL ? "text-right" : "text-left")}>
-                        {t('quiz.score')}
-                      </th>
-                      <th className={cn("py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell", isRTL ? "text-right" : "text-left")}>
-                        {t('quiz.date')}
-                      </th>
-                      <th className={cn("py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground", isRTL ? "text-right" : "text-left")}>
-                        {t('quiz.results')}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockQuizResults.map((result) => (
-                      <tr key={result.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-2">
-                          <div className={cn("flex items-center gap-2 sm:gap-3", isRTL && "flex-row-reverse")}>
-                            <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
-                              <AvatarImage src={result.studentAvatar} />
-                              <AvatarFallback className="text-xs">{result.studentName.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs sm:text-sm font-medium text-foreground truncate max-w-[80px] sm:max-w-[120px]">
-                              {result.studentName}
-                            </span>
-                          </div>
-                        </td>
-                        <td className={cn("py-3 px-2 text-xs sm:text-sm text-muted-foreground truncate max-w-[100px] sm:max-w-[150px]", isRTL && "text-right")}>
-                          {result.sessionName}
-                        </td>
-                        <td className={cn("py-3 px-2 text-xs sm:text-sm text-muted-foreground hidden sm:table-cell", isRTL && "text-right")}>
-                          {result.language}
-                        </td>
-                        <td className="py-3 px-2">
-                          <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-                            <Progress value={result.score} className="h-2 w-12 sm:w-16" />
-                            <span className="text-xs sm:text-sm font-medium text-foreground">{result.score}%</span>
-                          </div>
-                        </td>
-                        <td className={cn("py-3 px-2 text-xs sm:text-sm text-muted-foreground hidden md:table-cell", isRTL && "text-right")}>
-                          {format(new Date(result.completedAt), 'PP')}
-                        </td>
-                        <td className="py-3 px-2">
-                          {result.passed ? (
-                            <Badge variant="success" className={cn("flex items-center gap-1 w-fit text-xs", isRTL && "flex-row-reverse")}>
-                              <CheckCircle className="w-3 h-3" />
-                              <span className="hidden sm:inline">{t('quiz.passed').split('!')[0]}</span>
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive" className={cn("flex items-center gap-1 w-fit text-xs", isRTL && "flex-row-reverse")}>
-                              <XCircle className="w-3 h-3" />
-                              <span className="hidden sm:inline">{t('quiz.failed').split('.')[0]}</span>
-                            </Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalEvaluations') || 'Total Evaluations'}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{stats.totalEvaluations}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
+                <p className="text-sm text-muted-foreground">{t('dashboard.averageScore') || 'Average Score'}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{Math.round(stats.averageEvaluationScore)}%</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalProfessors') || 'Total Professors'}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{stats.totalProfessors}</p>
+              </div>
+            </div>
+            {stats.levelDistribution.length > 0 && (
+              <div className="mt-6">
+                <h4 className={cn("text-sm font-medium text-muted-foreground mb-3", isRTL && "text-right")}>
+                  {t('dashboard.levelDistribution') || 'Student Level Distribution'}
+                </h4>
+                <div className="space-y-2">
+                  {stats.levelDistribution.map((ld) => (
+                    <div key={ld.level} className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
+                      <Badge variant={ld.level.toLowerCase() as any} className="w-10 justify-center text-xs">{ld.level}</Badge>
+                      <Progress value={(ld.count / stats.totalStudents) * 100} className="h-2 flex-1" />
+                      <span className="text-xs text-muted-foreground w-8 text-right">{ld.count}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
@@ -302,16 +283,15 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {mockStudents.slice(0, 6).map((student) => (
+              {stats.recentStudents.map((student) => (
                 <div
                   key={student.id}
                   className={cn("flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg bg-muted/30 border border-border hover:bg-muted/50 transition-colors", isRTL && "flex-row-reverse")}
                 >
-                  <img
-                    src={student.avatar}
-                    alt={student.name}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted shrink-0"
-                  />
+                  <Avatar className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
+                    <AvatarImage src={student.avatar || undefined} />
+                    <AvatarFallback className="text-xs">{student.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
                   <div className={cn("flex-1 min-w-0", isRTL && "text-right")}>
                     <h4 className="font-medium text-foreground truncate text-sm sm:text-base">{student.name}</h4>
                     <p className="text-xs sm:text-sm text-muted-foreground truncate">{student.email}</p>

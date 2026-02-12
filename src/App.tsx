@@ -12,13 +12,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminRooms from "./pages/admin/AdminRooms";
 import AdminLiveSession from "./pages/admin/AdminLiveSession";
 import AdminStudents from "./pages/admin/AdminStudents";
-import AdminQuizResults from "./pages/admin/AdminQuizResults";
+
 import AdminPlatformSettings from "./pages/admin/AdminPlatformSettings";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import StudentSessions from "./pages/student/StudentSessions";
 import StudentLiveRoom from "./pages/student/StudentLiveRoom";
 import StudentProfile from "./pages/student/StudentProfile";
-import StudentProgress from "./pages/student/StudentProgress";
+
 import StudentSessionSummaries from "./pages/student/StudentSessionSummaries";
 import StudentGames from "./pages/student/StudentGames";
 import ProfessorDashboard from "./pages/professor/ProfessorDashboard";
@@ -54,14 +54,14 @@ const App = () => (
                     <Route path="/admin/rooms" element={<AdminRooms />} />
                     <Route path="/admin/rooms/:roomId" element={<AdminLiveSession />} />
                     <Route path="/admin/students" element={<AdminStudents />} />
-                    <Route path="/admin/quiz-results" element={<AdminQuizResults />} />
+
                     <Route path="/admin/settings" element={<AdminPlatformSettings />} />
                     {/* Student Routes */}
                     <Route path="/student/dashboard" element={<StudentDashboard />} />
                     <Route path="/student/sessions" element={<StudentSessions />} />
                     <Route path="/student/room/:roomId" element={<StudentLiveRoom />} />
                     <Route path="/student/profile" element={<StudentProfile />} />
-                    <Route path="/student/progress" element={<StudentProgress />} />
+
                     <Route path="/student/summaries" element={<StudentSessionSummaries />} />
                     <Route path="/student/games" element={<StudentGames />} />
                     <Route path="/student/evaluations" element={<StudentEvaluations />} />

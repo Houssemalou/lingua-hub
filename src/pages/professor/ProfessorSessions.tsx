@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { RoomService } from '@/services/RoomService';
 import { RoomModel } from '@/models';
 import { toast } from 'sonner';
-import { canStartRoom, canJoinRoom } from '@/lib/roomUtils';
+import { canStartRoom, canJoinRoom, formatTimeUntilJoinable } from '@/lib/roomUtils';
 
 const container = {
   hidden: { opacity: 0 },
@@ -51,8 +51,15 @@ export default function ProfessorSessions() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sessions, setSessions] = useState<RoomModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
 
   const dateLocale = language === 'ar' ? ar : fr;
+
+  // Refresh every 30s so countdowns stay current
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Load sessions from backend
   useEffect(() => {
@@ -256,11 +263,22 @@ export default function ProfessorSessions() {
                           handleStartAndJoinRoom(session);
                         }}
                         disabled={!startCheck.canStart}
-                        className="flex-1"
+                        className={cn("flex-1", !startCheck.canStart && "gap-2")}
                         variant={startCheck.canStart ? "default" : "outline"}
                       >
-                        <DoorOpen className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
-                        {isRTL ? 'بدء الجلسة' : 'Start Session'}
+                        {startCheck.canStart ? (
+                          <>
+                            <DoorOpen className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                            {isRTL ? 'بدء الجلسة' : 'Start Session'}
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-4 h-4" />
+                            {isRTL
+                              ? `متاح بعد ${startCheck.minutesLeft} د`
+                              : formatTimeUntilJoinable(session)}
+                          </>
+                        )}
                       </Button>
                     )}
                     {statusLower === 'live' && (

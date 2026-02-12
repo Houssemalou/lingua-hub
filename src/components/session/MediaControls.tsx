@@ -40,81 +40,81 @@ export function MediaControls({
     )}>
       {/* Microphone Toggle */}
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.1, y: -2 }}
+        whileTap={{ scale: 0.9 }}
         onClick={onToggleMute}
         className={cn(
-          "rounded-full flex items-center justify-center transition-all duration-200 shadow-md",
-          compact ? "w-11 h-11" : "w-14 h-14 sm:w-16 sm:h-16",
+          "rounded-full flex items-center justify-center transition-all duration-300",
+          compact ? "w-11 h-11" : "w-12 h-12 sm:w-14 sm:h-14",
           isMuted 
-            ? 'bg-red-500 hover:bg-red-600' 
-            : 'bg-white hover:bg-gray-50 border-2 border-gray-200'
+            ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30' 
+            : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
         )}
         title={isMuted ? 'Activer le micro' : 'Couper le micro'}
       >
         {isMuted ? (
           <MicOff className={cn(
             "text-white",
-            compact ? "w-5 h-5" : "w-6 h-6 sm:w-7 sm:h-7"
+            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
           )} />
         ) : (
           <Mic className={cn(
-            "text-gray-700",
-            compact ? "w-5 h-5" : "w-6 h-6 sm:w-7 sm:h-7"
+            "text-white",
+            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
           )} />
         )}
       </motion.button>
 
       {/* Camera Toggle */}
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.1, y: -2 }}
+        whileTap={{ scale: 0.9 }}
         onClick={onToggleCamera}
         className={cn(
-          "rounded-full flex items-center justify-center transition-all duration-200 shadow-md",
-          compact ? "w-11 h-11" : "w-14 h-14 sm:w-16 sm:h-16",
+          "rounded-full flex items-center justify-center transition-all duration-300",
+          compact ? "w-11 h-11" : "w-12 h-12 sm:w-14 sm:h-14",
           !isCameraOn 
-            ? 'bg-red-500 hover:bg-red-600' 
-            : 'bg-white hover:bg-gray-50 border-2 border-gray-200'
+            ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30' 
+            : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
         )}
         title={isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
       >
         {isCameraOn ? (
           <Video className={cn(
-            "text-gray-700",
-            compact ? "w-5 h-5" : "w-6 h-6 sm:w-7 sm:h-7"
+            "text-white",
+            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
           )} />
         ) : (
           <VideoOff className={cn(
             "text-white",
-            compact ? "w-5 h-5" : "w-6 h-6 sm:w-7 sm:h-7"
+            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
           )} />
         )}
       </motion.button>
 
       {/* Screen Share Toggle */}
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.1, y: -2 }}
+        whileTap={{ scale: 0.9 }}
         onClick={onToggleScreenShare}
         className={cn(
-          "rounded-full flex items-center justify-center transition-all duration-200 shadow-md",
-          compact ? "w-11 h-11" : "w-14 h-14 sm:w-16 sm:h-16",
+          "rounded-full flex items-center justify-center transition-all duration-300",
+          compact ? "w-11 h-11" : "w-12 h-12 sm:w-14 sm:h-14",
           isScreenSharing 
-            ? 'bg-blue-500 hover:bg-blue-600' 
-            : 'bg-white hover:bg-gray-50 border-2 border-gray-200'
+            ? 'bg-cyan-500 hover:bg-cyan-600 shadow-lg shadow-cyan-500/30' 
+            : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
         )}
         title={isScreenSharing ? 'Arrêter le partage' : 'Partager l\'écran'}
       >
         {isScreenSharing ? (
           <MonitorUp className={cn(
             "text-white",
-            compact ? "w-5 h-5" : "w-6 h-6 sm:w-7 sm:h-7"
+            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
           )} />
         ) : (
           <MonitorOff className={cn(
-            "text-gray-700",
-            compact ? "w-5 h-5" : "w-6 h-6 sm:w-7 sm:h-7"
+            "text-white",
+            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
           )} />
         )}
       </motion.button>

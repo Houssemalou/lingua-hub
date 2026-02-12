@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -7,16 +7,18 @@ import {
   TrendingUp,
   Play,
   Star,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProfessorSessions, mockStudents, getStudentById } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
+import { StatsService, ProfessorStats } from '@/services/StatsService';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const container = {
   hidden: { opacity: 0 },
@@ -36,43 +38,69 @@ export default function ProfessorDashboard() {
   const { t, language, isRTL } = useLanguage();
   const navigate = useNavigate();
   const professor = user?.professor;
-
-  const sessions = professor ? getProfessorSessions(professor.id) : [];
-  const upcomingSessions = sessions.filter(s => s.status === 'scheduled');
-  const liveSessions = sessions.filter(s => s.status === 'live');
-  const completedSessions = sessions.filter(s => s.status === 'completed');
-
-  // Get unique students from all sessions
-  const allStudentIds = [...new Set(sessions.flatMap(s => s.students || []))];
-  const totalStudents = allStudentIds.length;
+  const [statsData, setStatsData] = useState<ProfessorStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const dateLocale = language === 'ar' ? ar : fr;
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const data = await StatsService.getProfessorStats();
+        setStatsData(data);
+      } catch (err) {
+        console.error('Failed to fetch professor stats:', err);
+        setError('Failed to load dashboard statistics');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !statsData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground">{error || 'No data available'}</p>
+      </div>
+    );
+  }
 
   const stats = [
     {
       title: isRTL ? 'إجمالي الطلاب' : 'Total Étudiants',
-      value: totalStudents,
+      value: statsData.totalStudents,
       icon: Users,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
       title: isRTL ? 'الجلسات القادمة' : 'Sessions à venir',
-      value: upcomingSessions.length,
+      value: statsData.upcomingSessions,
       icon: CalendarCheck,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
     },
     {
       title: isRTL ? 'الجلسات المكتملة' : 'Sessions terminées',
-      value: completedSessions.length,
+      value: statsData.completedSessions,
       icon: Clock,
       color: 'text-secondary',
       bgColor: 'bg-secondary/10',
     },
     {
       title: isRTL ? 'التقييم' : 'Note',
-      value: professor?.rating || 0,
+      value: statsData.rating || 0,
       icon: Star,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
@@ -119,7 +147,7 @@ export default function ProfessorDashboard() {
       </motion.div>
 
       {/* Live Sessions Alert */}
-      {liveSessions.length > 0 && (
+      {statsData.liveRooms.length > 0 && (
         <motion.div variants={item}>
           <Card className="border-destructive/50 bg-destructive/5">
             <CardContent className="p-4 sm:p-6">
@@ -133,13 +161,13 @@ export default function ProfessorDashboard() {
                       {isRTL ? 'جلسة جارية!' : 'Session en cours !'}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {liveSessions[0].roomName} - {liveSessions[0].language}
+                      {statsData.liveRooms[0].name} - {statsData.liveRooms[0].language}
                     </p>
                   </div>
                 </div>
                 <Button 
                   className="w-full sm:w-auto"
-                  onClick={() => navigate(`/professor/room/${liveSessions[0].roomId}`)}
+                  onClick={() => navigate(`/professor/room/${statsData.liveRooms[0].id}`)}
                 >
                   {isRTL ? 'انضم الآن' : 'Rejoindre'}
                 </Button>
@@ -162,15 +190,15 @@ export default function ProfessorDashboard() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {upcomingSessions.length > 0 ? (
-                upcomingSessions.slice(0, 3).map((session) => (
+              {statsData.upcomingSessionsList.length > 0 ? (
+                statsData.upcomingSessionsList.slice(0, 3).map((session) => (
                   <div
                     key={session.id}
                     className={`p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer ${isRTL ? 'text-right' : ''}`}
-                    onClick={() => navigate(`/professor/room/${session.roomId}`)}
+                    onClick={() => navigate(`/professor/room/${session.id}`)}
                   >
                     <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
-                      <h4 className="font-medium text-foreground">{session.roomName}</h4>
+                      <h4 className="font-medium text-foreground">{session.name}</h4>
                       <Badge variant="outline">{session.level}</Badge>
                     </div>
                     <div className={`flex items-center gap-4 mt-2 text-sm text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -180,7 +208,7 @@ export default function ProfessorDashboard() {
                       </span>
                       <span className={`flex items-center gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <Users className="w-3 h-3" />
-                        {session.participantsCount} {isRTL ? 'طلاب' : 'étudiants'}
+                        {session.participantCount} {isRTL ? 'طلاب' : 'étudiants'}
                       </span>
                     </div>
                   </div>
@@ -201,23 +229,19 @@ export default function ProfessorDashboard() {
               <CardTitle className="text-lg">
                 {isRTL ? 'طلابي' : 'Mes Étudiants'}
               </CardTitle>
-              <Badge variant="secondary">{totalStudents}</Badge>
+              <Badge variant="secondary">{statsData.totalStudents}</Badge>
             </CardHeader>
             <CardContent className="space-y-3">
-              {allStudentIds.length > 0 ? (
-                allStudentIds.slice(0, 5).map((studentId) => {
-                  const student = getStudentById(studentId);
-                  if (!student) return null;
-                  return (
+              {statsData.myStudents.length > 0 ? (
+                statsData.myStudents.slice(0, 5).map((student) => (
                     <div
                       key={student.id}
                       className={`flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
                     >
-                      <img
-                        src={student.avatar}
-                        alt={student.name}
-                        className="w-10 h-10 rounded-full"
-                      />
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={student.avatar || undefined} />
+                        <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
                       <div className={`flex-1 ${isRTL ? 'text-right' : ''}`}>
                         <p className="font-medium text-foreground">{student.name}</p>
                         <p className="text-sm text-muted-foreground">
@@ -226,8 +250,7 @@ export default function ProfessorDashboard() {
                       </div>
                       <Badge variant={student.level.toLowerCase() as any}>{student.level}</Badge>
                     </div>
-                  );
-                })
+                ))
               ) : (
                 <p className="text-center text-muted-foreground py-8">
                   {isRTL ? 'لا يوجد طلاب بعد' : 'Aucun étudiant pour le moment'}
