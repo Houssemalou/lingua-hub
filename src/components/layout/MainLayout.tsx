@@ -5,14 +5,16 @@ import { AppSidebar } from './AppSidebar';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminChatbot } from '@/components/admin/AdminChatbot';
-import { StudentVoiceAssistant } from '@/components/student/StudentVoiceAssistant';
+import { StudentChatbot } from '@/components/student/StudentChatbot';
 
 export function MainLayout() {
   const isMobile = useIsMobile();
-  const { isRTL } = useLanguage();
+  const { isRTL, language } = useLanguage();
+  const { user } = useAuth();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -116,8 +118,17 @@ export function MainLayout() {
       {/* Admin Chatbot - Only visible for admin routes */}
       {isAdminRoute && <AdminChatbot />}
 
-      {/* Student Voice Assistant - Only visible for student routes */}
-      {isStudentRoute && <StudentVoiceAssistant />}
+      {/* Student Chatbot - Always visible for authenticated users */}
+      {user && (
+        <StudentChatbot
+          studentId={user.student?.id || user.id}
+          studentName={user.student?.name || user.email}
+          language={language}
+          level={user.student?.level || 'A1'}
+          age={undefined}
+          onClose={undefined}
+        />
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { useRole } from '@/contexts/RoleContext';
 import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +67,7 @@ export function RoomSessionSummaryEditor({
   isRTL = false,
 }: RoomSessionSummaryEditorProps) {
   const [formData, setFormData] = useState(defaultFormData);
+  const { role } = useRole();
   const [loading, setLoading] = useState(false);
   const [existingSummary, setExistingSummary] = useState<SessionSummary | null>(null);
 
@@ -281,9 +283,21 @@ export function RoomSessionSummaryEditor({
           {/* Overall Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className={cn("flex items-center gap-2 text-base", isRTL && "flex-row-reverse")}>
+              <CardTitle className={cn("flex items-center gap-2 text-base", isRTL && "flex-row-reverse")}> 
                 <FileText className="w-5 h-5 text-primary" />
                 {isRTL ? 'ملخص عام للجلسة' : 'Résumé général de la session'}
+                {/* Icône fermeture room pour professeur */}
+                {role === 'professor' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={isRTL ? 'إنهاء الغرفة' : 'Fermer la room'}
+                    className="ml-2 text-red-600 hover:text-red-700"
+                    onClick={() => {/* TODO: Appeler API pour fermer la room */}}
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>

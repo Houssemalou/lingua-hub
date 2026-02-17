@@ -7,6 +7,7 @@ export type AuthRole = 'admin' | 'student' | 'professor' | null;
 interface AuthUser {
   id: string;
   email: string;
+  username?: string;
   role: AuthRole;
   student?: Student;
   professor?: Professor;
@@ -122,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           authUser = {
             id: response.data.user.id,
+            username: response.data.user.name,
             email: response.data.user.email,
             role: response.data.user.role,
             student: studentProfile,

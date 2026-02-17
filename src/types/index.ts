@@ -72,3 +72,25 @@ export interface ChatMessage {
 }
 
 export type UserRole = 'admin' | 'student' | 'professor';
+
+// LiveKit Data Track Types
+export interface SessionSummaryData {
+  type: 'session_summary';
+  summary: {
+    sessionObjective?: string;
+    learnedGroups: {
+      group: string;
+      words: string[];
+    }[];
+  };
+  timestamp: string;
+} 
+
+export interface TranscriptionData {
+  type: 'transcription';
+  content: string;
+  timestamp: string;
+  isUser: boolean;
+}
+
+export type DataTrackMessage = SessionSummaryData | TranscriptionData;

@@ -158,18 +158,6 @@ export default function AdminStudents() {
                 <h3 className="font-semibold text-foreground text-sm sm:text-base truncate w-full">
                   {student.name}
                 </h3>
-                
-                <div className="w-full space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t('students.progress')}</span>
-                    <span className="font-medium text-foreground">{getAverageSkill(student.skills)}%</span>
-                  </div>
-                  <Progress value={getAverageSkill(student.skills)} className="h-1.5" />
-                </div>
-                
-                <p className="text-xs text-muted-foreground">
-                  {student.totalSessions} {t('students.sessionsCompleted')}
-                </p>
               </div>
             </CardContent>
           </Card>
