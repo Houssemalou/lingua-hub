@@ -18,13 +18,14 @@ export interface ChatMessage {
 }
 
 interface ChatPanelProps {
-  messages: ChatMessage[];
+  messages?: ChatMessage[];
   onSendMessage: (message: string) => void;
-  currentUserId: string;
+  currentUserId?: string;
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, currentUserId }) => {
+export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessage, currentUserId = '' }) => {
   const [message, setMessage] = useState('');
+  const msgs = messages;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +36,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, c
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
 
   const sendMessage = () => {
     if (message.trim()) {
@@ -77,7 +79,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, c
       {/* Messages Area */}
       <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
         <div className="space-y-3">
-          {messages.length === 0 ? (
+          {msgs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-12 text-center">
               <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                 <MessageCircle className="w-8 h-8 text-gray-400" />
@@ -86,7 +88,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, c
               <p className="text-xs text-gray-400 mt-1">Commencez la conversation !</p>
             </div>
           ) : (
-            messages.map((msg) => {
+            msgs.map((msg) => {
               const isSelf = isCurrentUser(msg.sender.id);
               return (
                 <div
