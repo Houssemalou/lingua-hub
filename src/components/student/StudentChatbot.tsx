@@ -408,7 +408,7 @@ export function StudentChatbot({
       const content = data.content;
       const msgType = typeof data.type === 'string' ? data.type : 'text';
       let messageType: 'text' | 'summary' | 'transcription' = 'text';
-      if (msgType === 'quiz' || msgType === 'summary' || msgType === 'transcription') messageType = msgType;
+      if (msgType === 'summary' || msgType === 'transcription') messageType = msgType;
       addMessage(content, false, messageType);
     }
   }, [addMessage]);
