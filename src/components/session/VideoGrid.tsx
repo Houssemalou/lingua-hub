@@ -25,14 +25,17 @@ export function VideoGrid({
   isRTL = false,
   maxVisibleParticipants = 8,
 }: VideoGridProps) {
+  // Helper to find LiveKit participant by ID
   const getLiveKitParticipant = (participantId: string) => {
     return liveKitParticipants.find(p => p.identity === participantId);
   };
 
   const activeScreenSharer = participants.find(p => p.isScreenSharing);
+  
+  // All participants visible - no carousel
   const mainParticipants = participants;
-  const isSolo = mainParticipants.length === 1;
 
+  // Calculate grid layout based on participant count - optimized for full screen
   const getGridCols = (count: number) => {
     if (count === 1) return 'grid-cols-1';
     if (count === 2) return 'grid-cols-1 lg:grid-cols-2';
@@ -43,19 +46,17 @@ export function VideoGrid({
     return 'grid-cols-3 lg:grid-cols-4';
   };
 
-  const getCardSize = (count: number): 'small' | 'medium' | 'large' | 'full' => {
-    if (count === 1) return 'full';
+  // Get card size based on number of visible participants - larger cards
+  const getCardSize = (count: number): 'small' | 'medium' | 'large' => {
+    if (count === 1) return 'large';
     if (count <= 4) return 'large';
     if (count <= 6) return 'medium';
     return 'small';
   };
 
   return (
-    <div className={cn(
-      "h-full flex flex-col",
-      !isSolo && "space-y-3 sm:space-y-4"
-    )}>
-      {/* Participant Count Badge - hidden when solo */}
+    <div className="h-full flex flex-col space-y-3 sm:space-y-4">
+      {/* Participant Count Badge */}
       {participants.length > 1 && (
         <div className="flex items-center justify-between px-2">
           <Badge variant="outline" className="gap-1.5 bg-white/10 text-white border-white/20">
@@ -65,12 +66,10 @@ export function VideoGrid({
         </div>
       )}
 
-      {/* Main Video Grid */}
+      {/* Main Video Grid - Takes all available space */}
       <div className={cn(
-        "flex-1",
-        isSolo
-          ? "w-full h-full"
-          : cn("grid gap-2 sm:gap-4 content-center", getGridCols(mainParticipants.length))
+        "flex-1 grid gap-2 sm:gap-4 content-center",
+        getGridCols(mainParticipants.length)
       )}>
         {mainParticipants.map((participant) => (
           <ParticipantCard
@@ -87,4 +86,5 @@ export function VideoGrid({
   );
 }
 
+// Re-export Participant type for convenience
 export type { Participant };
