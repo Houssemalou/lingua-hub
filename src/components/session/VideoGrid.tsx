@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +23,10 @@ export function VideoGrid({
   screenShareStream,
   localVideoRef,
   isRTL = false,
-  maxVisibleParticipants = 8,
+  maxVisibleParticipants = 9,
 }: VideoGridProps) {
+  // Pagination state
+  const [page, setPage] = useState(0);
   // Helper to find LiveKit participant by ID
   const getLiveKitParticipant = (participantId: string) => {
     return liveKitParticipants.find(p => p.identity === participantId);
@@ -32,10 +34,27 @@ export function VideoGrid({
 
   const activeScreenSharer = participants.find(p => p.isScreenSharing);
   
-  // All participants visible - no carousel
-  const mainParticipants = participants;
 
-  // Calculate grid layout based on participant count - optimized for full screen
+  // Focus speaker: always show the most recently speaking participant first
+  const sortedParticipants = useMemo(() => {
+    // Prioritize host (professor), then speakers, then others
+    const withSpeaking = participants as (Participant & { isSpeaking?: boolean; isHost?: boolean })[];
+    const host = withSpeaking.filter(p => p.isHost);
+    const speakers = withSpeaking.filter(p => !p.isHost && p.isSpeaking);
+    const others = withSpeaking.filter(p => !p.isHost && !p.isSpeaking);
+    // Show: host, then up to 8 others (speakers first)
+    return [...host, ...speakers, ...others];
+  }, [participants]);
+
+  // Pagination logic
+  // Always show host (prof), then 8 others per page
+  const host = sortedParticipants.find(p => (p as Participant).isHost);
+  const others = sortedParticipants.filter(p => !(p as Participant).isHost);
+  const totalPages = Math.ceil(others.length / (maxVisibleParticipants - 1));
+  const paginatedOthers = others.slice(page * (maxVisibleParticipants - 1), (page + 1) * (maxVisibleParticipants - 1));
+  const paginatedParticipants = host ? [host, ...paginatedOthers] : paginatedOthers;
+
+  // Calculate grid layout based on visible participants
   const getGridCols = (count: number) => {
     if (count === 1) return 'grid-cols-1';
     if (count === 2) return 'grid-cols-1 lg:grid-cols-2';
@@ -66,19 +85,32 @@ export function VideoGrid({
         </div>
       )}
 
-      {/* Main Video Grid - Takes all available space */}
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mb-2">
+          <Button size="sm" variant="secondary" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
+            Précédent
+          </Button>
+          <span className="text-xs text-white/80">Page {page + 1} / {totalPages}</span>
+          <Button size="sm" variant="secondary" onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}>
+            Suivant
+          </Button>
+        </div>
+      )}
+
+      {/* Main Video Grid - paginated */}
       <div className={cn(
         "flex-1 grid gap-2 sm:gap-4 content-center",
-        getGridCols(mainParticipants.length)
+        getGridCols(paginatedParticipants.length)
       )}>
-        {mainParticipants.map((participant) => (
+        {paginatedParticipants.map((participant) => (
           <ParticipantCard
             key={participant.id}
             participant={participant}
             liveKitParticipant={getLiveKitParticipant(participant.id)}
             localVideoRef={participant.isCurrentUser ? localVideoRef : undefined}
             isRTL={isRTL}
-            size={getCardSize(mainParticipants.length)}
+            size={getCardSize(paginatedParticipants.length)}
           />
         ))}
       </div>
