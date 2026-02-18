@@ -26,6 +26,7 @@ import { RoomModel } from '@/models';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { RoomSessionSummaryEditor } from '@/components/professor/RoomSessionSummaryEditor';
 
 export default function ProfessorLiveRoom() {
@@ -82,10 +83,24 @@ export default function ProfessorLiveRoom() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>{isRTL ? 'جاري تحميل الغرفة...' : 'Loading room...'}</p>
+      <div className="h-screen flex flex-col">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-10 h-10 rounded" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-32 rounded" />
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+        </div>
+        {/* Room content skeleton */}
+        <div className="flex-1 p-4">
+          <Skeleton className="w-full h-full rounded-lg" />
         </div>
       </div>
     );

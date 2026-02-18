@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.util.UUID;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +46,7 @@ public class RecordingService {
      * Start a new recording session
      */
     @Transactional
-    public SessionRecordingDTO startRecording(Long roomId, String livekitRecordingId) {
+    public SessionRecordingDTO startRecording(UUID roomId, String livekitRecordingId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found: " + roomId));
         
@@ -147,7 +148,7 @@ public class RecordingService {
      * Get all recordings for a room
      */
     @Transactional(readOnly = true)
-    public List<SessionRecordingDTO> getRoomRecordings(Long roomId) {
+    public List<SessionRecordingDTO> getRoomRecordings(UUID roomId) {
         List<SessionRecording> recordings = recordingRepository.findByRoomIdOrderByStartedAtDesc(roomId);
         return recordings.stream()
                 .map(this::convertToDTOWithUrl)

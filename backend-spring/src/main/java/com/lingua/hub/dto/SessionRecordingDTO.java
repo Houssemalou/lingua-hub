@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * DTO for SessionRecording
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class SessionRecordingDTO {
     private Long id;
-    private Long roomId;
+    private UUID roomId;
     private String roomName;
     private String livekitRecordingId;
     private String fileName;

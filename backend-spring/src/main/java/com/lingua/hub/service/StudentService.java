@@ -44,32 +44,18 @@ public class StudentService {
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(User.Role.STUDENT)
-                .avatar(request.getAvatar())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(User.UserRole.STUDENT)
                 .build();
         user = userRepository.save(user);
 
         // Create student
         Student student = Student.builder()
                 .user(user)
-                .level(request.getLevel())
-                .targetLanguage(request.getTargetLanguage())
-                .nativeLanguage(request.getNativeLanguage())
+                .nickname(request.getNickname())
                 .bio(request.getBio())
+                .level(request.getLevel())
                 .build();
-
-        // Add skills if provided
-        if (request.getSkills() != null && !request.getSkills().isEmpty()) {
-            List<StudentSkills> skills = request.getSkills().stream()
-                    .map(s -> StudentSkills.builder()
-                            .student(student)
-                            .skill(s.getSkill())
-                            .proficiency(s.getProficiency())
-                            .build())
-                    .collect(Collectors.toList());
-            student.setSkills(skills);
-        }
 
         student = studentRepository.save(student);
         return mapToDTO(student);
@@ -81,25 +67,12 @@ public class StudentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
         User user = student.getUser();
-        
+
         if (request.getName() != null) user.setName(request.getName());
         if (request.getAvatar() != null) user.setAvatar(request.getAvatar());
+        if (request.getNickname() != null) student.setNickname(request.getNickname());
         if (request.getLevel() != null) student.setLevel(request.getLevel());
-        if (request.getTargetLanguage() != null) student.setTargetLanguage(request.getTargetLanguage());
-        if (request.getNativeLanguage() != null) student.setNativeLanguage(request.getNativeLanguage());
         if (request.getBio() != null) student.setBio(request.getBio());
-
-        if (request.getSkills() != null) {
-            student.getSkills().clear();
-            List<StudentSkills> newSkills = request.getSkills().stream()
-                    .map(s -> StudentSkills.builder()
-                            .student(student)
-                            .skill(s.getSkill())
-                            .proficiency(s.getProficiency())
-                            .build())
-                    .collect(Collectors.toList());
-            student.getSkills().addAll(newSkills);
-        }
 
         userRepository.save(user);
         student = studentRepository.save(student);
@@ -110,7 +83,7 @@ public class StudentService {
     public void deleteStudent(UUID studentId) {
         Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-        
+
         User user = student.getUser();
         studentRepository.delete(student);
         userRepository.delete(user);
@@ -131,8 +104,8 @@ public class StudentService {
             String sortBy,
             String sortOrder
     ) {
-        Sort sort = sortOrder.equalsIgnoreCase("desc") 
-                ? Sort.by(sortBy).descending() 
+        Sort sort = sortOrder.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -151,27 +124,31 @@ public class StudentService {
     }
 
     private StudentDTO mapToDTO(Student student) {
-        List<StudentSkillsDTO> skills = student.getSkills() != null 
-                ? student.getSkills().stream()
-                        .map(s -> StudentSkillsDTO.builder()
-                                .skill(s.getSkill())
-                                .proficiency(s.getProficiency())
-                                .build())
-                        .collect(Collectors.toList())
-                : List.of();
+        StudentSkillsDTO skillsDTO = null;
+        StudentSkills skills = student.getSkills();
+        if (skills != null) {
+            skillsDTO = StudentSkillsDTO.builder()
+                    .pronunciation(skills.getPronunciation())
+                    .grammar(skills.getGrammar())
+                    .vocabulary(skills.getVocabulary())
+                    .fluency(skills.getFluency())
+                    .build();
+        }
 
         return StudentDTO.builder()
                 .id(student.getId())
-                .userId(student.getUser().getId())
                 .name(student.getUser().getName())
                 .email(student.getUser().getEmail())
                 .avatar(student.getUser().getAvatar())
-                .level(student.getLevel())
-                .targetLanguage(student.getTargetLanguage())
-                .nativeLanguage(student.getNativeLanguage())
+                .nickname(student.getNickname())
                 .bio(student.getBio())
-                .skills(skills)
+                .level(student.getLevel())
+                .skills(skillsDTO)
+                .totalSessions(student.getTotalSessions())
+                .hoursLearned(student.getHoursLearned())
                 .joinedAt(student.getCreatedAt())
+                .createdAt(student.getCreatedAt())
+                .updatedAt(student.getUpdatedAt())
                 .build();
     }
 }

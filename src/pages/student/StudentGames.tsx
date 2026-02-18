@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Gamepad2, Trophy, Flame, Star, Zap, 
-  TrendingUp, Medal, Target, Swords
+import {
+  Gamepad2, Trophy, Flame, Star, Zap,
+  TrendingUp, Medal, Target, Swords,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -17,27 +18,23 @@ import { useToast } from '@/hooks/use-toast';
 import { AchievementCard } from '@/components/gamification/AchievementCard';
 import { MiniGameCard } from '@/components/gamification/MiniGameCard';
 import { DailyChallenges } from '@/components/gamification/DailyChallenges';
-import { Leaderboard } from '@/components/gamification/Leaderboard';
 import { MathPuzzleGame } from '@/components/gamification/MathPuzzleGame';
 import { ChallengeCard } from '@/components/gamification/ChallengeCard';
 import { ChallengeGame } from '@/components/gamification/ChallengeGame';
 import { ChallengeLeaderboard } from '@/components/gamification/ChallengeLeaderboard';
 
 // Data
-import { 
-  mockAchievements, 
-  mockDailyChallenges, 
-  mockLeaderboard, 
+import {
+  mockAchievements,
   mockMiniGames,
   getStudentStats,
-  getPointsForNextLevel
+  getPointsForNextLevel,
 } from '@/data/gamification';
 import {
-  mockProfessorChallenges,
-  mockChallengeLeaderboard,
-  getActiveChallenges,
-  ProfessorChallenge
+  ProfessorChallenge,
+  ChallengeLeaderboardEntry
 } from '@/data/professorChallenges';
+import { ChallengeService, SubmitAnswerResponseData } from '@/services/ChallengeService';
 
 const container = {
   hidden: { opacity: 0 },
@@ -61,11 +58,48 @@ export default function StudentGames() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [challengeGameOpen, setChallengeGameOpen] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<ProfessorChallenge | null>(null);
+  const [activeChallenges, setActiveChallenges] = useState<ProfessorChallenge[]>([]);
+  const [completedChallengeIds, setCompletedChallengeIds] = useState<Set<string>>(new Set());
+  const [leaderboard, setLeaderboard] = useState<ChallengeLeaderboardEntry[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(true);
 
   const studentStats = getStudentStats(user?.id || '1');
   const pointsForNext = getPointsForNextLevel(studentStats.level);
   const currentProgress = (studentStats.points % 200) / 200 * 100;
-  const activeChallenges = getActiveChallenges();
+
+  const fetchChallengeData = async () => {
+    setLoadingChallenges(true);
+    try {
+      const [challengesRes, attemptsRes, leaderboardRes] = await Promise.all([
+        ChallengeService.getActiveChallenges(),
+        ChallengeService.getMyAttempts(),
+        ChallengeService.getLeaderboard(),
+      ]);
+
+      if (challengesRes.success && challengesRes.data) {
+        setActiveChallenges(challengesRes.data);
+      }
+      if (attemptsRes.success && attemptsRes.data) {
+        const completedIds = new Set(
+          attemptsRes.data
+            .filter(a => a.isCorrect)
+            .map(a => a.challengeId)
+        );
+        setCompletedChallengeIds(completedIds);
+      }
+      if (leaderboardRes.success && leaderboardRes.data) {
+        setLeaderboard(leaderboardRes.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch challenge data:', error);
+    } finally {
+      setLoadingChallenges(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchChallengeData();
+  }, []);
 
   const labels = {
     fr: {
@@ -149,23 +183,18 @@ export default function StudentGames() {
     setChallengeGameOpen(false);
     toast({
       title: language === 'fr' ? 'Défi terminé!' : language === 'ar' ? 'تم التحدي!' : 'Challenge complete!',
-      description: pointsEarned > 0 
+      description: pointsEarned > 0
         ? `${language === 'fr' ? 'Tu as gagné' : language === 'ar' ? 'لقد ربحت' : 'You earned'} ${pointsEarned} XP!`
         : language === 'fr' ? 'Pas de points cette fois' : language === 'ar' ? 'لا نقاط هذه المرة' : 'No points this time',
     });
+    // Refresh data after completing a challenge
+    fetchChallengeData();
   };
 
   const handleGameComplete = (score: number) => {
     toast({
       title: language === 'fr' ? 'Jeu terminé!' : language === 'ar' ? 'انتهت اللعبة!' : 'Game complete!',
       description: `${language === 'fr' ? 'Tu as gagné' : language === 'ar' ? 'لقد ربحت' : 'You earned'} ${score} XP!`,
-    });
-  };
-
-  const handleStartChallenge = (challengeId: string) => {
-    toast({
-      title: language === 'fr' ? 'Défi lancé!' : language === 'ar' ? 'بدأ التحدي!' : 'Challenge started!',
-      description: language === 'fr' ? 'Bonne chance!' : language === 'ar' ? 'حظا سعيدا!' : 'Good luck!',
     });
   };
 
@@ -290,7 +319,27 @@ export default function StudentGames() {
               <Badge variant="secondary">{activeChallenges.length}</Badge>
             </div>
 
-            {activeChallenges.length === 0 ? (
+            {loadingChallenges ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-32 w-full rounded-none" />
+                    <div className="p-4 space-y-3">
+                      <div className="flex gap-2">
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                      <Skeleton className="h-5 w-3/4" />
+                      <div className="flex gap-4">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <Skeleton className="h-9 w-full rounded" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : activeChallenges.length === 0 ? (
               <Card className="p-12 text-center">
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
@@ -309,6 +358,7 @@ export default function StudentGames() {
                     challenge={challenge}
                     studentId={user?.id || '1'}
                     onPlay={handlePlayChallenge}
+                    completedChallengeIds={completedChallengeIds}
                   />
                 ))}
               </div>
@@ -316,9 +366,9 @@ export default function StudentGames() {
 
             {/* Challenge Leaderboard */}
             <div className="mt-8">
-              <ChallengeLeaderboard 
-                entries={mockChallengeLeaderboard} 
-                currentStudentId={user?.id} 
+              <ChallengeLeaderboard
+                entries={leaderboard}
+                currentStudentId={user?.id}
               />
             </div>
           </TabsContent>
@@ -332,10 +382,39 @@ export default function StudentGames() {
           </TabsContent>
 
           <TabsContent value="daily">
-            <DailyChallenges 
-              challenges={mockDailyChallenges} 
-              onStartChallenge={handleStartChallenge} 
-            />
+            {loadingChallenges ? (
+              <Card className="p-8">
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                  ))}
+                </div>
+              </Card>
+            ) : (
+              <DailyChallenges
+                challenges={activeChallenges.map((c) => ({
+                  id: c.id,
+                  title: c.title,
+                  titleFr: c.titleFr || c.title,
+                  titleAr: c.titleAr || c.title,
+                  description: c.question,
+                  descriptionFr: c.questionFr || c.question,
+                  descriptionAr: c.questionAr || c.question,
+                  type: 'quiz' as const,
+                  subject: c.subject,
+                  points: c.basePoints,
+                  completed: completedChallengeIds.has(c.id),
+                  expiresAt: c.expiresAt,
+                }))}
+                onStartChallenge={(challengeId) => {
+                  const challenge = activeChallenges.find(c => c.id === challengeId);
+                  if (challenge && !completedChallengeIds.has(challengeId)) {
+                    setSelectedChallenge(challenge);
+                    setChallengeGameOpen(true);
+                  }
+                }}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="achievements" className="space-y-4">
@@ -360,7 +439,27 @@ export default function StudentGames() {
           </TabsContent>
 
           <TabsContent value="leaderboard">
-            <Leaderboard entries={mockLeaderboard} currentStudentId={user?.id} />
+            {loadingChallenges ? (
+              <Card className="p-8">
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  ))}
+                </div>
+              </Card>
+            ) : leaderboard.length === 0 ? (
+              <Card className="p-12 text-center">
+                <TrendingUp className="w-16 h-16 mx-auto text-muted-foreground/50" />
+                <h3 className="text-xl font-semibold mt-4">
+                  {language === 'fr' ? 'Aucun classement disponible' : language === 'ar' ? 'لا يوجد تصنيف' : 'No leaderboard data'}
+                </h3>
+                <p className="text-muted-foreground mt-2">
+                  {language === 'fr' ? 'Complétez des défis pour apparaître au classement !' : language === 'ar' ? 'أكمل التحديات للظهور في التصنيف!' : 'Complete challenges to appear on the leaderboard!'}
+                </p>
+              </Card>
+            ) : (
+              <ChallengeLeaderboard entries={leaderboard} currentStudentId={user?.id} />
+            )}
           </TabsContent>
         </Tabs>
       </motion.div>

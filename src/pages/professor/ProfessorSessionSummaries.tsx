@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Skeleton } from '@/components/ui/skeleton';
 import { RoomSessionSummaryEditor } from '@/components/professor/RoomSessionSummaryEditor';
 import { RoomService } from '@/services/RoomService';
 import { SessionSummaryService, SessionSummary } from '@/services/SessionSummaryService';
@@ -202,8 +203,24 @@ export default function ProfessorSessionSummaries() {
                 {isRTL ? 'اختر جلسة لإنشاء ملخص لها:' : 'Sélectionnez une session pour créer un résumé :'}
               </p>
               {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="grid gap-3 max-h-[60vh] overflow-y-auto">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-2">
+                            <Skeleton className="h-5 w-44" />
+                            <Skeleton className="h-4 w-32" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                            <Skeleton className="h-5 w-16 rounded-full" />
+                            <Skeleton className="h-5 w-10 rounded-full" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               ) : (
                 <div className="grid gap-3 max-h-[60vh] overflow-y-auto">

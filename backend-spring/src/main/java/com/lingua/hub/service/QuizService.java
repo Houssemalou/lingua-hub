@@ -41,34 +41,33 @@ public class QuizService {
         Professor professor = professorRepository.findById(professorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Professor not found"));
 
+        Room room = roomRepository.findById(request.getSessionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+
         Quiz quiz = Quiz.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .language(request.getLanguage())
-                .level(request.getLevel())
+                .session(room)
+                .language(room.getLanguage())
                 .timeLimit(request.getTimeLimit())
                 .passingScore(request.getPassingScore())
                 .isPublished(false)
                 .createdBy(professor)
                 .build();
 
-        if (request.getSessionId() != null) {
-            Room room = roomRepository.findById(request.getSessionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
-            quiz.setSession(room);
-        }
-
         // Add questions
-        List<QuizQuestion> questions = request.getQuestions().stream()
-                .map(q -> QuizQuestion.builder()
-                        .quiz(quiz)
-                        .question(q.getQuestion())
-                        .type(q.getType())
-                        .options(q.getOptions())
-                        .correctAnswer(q.getCorrectAnswer())
-                        .points(q.getPoints())
-                        .build())
-                .collect(Collectors.toList());
+        List<QuizQuestion> questions = new java.util.ArrayList<>();
+        for (int i = 0; i < request.getQuestions().size(); i++) {
+            CreateQuizQuestionRequest q = request.getQuestions().get(i);
+            questions.add(QuizQuestion.builder()
+                    .quiz(quiz)
+                    .question(q.getQuestion())
+                    .options(q.getOptions())
+                    .correctAnswer(q.getCorrectAnswer())
+                    .points(q.getPoints() != null ? q.getPoints() : 1)
+                    .orderIndex(i)
+                    .build());
+        }
         quiz.setQuestions(questions);
 
         quiz = quizRepository.save(quiz);
@@ -102,10 +101,7 @@ public class QuizService {
         }
 
         // Calculate score
-        int totalScore = 0;
-        int maxScore = quiz.getQuestions().stream()
-                .mapToInt(QuizQuestion::getPoints)
-                .sum();
+        int correctCount = 0;
 
         List<QuizAnswer> answers = request.getAnswers().stream()
                 .map(a -> {
@@ -114,38 +110,35 @@ public class QuizService {
                             .findFirst()
                             .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
 
-                    boolean isCorrect = question.getCorrectAnswer().equals(a.getAnswer());
-                    
+                    boolean isCorrect = question.getCorrectAnswer().equals(a.getSelectedAnswer());
+
                     return QuizAnswer.builder()
                             .question(question)
-                            .answer(a.getAnswer())
+                            .selectedAnswer(a.getSelectedAnswer())
                             .isCorrect(isCorrect)
                             .build();
                 })
                 .collect(Collectors.toList());
 
-        totalScore = answers.stream()
-                .filter(QuizAnswer::getIsCorrect)
-                .mapToInt(a -> a.getQuestion().getPoints())
-                .sum();
-
-        boolean passed = (totalScore * 100.0 / maxScore) >= quiz.getPassingScore();
+        correctCount = (int) answers.stream().filter(QuizAnswer::getIsCorrect).count();
+        int totalQuestions = quiz.getQuestions().size();
+        int scorePercent = totalQuestions > 0 ? Math.round((correctCount * 100f) / totalQuestions) : 0;
+        boolean passed = scorePercent >= (quiz.getPassingScore() != null ? quiz.getPassingScore() : 60);
 
         QuizResult result = QuizResult.builder()
                 .quiz(quiz)
                 .student(student)
-                .score(totalScore)
-                .maxScore(maxScore)
+                .score(scorePercent)
+                .totalQuestions(totalQuestions)
                 .passed(passed)
                 .completedAt(LocalDateTime.now())
-                .timeSpent(request.getTimeSpent())
                 .build();
 
         answers.forEach(a -> a.setResult(result));
         result.setAnswers(answers);
 
-        result = quizResultRepository.save(result);
-        return mapResultToDTO(result);
+        QuizResult savedResult = quizResultRepository.save(result);
+        return mapResultToDTO(savedResult);
     }
 
     public QuizDTO getQuizById(UUID quizId) {
@@ -166,8 +159,8 @@ public class QuizService {
             String sortBy,
             String sortOrder
     ) {
-        Sort sort = sortOrder.equalsIgnoreCase("desc") 
-                ? Sort.by(sortBy).descending() 
+        Sort sort = sortOrder.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -205,10 +198,10 @@ public class QuizService {
                         .map(q -> QuizQuestionDTO.builder()
                                 .id(q.getId())
                                 .question(q.getQuestion())
-                                .type(q.getType())
                                 .options(q.getOptions())
                                 .correctAnswer(q.getCorrectAnswer())
                                 .points(q.getPoints())
+                                .orderIndex(q.getOrderIndex())
                                 .build())
                         .collect(Collectors.toList())
                 : List.of();
@@ -217,16 +210,17 @@ public class QuizService {
                 .id(quiz.getId())
                 .title(quiz.getTitle())
                 .description(quiz.getDescription())
+                .sessionId(quiz.getSession() != null ? quiz.getSession().getId() : null)
+                .sessionName(quiz.getSession() != null ? quiz.getSession().getName() : null)
                 .language(quiz.getLanguage())
-                .level(quiz.getLevel())
                 .timeLimit(quiz.getTimeLimit())
                 .passingScore(quiz.getPassingScore())
                 .isPublished(quiz.getIsPublished())
-                .sessionId(quiz.getSession() != null ? quiz.getSession().getId() : null)
                 .createdBy(quiz.getCreatedBy().getId())
                 .createdByName(quiz.getCreatedBy().getUser().getName())
                 .questions(questions)
                 .createdAt(quiz.getCreatedAt())
+                .updatedAt(quiz.getUpdatedAt())
                 .build();
     }
 
@@ -235,23 +229,30 @@ public class QuizService {
                 ? result.getAnswers().stream()
                         .map(a -> QuizAnswerDTO.builder()
                                 .questionId(a.getQuestion().getId())
-                                .answer(a.getAnswer())
+                                .question(a.getQuestion().getQuestion())
+                                .selectedAnswer(a.getSelectedAnswer())
+                                .correctAnswer(a.getQuestion().getCorrectAnswer())
                                 .isCorrect(a.getIsCorrect())
                                 .build())
                         .collect(Collectors.toList())
                 : List.of();
 
+        Quiz quiz = result.getQuiz();
+        Student student = result.getStudent();
+
         return QuizResultDTO.builder()
                 .id(result.getId())
-                .quizId(result.getQuiz().getId())
-                .quizTitle(result.getQuiz().getTitle())
-                .studentId(result.getStudent().getId())
-                .studentName(result.getStudent().getUser().getName())
+                .quizId(quiz.getId())
+                .quizTitle(quiz.getTitle())
+                .studentId(student.getId())
+                .studentName(student.getUser().getName())
+                .studentAvatar(student.getUser().getAvatar())
+                .sessionName(quiz.getSession() != null ? quiz.getSession().getName() : null)
+                .language(quiz.getLanguage())
                 .score(result.getScore())
-                .maxScore(result.getMaxScore())
+                .totalQuestions(result.getTotalQuestions())
                 .passed(result.getPassed())
                 .completedAt(result.getCompletedAt())
-                .timeSpent(result.getTimeSpent())
                 .answers(answers)
                 .build();
     }

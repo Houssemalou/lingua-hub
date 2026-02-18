@@ -7,6 +7,7 @@ export { ProfessorService } from './ProfessorService';
 export { RoomService } from './RoomService';
 export { QuizService } from './QuizService';
 export { EvaluationService } from './EvaluationService';
+export { ChallengeService } from './ChallengeService';
 export { ModerationService } from './ModerationService';
 export { ChatService } from './ChatService';
 export { AuthService, getStoredTokens, getStoredUser } from './AuthService';

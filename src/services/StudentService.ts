@@ -25,6 +25,20 @@ import { mockStudents } from '@/data/mockData';
 // ============================================
 
 export const StudentService = {
+  // Get current student's profile
+  async getMyProfile(): Promise<ApiResponse<StudentModel>> {
+    try {
+      const response = await apiClient.get<{ success: boolean; message: string; data: StudentModel }>('/students/me');
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to fetch profile' };
+    } catch (error) {
+      console.error('Error fetching student profile:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+
   // Get all students (no backend filtering, filtering done on frontend)
   async getAll(): Promise<PaginatedResponse<StudentModel>> {
     try {
@@ -33,46 +47,48 @@ export const StudentService = {
       console.error('Error fetching students:', error);
       throw error;
     }
-
-    
   },
 
   // Get student by ID
   async getById(id: string): Promise<ApiResponse<StudentModel>> {
     try {
-      const data = await apiClient.get<StudentModel>(`/students/${id}`);
-      return { success: true, data };
+      const response = await apiClient.get<{ success: boolean; message: string; data: StudentModel }>(`/students/${id}`);
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to fetch student' };
     } catch (error) {
       console.error('Error fetching student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-
-   
   },
 
   // Create new student
   async create(data: CreateStudentDTO): Promise<ApiResponse<StudentModel>> {
     try {
-      const result = await apiClient.post<StudentModel>('/students', data);
-      return { success: true, data: result };
+      const response = await apiClient.post<{ success: boolean; message: string; data: StudentModel }>('/students', data);
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to create student' };
     } catch (error) {
       console.error('Error creating student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-
-    
   },
 
   // Update student
   async update(id: string, data: UpdateStudentDTO): Promise<ApiResponse<StudentModel>> {
     try {
-      const result = await apiClient.put<StudentModel>(`/students/${id}`, data);
-      return { success: true, data: result };
+      const response = await apiClient.put<{ success: boolean; message: string; data: StudentModel }>(`/students/${id}`, data);
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to update student' };
     } catch (error) {
       console.error('Error updating student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
-
   },
 
   // Delete student

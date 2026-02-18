@@ -13,7 +13,6 @@ import io.livekit.server.AccessToken;
 import io.livekit.server.RoomServiceClient;
 import io.livekit.server.WebhookReceiver;
 import livekit.LivekitModels;
-import livekit.LivekitRoom;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -82,7 +81,6 @@ public class LiveKitService {
         );
 
         // Set token expiration
-        long expirationTime = System.currentTimeMillis() / 1000 + tokenExpiration;
         token.setTtl(tokenExpiration);
 
         String jwt = token.toJwt();
@@ -112,63 +110,81 @@ public class LiveKitService {
      * Create a LiveKit room
      */
     public CompletableFuture<LivekitModels.Room> createLiveKitRoom(String roomName, int maxParticipants) {
-        LivekitRoom.CreateRoomRequest request = LivekitRoom.CreateRoomRequest.newBuilder()
-                .setName(roomName)
-                .setEmptyTimeout(300) // 5 minutes
-                .setMaxParticipants(maxParticipants)
-                .build();
-
-        return roomServiceClient.createRoom(request);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return roomServiceClient.createRoom(roomName).execute().body();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create LiveKit room", e);
+            }
+        });
     }
 
     /**
      * Delete a LiveKit room
      */
     public CompletableFuture<Void> deleteLiveKitRoom(String roomName) {
-        return roomServiceClient.deleteRoom(roomName);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                roomServiceClient.deleteRoom(roomName).execute();
+                return null;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to delete LiveKit room", e);
+            }
+        });
     }
 
     /**
      * List all active LiveKit rooms
      */
     public CompletableFuture<List<LivekitModels.Room>> listRooms() {
-        return roomServiceClient.listRooms(
-                LivekitRoom.ListRoomsRequest.newBuilder().build()
-        );
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return roomServiceClient.listRooms(List.of()).execute().body();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to list LiveKit rooms", e);
+            }
+        });
     }
 
     /**
      * Get LiveKit room info
      */
     public CompletableFuture<LivekitModels.Room> getRoomInfo(String roomName) {
-        return roomServiceClient.listRooms(
-                LivekitRoom.ListRoomsRequest.newBuilder()
-                        .addNames(roomName)
-                        .build()
-        ).thenApply(rooms -> rooms.isEmpty() ? null : rooms.get(0));
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                List<LivekitModels.Room> rooms = roomServiceClient.listRooms(List.of(roomName)).execute().body();
+                return (rooms != null && !rooms.isEmpty()) ? rooms.get(0) : null;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to get LiveKit room info", e);
+            }
+        });
     }
 
     /**
      * List participants in a LiveKit room
      */
     public CompletableFuture<List<LivekitModels.ParticipantInfo>> listParticipants(String roomName) {
-        return roomServiceClient.listParticipants(
-                LivekitRoom.ListParticipantsRequest.newBuilder()
-                        .setRoom(roomName)
-                        .build()
-        );
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return roomServiceClient.listParticipants(roomName).execute().body();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to list participants", e);
+            }
+        });
     }
 
     /**
      * Remove participant from room
      */
     public CompletableFuture<Void> removeParticipant(String roomName, String identity) {
-        return roomServiceClient.removeParticipant(
-                LivekitRoom.RoomParticipantIdentity.newBuilder()
-                        .setRoom(roomName)
-                        .setIdentity(identity)
-                        .build()
-        );
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                roomServiceClient.removeParticipant(roomName, identity).execute();
+                return null;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to remove participant", e);
+            }
+        });
     }
 
     /**
@@ -180,14 +196,13 @@ public class LiveKitService {
             String trackSid,
             boolean muted
     ) {
-        return roomServiceClient.mutePublishedTrack(
-                LivekitRoom.MuteRoomTrackRequest.newBuilder()
-                        .setRoom(roomName)
-                        .setIdentity(identity)
-                        .setTrackSid(trackSid)
-                        .setMuted(muted)
-                        .build()
-        );
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return roomServiceClient.mutePublishedTrack(roomName, identity, trackSid, muted).execute().body();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to mute/unmute track", e);
+            }
+        });
     }
 
     /**

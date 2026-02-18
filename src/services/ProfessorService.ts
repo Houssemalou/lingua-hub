@@ -26,6 +26,20 @@ import { mockProfessors } from '@/data/mockData';
 // ============================================
 
 export const ProfessorService = {
+  // Get current professor's profile
+  async getMyProfile(): Promise<ApiResponse<ProfessorModel>> {
+    try {
+      const response = await apiClient.get<{ success: boolean; message: string; data: ProfessorModel }>('/professors/me');
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to fetch profile' };
+    } catch (error) {
+      console.error('Error fetching professor profile:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  },
+
   // Get all professors (no backend filtering, filtering done on frontend when desired)
   async getAll(filters?: ProfessorFilters): Promise<PaginatedResponse<ProfessorModel>> {
     try {
@@ -41,8 +55,8 @@ export const ProfessorService = {
       }
       if (filters?.search) {
         const search = filters.search.toLowerCase();
-        filtered = filtered.filter(p => 
-          p.name.toLowerCase().includes(search) || 
+        filtered = filtered.filter(p =>
+          p.name.toLowerCase().includes(search) ||
           p.email.toLowerCase().includes(search)
         );
       }
@@ -67,8 +81,11 @@ export const ProfessorService = {
   // Get professor by ID
   async getById(id: string): Promise<ApiResponse<ProfessorModel>> {
     try {
-      const data = await apiClient.get<ProfessorModel>(`/professors/${id}`);
-      return { success: true, data };
+      const response = await apiClient.get<{ success: boolean; message: string; data: ProfessorModel }>(`/professors/${id}`);
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to fetch professor' };
     } catch (error) {
       console.error('Error fetching professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -78,8 +95,11 @@ export const ProfessorService = {
   // Create new professor
   async create(data: CreateProfessorDTO): Promise<ApiResponse<ProfessorModel>> {
     try {
-      const result = await apiClient.post<ProfessorModel>('/professors', data);
-      return { success: true, data: result };
+      const response = await apiClient.post<{ success: boolean; message: string; data: ProfessorModel }>('/professors', data);
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to create professor' };
     } catch (error) {
       console.error('Error creating professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -89,8 +109,11 @@ export const ProfessorService = {
   // Update professor
   async update(id: string, data: UpdateProfessorDTO): Promise<ApiResponse<ProfessorModel>> {
     try {
-      const result = await apiClient.put<ProfessorModel>(`/professors/${id}`, data);
-      return { success: true, data: result };
+      const response = await apiClient.put<{ success: boolean; message: string; data: ProfessorModel }>(`/professors/${id}`, data);
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      }
+      return { success: false, error: response.message || 'Failed to update professor' };
     } catch (error) {
       console.error('Error updating professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

@@ -35,7 +35,7 @@ public class RecordingController {
     @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
     @Operation(summary = "Start recording", description = "Initialize a new session recording")
     public ResponseEntity<ApiResponse<SessionRecordingDTO>> startRecording(
-            @Parameter(description = "Room ID") @RequestParam Long roomId,
+            @Parameter(description = "Room ID") @RequestParam UUID roomId,
             @Parameter(description = "LiveKit recording ID") @RequestParam String livekitRecordingId) {
         try {
             SessionRecordingDTO recording = recordingService.startRecording(roomId, livekitRecordingId);
@@ -142,7 +142,7 @@ public class RecordingController {
             @Parameter(description = "Recording ID") @PathVariable Long id) {
         try {
             recordingService.deleteRecording(id);
-            return ResponseEntity.ok(ApiResponse.success(null, "Recording deleted successfully"));
+            return ResponseEntity.ok(ApiResponse.success("Recording deleted successfully", null));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error(e.getMessage()));

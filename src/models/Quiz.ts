@@ -15,10 +15,11 @@ export interface QuizModel {
   title: string;
   description: string;
   sessionId: string;
-  sessionName: string;
-  language: string;
+  sessionName?: string;
+  language?: string;
   questions: QuizQuestionModel[];
   createdBy: string; // professorId
+  createdByName?: string;
   createdAt: string;
   updatedAt?: string;
   isPublished: boolean;
@@ -30,6 +31,7 @@ export interface CreateQuizDTO {
   title: string;
   description: string;
   sessionId: string;
+  language: string;
   questions: Omit<QuizQuestionModel, 'id'>[];
   timeLimit?: number;
   passingScore?: number;
@@ -47,16 +49,17 @@ export interface UpdateQuizDTO {
 export interface QuizResultModel {
   id: string;
   quizId: string;
+  quizTitle?: string;
   studentId: string;
   studentName: string;
-  studentAvatar: string;
-  sessionName: string;
-  language: string;
+  studentAvatar?: string;
+  sessionName?: string;
+  language?: string;
   score: number;
   totalQuestions: number;
   completedAt: string;
   passed: boolean;
-  answers: QuizAnswerModel[];
+  answers?: QuizAnswerModel[];
 }
 
 export interface QuizAnswerModel {

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,8 +45,16 @@ public class EvaluationService {
         Professor professor = professorRepository.findById(professorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Professor not found"));
 
-        // Calculate overall score
+        // Extract individual criteria from the map
         Map<String, Integer> criteria = request.getCriteria();
+        Integer pronunciation = criteria.getOrDefault("pronunciation", 0);
+        Integer grammar = criteria.getOrDefault("grammar", 0);
+        Integer vocabulary = criteria.getOrDefault("vocabulary", 0);
+        Integer fluency = criteria.getOrDefault("fluency", 0);
+        Integer participation = criteria.getOrDefault("participation", 0);
+        Integer comprehension = criteria.getOrDefault("comprehension", 0);
+
+        // Calculate overall score
         double overallScore = criteria.values().stream()
                 .mapToInt(Integer::intValue)
                 .average()
@@ -55,7 +64,12 @@ public class EvaluationService {
                 .session(room)
                 .student(student)
                 .professor(professor)
-                .criteria(criteria)
+                .pronunciation(pronunciation)
+                .grammar(grammar)
+                .vocabulary(vocabulary)
+                .fluency(fluency)
+                .participation(participation)
+                .comprehension(comprehension)
                 .overallScore((int) Math.round(overallScore))
                 .feedback(request.getFeedback())
                 .strengths(request.getStrengths())
@@ -73,15 +87,22 @@ public class EvaluationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Evaluation not found"));
 
         if (request.getCriteria() != null) {
-            evaluation.setCriteria(request.getCriteria());
+            Map<String, Integer> criteria = request.getCriteria();
+            if (criteria.containsKey("pronunciation")) evaluation.setPronunciation(criteria.get("pronunciation"));
+            if (criteria.containsKey("grammar")) evaluation.setGrammar(criteria.get("grammar"));
+            if (criteria.containsKey("vocabulary")) evaluation.setVocabulary(criteria.get("vocabulary"));
+            if (criteria.containsKey("fluency")) evaluation.setFluency(criteria.get("fluency"));
+            if (criteria.containsKey("participation")) evaluation.setParticipation(criteria.get("participation"));
+            if (criteria.containsKey("comprehension")) evaluation.setComprehension(criteria.get("comprehension"));
+
             // Recalculate overall score
-            double overallScore = request.getCriteria().values().stream()
+            double overallScore = criteria.values().stream()
                     .mapToInt(Integer::intValue)
                     .average()
                     .orElse(evaluation.getOverallScore().doubleValue());
             evaluation.setOverallScore((int) Math.round(overallScore));
         }
-        
+
         if (request.getFeedback() != null) evaluation.setFeedback(request.getFeedback());
         if (request.getStrengths() != null) evaluation.setStrengths(request.getStrengths());
         if (request.getAreasToImprove() != null) evaluation.setAreasToImprove(request.getAreasToImprove());
@@ -115,8 +136,8 @@ public class EvaluationService {
             String sortBy,
             String sortOrder
     ) {
-        Sort sort = sortOrder.equalsIgnoreCase("desc") 
-                ? Sort.by(sortBy).descending() 
+        Sort sort = sortOrder.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -136,7 +157,7 @@ public class EvaluationService {
 
     public Map<String, Object> getStudentStatistics(UUID studentId) {
         List<Evaluation> evaluations = evaluationRepository.findByStudentId(studentId);
-        
+
         if (evaluations.isEmpty()) {
             return Map.of(
                 "totalEvaluations", 0,
@@ -159,13 +180,14 @@ public class EvaluationService {
                 ))
                 .collect(Collectors.toList());
 
-        // Calculate criteria averages
-        Map<String, Double> criteriaAverages = evaluations.stream()
-                .flatMap(e -> e.getCriteria().entrySet().stream())
-                .collect(Collectors.groupingBy(
-                    Map.Entry::getKey,
-                    Collectors.averagingDouble(e -> e.getValue().doubleValue())
-                ));
+        // Calculate criteria averages from individual fields
+        Map<String, Double> criteriaAverages = new LinkedHashMap<>();
+        criteriaAverages.put("pronunciation", evaluations.stream().mapToInt(e -> e.getPronunciation() != null ? e.getPronunciation() : 0).average().orElse(0));
+        criteriaAverages.put("grammar", evaluations.stream().mapToInt(e -> e.getGrammar() != null ? e.getGrammar() : 0).average().orElse(0));
+        criteriaAverages.put("vocabulary", evaluations.stream().mapToInt(e -> e.getVocabulary() != null ? e.getVocabulary() : 0).average().orElse(0));
+        criteriaAverages.put("fluency", evaluations.stream().mapToInt(e -> e.getFluency() != null ? e.getFluency() : 0).average().orElse(0));
+        criteriaAverages.put("participation", evaluations.stream().mapToInt(e -> e.getParticipation() != null ? e.getParticipation() : 0).average().orElse(0));
+        criteriaAverages.put("comprehension", evaluations.stream().mapToInt(e -> e.getComprehension() != null ? e.getComprehension() : 0).average().orElse(0));
 
         return Map.of(
             "totalEvaluations", evaluations.size(),
@@ -175,13 +197,26 @@ public class EvaluationService {
         );
     }
 
+    private Map<String, Integer> buildCriteriaMap(Evaluation evaluation) {
+        Map<String, Integer> criteria = new LinkedHashMap<>();
+        if (evaluation.getPronunciation() != null) criteria.put("pronunciation", evaluation.getPronunciation());
+        if (evaluation.getGrammar() != null) criteria.put("grammar", evaluation.getGrammar());
+        if (evaluation.getVocabulary() != null) criteria.put("vocabulary", evaluation.getVocabulary());
+        if (evaluation.getFluency() != null) criteria.put("fluency", evaluation.getFluency());
+        if (evaluation.getParticipation() != null) criteria.put("participation", evaluation.getParticipation());
+        if (evaluation.getComprehension() != null) criteria.put("comprehension", evaluation.getComprehension());
+        return criteria;
+    }
+
     private EvaluationDTO mapToDTO(Evaluation evaluation) {
-        List<EvaluationCriteriaDTO> criteria = evaluation.getCriteria().entrySet().stream()
-                .map(e -> EvaluationCriteriaDTO.builder()
-                        .name(e.getKey())
-                        .score(e.getValue())
-                        .build())
-                .collect(Collectors.toList());
+        EvaluationCriteriaDTO criteriaDTO = EvaluationCriteriaDTO.builder()
+                .pronunciation(evaluation.getPronunciation())
+                .grammar(evaluation.getGrammar())
+                .vocabulary(evaluation.getVocabulary())
+                .fluency(evaluation.getFluency())
+                .participation(evaluation.getParticipation())
+                .comprehension(evaluation.getComprehension())
+                .build();
 
         return EvaluationDTO.builder()
                 .id(evaluation.getId())
@@ -191,7 +226,7 @@ public class EvaluationService {
                 .studentName(evaluation.getStudent().getUser().getName())
                 .professorId(evaluation.getProfessor().getId())
                 .professorName(evaluation.getProfessor().getUser().getName())
-                .criteria(criteria)
+                .criteria(List.of(criteriaDTO))
                 .overallScore(evaluation.getOverallScore())
                 .feedback(evaluation.getFeedback())
                 .strengths(evaluation.getStrengths())

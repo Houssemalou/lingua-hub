@@ -51,6 +51,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
@@ -618,10 +619,55 @@ export default function ProfessorEvaluations() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-          <p className="text-muted-foreground">{isRTL ? 'جارٍ التحميل...' : 'Chargement...'}</p>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div>
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-80 mt-2" />
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4 flex items-center gap-4">
+                <Skeleton className="w-11 h-11 rounded-xl" />
+                <div className="space-y-2">
+                  <Skeleton className="h-7 w-10" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Tab + search skeleton */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Skeleton className="h-10 w-56 rounded-lg" />
+          <Skeleton className="h-9 w-full max-w-sm" />
+        </div>
+        {/* Student list skeleton */}
+        <div className="grid gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Skeleton className="w-11 h-11 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-8 rounded-full" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-20" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );

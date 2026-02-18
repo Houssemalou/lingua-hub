@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Student, Professor } from '@/types';
 import { AuthService, StudentRegisterData, ProfessorRegisterData, AdminRegisterData } from '@/services/AuthService';
+import { StudentService } from '@/services/StudentService';
+import { ProfessorService } from '@/services/ProfessorService';
 
 export type AuthRole = 'admin' | 'student' | 'professor' | null;
 
 interface AuthUser {
   id: string;
   email: string;
+  name: string;
   role: AuthRole;
   student?: Student;
   professor?: Professor;
@@ -24,56 +27,14 @@ interface AuthContextType {
   signupProfessor: (data: ProfessorSignupData) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   validateAccessToken: (token: string) => boolean;
+  updateUser: (updates: Partial<AuthUser>) => void;
+  refreshProfile: () => Promise<void>;
 }
 
-// Valid access tokens for registration
+// Valid access tokens for registration (kept for backward compatibility)
 const validAccessTokens = ['STUDENT2024', 'LANG-ABC123', 'EDU-TOKEN-01', 'ACCESS-2024-XYZ'];
 const validProfessorTokens = ['PROF2024', 'TEACHER-ABC', 'PROF-TOKEN-01'];
 const validAdminTokens = ['ADMIN2024', 'ADMIN-TOKEN-01', 'SUPER-ADMIN'];
-
-// Mock users database
-const mockUsers: AuthUser[] = [
-  {
-    id: 'admin-1',
-    email: 'admin@school.com',
-    role: 'admin',
-  },
-  {
-    id: 'prof-1',
-    email: 'marie.dubois@example.com',
-    role: 'professor',
-    professor: {
-      id: 'prof-1',
-      name: 'Marie Dubois',
-      email: 'marie.dubois@example.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marie',
-      bio: 'Professeur de français avec 10 ans d\'expérience',
-      languages: ['French', 'English', 'Spanish'],
-      specialization: 'Conversation et grammaire',
-      joinedAt: '2023-01-15',
-      totalSessions: 156,
-      rating: 4.8,
-    },
-  },
-  {
-    id: 'student-1',
-    email: 'student@example.com',
-    role: 'student',
-    student: {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'student@example.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-      nickname: 'Sarah',
-      bio: 'Étudiante passionnée par les langues et les sciences',
-      level: 'B1',
-      joinedAt: '2024-01-10',
-      skills: { pronunciation: 72, grammar: 68, vocabulary: 75, fluency: 65 },
-      totalSessions: 12,
-      hoursLearned: 18,
-    },
-  },
-];
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -99,62 +60,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
            validAdminTokens.includes(token.toUpperCase().trim());
   };
 
+  // Fetch full profile from backend for current user
+  const fetchProfile = async (role: string, authUser: AuthUser): Promise<AuthUser> => {
+    if (role === 'student') {
+      try {
+        const profileResponse = await StudentService.getMyProfile();
+        if (profileResponse.success && profileResponse.data) {
+          const p = profileResponse.data;
+          authUser.student = {
+            id: String(p.id),
+            name: p.name || authUser.name,
+            email: p.email || authUser.email,
+            avatar: p.avatar || '',
+            nickname: p.nickname || '',
+            bio: p.bio || '',
+            level: p.level || 'A1',
+            joinedAt: p.joinedAt || new Date().toISOString(),
+            skills: p.skills || { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
+            totalSessions: p.totalSessions || 0,
+            hoursLearned: p.hoursLearned || 0,
+          };
+        }
+      } catch (error) {
+        console.error('Failed to fetch student profile:', error);
+      }
+    } else if (role === 'professor') {
+      try {
+        const profileResponse = await ProfessorService.getMyProfile();
+        if (profileResponse.success && profileResponse.data) {
+          const p = profileResponse.data;
+          authUser.professor = {
+            id: String(p.id),
+            name: p.name || authUser.name,
+            email: p.email || authUser.email,
+            avatar: p.avatar || '',
+            bio: p.bio || '',
+            languages: p.languages || [],
+            specialization: p.specialization || '',
+            joinedAt: p.joinedAt || new Date().toISOString(),
+            totalSessions: p.totalSessions || 0,
+            rating: p.rating || 0,
+          };
+        }
+      } catch (error) {
+        console.error('Failed to fetch professor profile:', error);
+      }
+    }
+    return authUser;
+  };
+
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await AuthService.login({ username, password });
 
       if (response.success && response.data) {
-        let authUser: AuthUser;
+        const { user: userData } = response.data;
 
-        if (response.data.user.role === 'student') {
-          const studentProfile: Student = {
-            id: response.data.user.id,
-            name: response.data.user.name,
-            email: response.data.user.email,
-            avatar: localStorage.getItem('temp_student_avatar') || '',
-            nickname: localStorage.getItem('temp_student_nickname') || '', // Will be fetched s
-            level: (localStorage.getItem('temp_student_level') as 'A1' | 'A2' | 'B1' | 'B2') || 'A1',
-            joinedAt: new Date().toISOString(),
-            skills: { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
-            totalSessions: 0,
-            hoursLearned: 0,
-            bio: localStorage.getItem('temp_student_bio') || '',
-          };
-          authUser = {
-            id: response.data.user.id,
-            email: response.data.user.email,
-            role: response.data.user.role,
-            student: studentProfile,
-          };
-        } else if (response.data.user.role === 'professor') {
-          const professorProfile: Professor = {
-            id: response.data.user.id,
-            name: response.data.user.name,
-            email: response.data.user.email,
-            avatar: localStorage.getItem('temp_professor_avatar') || '',
-            bio: localStorage.getItem('temp_professor_bio') || '',
-            languages: JSON.parse(localStorage.getItem('temp_professor_languages') || '[]'),
-            specialization: localStorage.getItem('temp_professor_specialization') || '',
-            joinedAt: new Date().toISOString(),
-            totalSessions: 0,
-            rating: 0,
-          };
-          authUser = {
-            id: response.data.user.id,
-            email: response.data.user.email,
-            role: response.data.user.role,
-            professor: professorProfile,
-          };
-        } else {
-          // Admin
-          authUser = {
-            id: response.data.user.id,
-            email: response.data.user.email,
-            role: response.data.user.role,
-          };
-        }
+        let authUser: AuthUser = {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+        };
+
+        // Fetch the full profile from backend
+        authUser = await fetchProfile(userData.role, authUser);
 
         setUser(authUser);
+
+        // Clean up temp localStorage data
+        ['temp_student_avatar', 'temp_student_bio', 'temp_student_nickname', 'temp_student_level',
+         'temp_professor_avatar', 'temp_professor_bio', 'temp_professor_languages', 'temp_professor_specialization'
+        ].forEach(key => localStorage.removeItem(key));
+
         return { success: true };
       } else {
         return { success: false, error: response.error };
@@ -183,14 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signupStudent = async (data: StudentSignupData): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await AuthService.registerStudent(data);
-      localStorage.setItem('temp_student_bio', data.bio || '');
-      localStorage.setItem('temp_student_nickname', data.nickname || '');
-      localStorage.setItem('temp_student_level', data.level || 'A1');
-      localStorage.setItem('temp_student_avatar', data.avatar || '');
-     
 
       if (response.success) {
-        
         return { success: true };
       } else {
         return { success: false, error: response.error };
@@ -204,10 +176,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signupProfessor = async (data: ProfessorSignupData): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await AuthService.registerProfessor(data);
-      localStorage.setItem('temp_professor_bio', data.bio || '');
-      localStorage.setItem('temp_professor_languages', JSON.stringify(data.languages || []));
-      localStorage.setItem('temp_professor_specialization', data.specialization || '');
-      localStorage.setItem('temp_professor_avatar', data.avatar || '');
 
       if (response.success) {
        return { success: true };
@@ -226,8 +194,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/auth';
   };
 
+  // Update user state (used by profile pages after editing)
+  const updateUser = (updates: Partial<AuthUser>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, ...updates };
+    });
+  };
+
+  // Refresh profile from backend
+  const refreshProfile = async () => {
+    if (!user || !user.role) return;
+    const updatedUser = await fetchProfile(user.role, { ...user });
+    setUser(updatedUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, logout, validateAccessToken }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, logout, validateAccessToken, updateUser, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

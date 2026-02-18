@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  User, 
-  Mail, 
-  Calendar, 
+import {
+  User,
+  Mail,
+  Calendar,
   Star,
   Languages,
   BookOpen,
   Edit3,
   Save,
   X,
+  Loader2,
+  Plus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { ProfessorService } from '@/services/ProfessorService';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -38,19 +41,87 @@ const item = {
 };
 
 export default function ProfessorProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { language, isRTL } = useLanguage();
   const professor = user?.professor;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [bio, setBio] = useState(professor?.bio || '');
   const [specialization, setSpecialization] = useState(professor?.specialization || '');
+  const [languages, setLanguages] = useState<string[]>(professor?.languages || []);
+  const [newLanguage, setNewLanguage] = useState('');
+  const [name, setName] = useState(professor?.name || '');
 
   const dateLocale = language === 'ar' ? ar : fr;
 
-  const handleSave = () => {
-    toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profil mis à jour avec succès !');
+  const handleEdit = () => {
+    setBio(professor?.bio || '');
+    setSpecialization(professor?.specialization || '');
+    setLanguages(professor?.languages || []);
+    setName(professor?.name || '');
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setBio(professor?.bio || '');
+    setSpecialization(professor?.specialization || '');
+    setLanguages(professor?.languages || []);
+    setName(professor?.name || '');
     setIsEditing(false);
+  };
+
+  const handleAddLanguage = () => {
+    const lang = newLanguage.trim();
+    if (lang && !languages.includes(lang)) {
+      setLanguages([...languages, lang]);
+      setNewLanguage('');
+    }
+  };
+
+  const handleRemoveLanguage = (lang: string) => {
+    setLanguages(languages.filter(l => l !== lang));
+  };
+
+  const handleSave = async () => {
+    if (!professor) return;
+
+    setIsSaving(true);
+    try {
+      const response = await ProfessorService.update(professor.id, {
+        name: name.trim() || undefined,
+        bio: bio.trim(),
+        specialization: specialization.trim() || undefined,
+        languages: languages.length > 0 ? languages : undefined,
+      });
+
+      if (response.success && response.data) {
+        const updated = response.data;
+        updateUser({
+          professor: {
+            ...professor,
+            name: updated.name || professor.name,
+            bio: updated.bio || '',
+            specialization: updated.specialization || professor.specialization,
+            languages: updated.languages || professor.languages,
+            avatar: updated.avatar || professor.avatar,
+            rating: updated.rating ?? professor.rating,
+            totalSessions: updated.totalSessions ?? professor.totalSessions,
+            joinedAt: updated.joinedAt || professor.joinedAt,
+          },
+          name: updated.name || user?.name || '',
+        });
+        toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profil mis à jour avec succès !');
+        setIsEditing(false);
+      } else {
+        toast.error(response.error || (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil'));
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error(isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!professor) {
@@ -87,7 +158,7 @@ export default function ProfessorProfile() {
                 />
                 <h2 className="text-xl font-bold text-foreground">{professor.name}</h2>
                 <p className="text-muted-foreground">{professor.email}</p>
-                
+
                 <div className="flex items-center justify-center gap-1 mt-3">
                   <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                   <span className="font-bold text-lg">{professor.rating}</span>
@@ -140,18 +211,22 @@ export default function ProfessorProfile() {
             <CardHeader className={cn("flex flex-row items-center justify-between", isRTL && "flex-row-reverse")}>
               <CardTitle>{isRTL ? 'المعلومات الشخصية' : 'Informations personnelles'}</CardTitle>
               {!isEditing ? (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Button variant="outline" size="sm" onClick={handleEdit}>
                   <Edit3 className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
                   {isRTL ? 'تعديل' : 'Modifier'}
                 </Button>
               ) : (
                 <div className={cn("flex gap-2", isRTL && "flex-row-reverse")}>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                  <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
                     <X className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
                     {isRTL ? 'إلغاء' : 'Annuler'}
                   </Button>
-                  <Button size="sm" onClick={handleSave}>
-                    <Save className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                  <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? (
+                      <Loader2 className={cn("w-4 h-4 animate-spin", isRTL ? "ml-2" : "mr-2")} />
+                    ) : (
+                      <Save className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                    )}
                     {isRTL ? 'حفظ' : 'Enregistrer'}
                   </Button>
                 </div>
@@ -164,7 +239,14 @@ export default function ProfessorProfile() {
                     <User className="w-4 h-4" />
                     {isRTL ? 'الاسم' : 'Nom'}
                   </Label>
-                  <Input value={professor.name} disabled className="bg-muted/50" />
+                  {isEditing ? (
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  ) : (
+                    <Input value={professor.name} disabled className="bg-muted/50" />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
@@ -195,13 +277,42 @@ export default function ProfessorProfile() {
                   <Languages className="w-4 h-4" />
                   {isRTL ? 'اللغات' : 'Langues'}
                 </Label>
-                <div className="flex flex-wrap gap-2">
-                  {professor.languages.map((lang) => (
-                    <Badge key={lang} variant="outline">
-                      {lang}
-                    </Badge>
-                  ))}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {languages.map((lang) => (
+                        <Badge key={lang} variant="outline" className="flex items-center gap-1">
+                          {lang}
+                          <button
+                            onClick={() => handleRemoveLanguage(lang)}
+                            className="ml-1 hover:text-destructive"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newLanguage}
+                        onChange={(e) => setNewLanguage(e.target.value)}
+                        placeholder={isRTL ? 'أضف لغة...' : 'Ajouter une langue...'}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLanguage())}
+                      />
+                      <Button type="button" variant="outline" size="icon" onClick={handleAddLanguage}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {professor.languages.map((lang) => (
+                      <Badge key={lang} variant="outline">
+                        {lang}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
