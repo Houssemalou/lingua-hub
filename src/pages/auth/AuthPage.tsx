@@ -180,7 +180,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-md mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
         <CardHeader className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-primary flex items-center justify-center">
             <GraduationCap className="w-8 h-8 text-primary-foreground" />
@@ -246,7 +246,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-lg mx-auto glass-card">
+      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass-card">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{isRTL ? 'إنشاء حساب' : 'Créer un compte'}</CardTitle>
           <CardDescription>
@@ -254,7 +254,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -326,7 +326,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-md mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
@@ -405,7 +405,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
@@ -425,7 +425,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-6">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4 mb-6">
             {avatarOptions.map((avatar) => (
               <motion.button
                 key={avatar.id}
@@ -470,7 +470,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-md mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
@@ -492,24 +492,26 @@ export default function AuthPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nickname">{isRTL ? 'اسم المستخدم' : 'Pseudo'}</Label>
-            <Input
-              id="nickname"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder={isRTL ? 'كيف تريد أن تظهر' : 'Comment voulez-vous apparaître'}
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nickname">{isRTL ? 'اسم المستخدم' : 'Pseudo'}</Label>
+              <Input
+                id="nickname"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder={isRTL ? 'كيف تريد أن تظهر' : 'Comment voulez-vous apparaître'}
+                required
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="uniqueCode">{isRTL ? 'رمز الوصول الفريد' : 'Code d\'accès unique'}</Label>
@@ -536,7 +538,7 @@ export default function AuthPage() {
           </div>
           <div className="space-y-2">
             <Label>{isRTL ? 'مستواك الحالي' : 'Votre niveau actuel'}</Label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {levelOptions.map((l) => (
                 <Button
                   key={l}
@@ -579,7 +581,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-md mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
@@ -634,7 +636,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
@@ -654,7 +656,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-6">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 sm:gap-4 mb-6">
             {avatarOptions.map((avatar) => (
               <motion.button
                 key={avatar.id}
@@ -699,7 +701,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-md mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
@@ -721,25 +723,27 @@ export default function AuthPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="prof-name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
-            <Input
-              id="prof-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="prof-email">Email</Label>
-            <Input
-              id="prof-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              dir="ltr"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="prof-name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
+              <Input
+                id="prof-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="prof-email">Email</Label>
+              <Input
+                id="prof-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                dir="ltr"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="prof-password">{isRTL ? 'كلمة المرور' : 'Mot de passe'}</Label>
@@ -813,7 +817,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-md mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
         <CardHeader>
           <Button
             variant="ghost"
