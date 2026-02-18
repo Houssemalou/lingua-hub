@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
-import { AuthProvider } from "./contexts/AuthContext";
 import { PlatformProvider } from "./contexts/PlatformContext";
+import { RoleProvider } from "./contexts/RoleContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { MainLayout } from "./components/layout/MainLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminRooms from "./pages/admin/AdminRooms";
@@ -40,6 +41,7 @@ const App = () => (
     <ThemeProvider>
       <LanguageProvider>
         <PlatformProvider>
+        <RoleProvider>
           <AuthProvider>
             <TooltipProvider>
               <Toaster />
@@ -80,6 +82,7 @@ const App = () => (
               </BrowserRouter>
             </TooltipProvider>
           </AuthProvider>
+        </RoleProvider>
         </PlatformProvider>
       </LanguageProvider>
     </ThemeProvider>
