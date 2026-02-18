@@ -139,9 +139,9 @@ export default function ProfessorLiveRoom() {
                   try {
                     setStarting(true);
                     const startRes = await RoomService.startSession(room.id);
-                    if (startRes.success && startRes.data) {
+                    if (startRes.success) {
                       const started = (startRes as any).data?.data ? (startRes as any).data.data : startRes.data;
-                      setRoom(started);
+                      if (started) setRoom(started);
                       toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
                     } else {
                       toast.error(startRes.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));
@@ -164,29 +164,32 @@ export default function ProfessorLiveRoom() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="fixed inset-0 flex flex-col bg-gray-900 z-30">
       {/* Header */}
-      <div className={cn("flex items-center justify-between p-4 border-b border-border", isRTL && "flex-row-reverse")}>
-        <div className={cn("flex items-center gap-4", isRTL && "flex-row-reverse")}>
-          <Button variant="ghost" size="icon" onClick={handleLeaveRoom}>
+      <div className={cn(
+        "flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b border-white/10 bg-black/40 backdrop-blur-sm z-10",
+        isRTL && "flex-row-reverse"
+      )}>
+        <div className={cn("flex items-center gap-2 sm:gap-4 min-w-0", isRTL && "flex-row-reverse")}>
+          <Button variant="ghost" size="icon" onClick={handleLeaveRoom} className="text-white hover:bg-white/10 shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className={isRTL ? 'text-right' : ''}>
-            <h1 className="text-xl font-bold text-foreground">{room.name}</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className={cn("min-w-0", isRTL ? 'text-right' : '')}>
+            <h1 className="text-sm sm:text-xl font-bold text-white truncate">{room.name}</h1>
+            <p className="text-xs text-white/60 hidden sm:block">
               {room.language} • {room.level} • {isRTL ? 'مباشر' : 'Live'}
             </p>
           </div>
         </div>
-        <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
+        <div className={cn("flex items-center gap-2 shrink-0", isRTL && "flex-row-reverse")}>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setShowSummaryEditor(true)}
-            className={cn("gap-2", isRTL && "flex-row-reverse")}
+            className={cn("gap-1 text-xs sm:text-sm sm:gap-2", isRTL && "flex-row-reverse")}
           >
-            <FileText className="w-4 h-4" />
-            {isRTL ? 'إنشاء ملخص' : 'Créer résumé'}
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">{isRTL ? 'إنشاء ملخص' : 'Résumé'}</span>
           </Button>
           <Badge variant="live" className="animate-pulse">
             <Play className="w-3 h-3 mr-1" />
@@ -195,8 +198,8 @@ export default function ProfessorLiveRoom() {
         </div>
       </div>
 
-      {/* LiveKit Room */}
-      <div className="flex-1">
+      {/* LiveKit Room — fills remaining height */}
+      <div className="flex-1 min-h-0">
         <LiveKitRoom
           roomId={room.id}
           onLeaveRoom={handleLeaveRoom}
