@@ -80,10 +80,10 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }
                     </Badge>
                   )}
                   {participant.isHost && (
-                    <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" title="Animateur" />
+                    <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" aria-label="Animateur" />
                   )}
                   {participant.handRaised && (
-                    <Hand className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 animate-bounce" title="Main levée" />
+                    <Hand className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 animate-bounce" aria-label="Main levée" />
                   )}
                 </div>
 

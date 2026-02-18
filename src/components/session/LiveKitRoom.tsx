@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext } from '@livekit/components-react';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
@@ -7,49 +8,73 @@ import { MediaControls } from './MediaControls';
 import { ChatPanel } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
-import { PhoneOff, MessageSquare, Users } from 'lucide-react';
+import { PhoneOff, MessageSquare, Users, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import RoomService from '@/services/RoomService';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LiveKitRoomProps {
   roomId: string;
   onLeaveRoom: () => void;
 }
 
+// Bottom sheet component for mobile
+const BottomSheet: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}> = ({ isOpen, onClose, title, children }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <>
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 z-40"
+          onClick={onClose}
+        />
+        {/* Sheet */}
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl"
+          style={{ maxHeight: '75vh', display: 'flex', flexDirection: 'column' }}
+        >
+          {/* Handle + header */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100">
+            <div className="w-12 h-1 rounded-full bg-gray-300 absolute top-2 left-1/2 -translate-x-1/2" />
+            <span className="font-semibold text-gray-900 text-base mt-2">{title}</span>
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full mt-1">
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {children}
+          </div>
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
+);
+
 // Inner component that has access to LiveKit context
 const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => {
   const participants = useParticipants();
   const room = useRoomContext();
+  const isMobile = useIsMobile();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
-  const [messages, setMessages] = useState<import('./ChatPanel').ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Ensure AudioContext is resumed after first user gesture to satisfy browser autoplay policy
-  React.useEffect(() => {
-    const resumeAudioOnGesture = () => {
-      try {
-        const globalWin = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
-        const AC = globalWin.AudioContext ?? globalWin.webkitAudioContext;
-        if (AC) {
-          const ctx = new AC();
-          if (ctx.state === 'suspended') {
-            void ctx.resume();
-          }
-          // close temporary context shortly after
-          void setTimeout(() => void ctx.close(), 1000);
-        }
-      } catch (e) {
-        // ignore
-      }
-      document.removeEventListener('pointerdown', resumeAudioOnGesture);
-    };
-
-    document.addEventListener('pointerdown', resumeAudioOnGesture, { once: true });
-    return () => document.removeEventListener('pointerdown', resumeAudioOnGesture);
-  }, []);
-
-  
-  // Convert LiveKit participants to our format with reference to original
+  // Convert LiveKit participants to our format
   const formattedParticipants = participants.map((p) => ({
     formatted: {
       id: p.identity,
@@ -73,72 +98,173 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
   const screenSharingParticipant = formattedParticipants.find(p => p.formatted.isScreenSharing);
   const isScreenSharing = !!screenSharingParticipant;
 
-  const toggleMicrophone = async () => {
-    await room.localParticipant.setMicrophoneEnabled(!room.localParticipant.isMicrophoneEnabled);
-  };
-
-  const toggleCamera = async () => {
-    await room.localParticipant.setCameraEnabled(!room.localParticipant.isCameraEnabled);
-  };
-
-  const toggleScreenShare = async () => {
-    await room.localParticipant.setScreenShareEnabled(!room.localParticipant.isScreenShareEnabled);
-  };
-
-  // Chat via LiveKit data channel
-  React.useEffect(() => {
-    const handleDataReceived = (payload: Uint8Array, participant: RemoteParticipant) => {
+  // Handle incoming chat messages
+  useEffect(() => {
+    const handleDataReceived = (payload: Uint8Array, participant: any) => {
       try {
         const decoder = new TextDecoder();
         const data = JSON.parse(decoder.decode(payload));
-        if (data?.type === 'chat' && data.message) {
-          const newMessage = {
-            id: `${participant.identity}-${data.timestamp || Date.now()}`,
+        if (data.type === 'chat') {
+          const newMessage: ChatMessage = {
+            id: `${participant.identity}-${data.timestamp}`,
             type: 'chat',
             message: data.message,
-            timestamp: data.timestamp || Date.now(),
-            sender: { id: participant.identity, name: participant.name || 'Anonymous' }
-          } as import('./ChatPanel').ChatMessage;
+            timestamp: data.timestamp,
+            sender: { id: participant.identity, name: participant.name || 'Anonymous' },
+          };
           setMessages(prev => [...prev, newMessage]);
+          if (!showChat) setUnreadCount(prev => prev + 1);
         }
-      } catch (err) {
-        console.error('invalid dataReceived payload', err);
+      } catch (error) {
+        console.error('Error parsing chat message:', error);
       }
     };
 
     room.on('dataReceived', handleDataReceived);
     return () => { room.off('dataReceived', handleDataReceived); };
-  }, [room]);
+  }, [room, showChat]);
 
-  const handleSendMessage = (message: string) => {
-    if (!message.trim()) return;
-    const chatMessage = { type: 'chat', message: message.trim(), timestamp: Date.now() };
-    try {
-      room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(chatMessage)), { reliable: true });
-    } catch (e) {
-      console.error('failed to publish chat', e);
-    }
-
-    const localMsg: import('./ChatPanel').ChatMessage = {
-      id: `${room.localParticipant.identity}-${Date.now()}`,
-      type: 'chat',
-      message: message.trim(),
-      timestamp: Date.now(),
-      sender: { id: room.localParticipant.identity, name: room.localParticipant.name || 'You' }
-    };
-    setMessages(prev => [...prev, localMsg]);
+  const handleOpenChat = () => {
+    setShowChat(true);
+    setUnreadCount(0);
   };
 
+  const handleSendMessage = (message: string) => {
+    if (message.trim() && room) {
+      const chatMessage = { type: 'chat', message: message.trim(), timestamp: Date.now() };
+      room.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(chatMessage)),
+        { reliable: true }
+      );
+      const newMessage: ChatMessage = {
+        id: `${room.localParticipant.identity}-${Date.now()}`,
+        type: 'chat',
+        message: message.trim(),
+        timestamp: Date.now(),
+        sender: { id: room.localParticipant.identity, name: room.localParticipant.name || 'You' },
+      };
+      setMessages(prev => [...prev, newMessage]);
+    }
+  };
+
+  const toggleMicrophone = async () => {
+    await room.localParticipant.setMicrophoneEnabled(!room.localParticipant.isMicrophoneEnabled);
+  };
+  const toggleCamera = async () => {
+    await room.localParticipant.setCameraEnabled(!room.localParticipant.isCameraEnabled);
+  };
+  const toggleScreenShare = async () => {
+    await room.localParticipant.setScreenShareEnabled(!room.localParticipant.isScreenShareEnabled);
+  };
   const handleLeaveRoom = async () => {
+    try { await RoomService.leave(roomId); } catch (e) { console.error('Error notifying leave:', e); }
     await room.disconnect();
     onLeaveRoom();
   };
 
-  // Screen Share Layout
+  // Floating panel for desktop
+  const DesktopFloatingChat = () => showChat && !isMobile ? (
+    <div className="absolute top-4 right-4 bottom-20 w-[360px] bg-white rounded-2xl shadow-2xl z-30 border border-gray-200 overflow-hidden flex flex-col">
+      <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
+      <Button variant="ghost" size="icon" className="absolute top-3 right-3 hover:bg-gray-100 rounded-full z-50" onClick={() => setShowChat(false)}>
+        <X className="w-4 h-4" />
+      </Button>
+    </div>
+  ) : null;
+
+  const DesktopFloatingParticipants = () => showParticipants && !isMobile ? (
+    <div className="absolute top-4 right-4 w-[340px] max-h-[calc(100vh-180px)] bg-white rounded-2xl shadow-2xl z-30 overflow-hidden border border-gray-200">
+      <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
+      <Button variant="ghost" size="icon" className="absolute top-3 left-3 hover:bg-gray-100 rounded-full z-50" onClick={() => setShowParticipants(false)}>
+        <X className="w-4 h-4" />
+      </Button>
+    </div>
+  ) : null;
+
+  // Controls bar — compact on mobile
+  const ControlsBar = () => (
+    <div className={cn(
+      "relative z-20 border-t border-white/5 bg-black/60 backdrop-blur-xl",
+      isMobile ? "p-2 pb-safe" : "p-3 sm:p-4"
+    )}>
+      <div className={cn("mx-auto flex items-center justify-between", isMobile ? "max-w-full gap-1" : "max-w-5xl")}>
+        {/* Left: Participants + Chat */}
+        <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="ghost"
+              size={isMobile ? "sm" : "sm"}
+              onClick={() => setShowParticipants(!showParticipants)}
+              className={cn(
+                "rounded-full font-semibold transition-all border-0 relative",
+                isMobile ? "px-2 h-9" : "px-4",
+                showParticipants
+                  ? "bg-violet-500 hover:bg-violet-600 text-white shadow-lg"
+                  : "bg-white/10 hover:bg-white/20 text-white"
+              )}
+            >
+              <Users className={cn(isMobile ? "w-4 h-4" : "w-4 h-4 mr-1")} />
+              {!isMobile && <span>{participants.length}</span>}
+              {isMobile && <span className="text-xs ml-0.5">{participants.length}</span>}
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="ghost"
+              size={isMobile ? "sm" : "sm"}
+              onClick={handleOpenChat}
+              className={cn(
+                "rounded-full font-semibold transition-all border-0 relative",
+                isMobile ? "px-2 h-9" : "px-4",
+                showChat
+                  ? "bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg"
+                  : "bg-white/10 hover:bg-white/20 text-white"
+              )}
+            >
+              <MessageSquare className={cn(isMobile ? "w-4 h-4" : "w-4 h-4")} />
+              {!isMobile && <span className="ml-1">Chat</span>}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* Center: Media Controls */}
+        <MediaControls
+          isMuted={localParticipant?.formatted.isMuted || false}
+          isCameraOn={localParticipant?.formatted.isCameraOn || false}
+          isScreenSharing={localParticipant?.formatted.isScreenSharing || false}
+          onToggleMute={toggleMicrophone}
+          onToggleCamera={toggleCamera}
+          onToggleScreenShare={isMobile ? () => {} : toggleScreenShare}
+          compact={isMobile}
+        />
+
+        {/* Right: Leave */}
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Button
+            onClick={handleLeaveRoom}
+            size={isMobile ? "sm" : "sm"}
+            className={cn(
+              "rounded-full font-semibold bg-rose-500 hover:bg-rose-600 text-white border-0",
+              isMobile ? "px-2 h-9" : "px-4 gap-2"
+            )}
+          >
+            <PhoneOff className="w-4 h-4" />
+            {!isMobile && <span>Quitter</span>}
+          </Button>
+        </motion.div>
+      </div>
+    </div>
+  );
+
+  // Screen share layout
   if (isScreenSharing && screenSharingParticipant) {
     return (
       <div className="flex flex-col h-full bg-gray-900">
-        {/* Main Content: Screen Share */}
         <div className="flex-1 relative">
           <ScreenShareLayout
             screenShareParticipant={screenSharingParticipant.liveKit}
@@ -146,196 +272,85 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
             participantName={screenSharingParticipant.formatted.name}
             isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
           />
-
-          {/* Floating Chat Panel */}
-          {showChat && (
-            <div className="absolute top-4 right-4 w-96 h-[500px] bg-white rounded-lg shadow-2xl z-30 overflow-hidden">
+          {!isMobile && <DesktopFloatingChat />}
+          {!isMobile && <DesktopFloatingParticipants />}
+        </div>
+        <ControlsBar />
+        {/* Mobile bottom sheets */}
+        {isMobile && (
+          <>
+            <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
               <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2"
-                onClick={() => setShowChat(false)}
-              >
-                ✕
-              </Button>
-            </div>
-          )}
-
-          {/* Floating Participants Panel */}
-          {showParticipants && (
-            <div className="absolute top-4 left-4 w-80 h-[500px] bg-white rounded-lg shadow-2xl z-30 overflow-hidden">
+            </BottomSheet>
+            <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
               <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2"
-                onClick={() => setShowParticipants(false)}
-              >
-                ✕
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Controls Bar */}
-        <div className="border-t bg-gray-800 p-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant={showParticipants ? "default" : "secondary"}
-                size="sm"
-                onClick={() => setShowParticipants(!showParticipants)}
-                className="gap-2"
-              >
-                <Users className="w-4 h-4" />
-                <span className="hidden sm:inline">Participants ({participants.length})</span>
-              </Button>
-              <Button
-                variant={showChat ? "default" : "secondary"}
-                size="sm"
-                onClick={() => setShowChat(!showChat)}
-                className="gap-2"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span className="hidden sm:inline">Chat</span>
-              </Button>
-            </div>
-
-            <MediaControls
-              isMuted={localParticipant?.formatted.isMuted || false}
-              isCameraOn={localParticipant?.formatted.isCameraOn || false}
-              isScreenSharing={localParticipant?.formatted.isScreenSharing || false}
-              onToggleMute={toggleMicrophone}
-              onToggleCamera={toggleCamera}
-              onToggleScreenShare={toggleScreenShare}
-            />
-
-            <Button
-              onClick={handleLeaveRoom}
-              variant="destructive"
-              size="sm"
-              className="gap-2"
-            >
-              <PhoneOff className="w-4 h-4" />
-              <span className="hidden sm:inline">Quitter</span>
-            </Button>
-          </div>
-        </div>
+            </BottomSheet>
+          </>
+        )}
       </div>
     );
   }
 
   // Normal Gallery Layout
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 via-gray-900 to-indigo-950 relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <motion.div
+          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-10 -left-10 w-60 h-60 bg-violet-600/5 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{ x: [0, -20, 0], y: [0, 30, 0] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+          className="absolute -bottom-10 -right-10 w-72 h-72 bg-cyan-500/5 rounded-full blur-3xl"
+        />
+      </div>
+
       {/* Main Content Area */}
-      <div className="flex-1 relative flex">
-        {/* Video Grid - Takes remaining space */}
+      <div className="flex-1 relative flex z-10 min-h-0">
         <div className={cn(
-          "flex-1 p-4 transition-all duration-300",
-          showChat && "mr-96"
+          "flex-1 transition-all duration-300 min-h-0",
+          formattedParticipants.length === 1 ? "p-0" : isMobile ? "p-2" : "p-3 sm:p-4"
         )}>
-          <VideoGrid 
-            participants={formattedParticipants.map(p => p.formatted)} 
+          <VideoGrid
+            participants={formattedParticipants.map(p => p.formatted)}
             liveKitParticipants={formattedParticipants.map(p => p.liveKit)}
           />
         </div>
 
-        {/* Floating Chat Panel - Right Side */}
-        {showChat && (
-          <div className="absolute top-0 right-0 bottom-0 w-96 bg-white shadow-2xl z-30 border-l border-gray-200">
-            <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 hover:bg-gray-100"
-              onClick={() => setShowChat(false)}
-            >
-              ✕
-            </Button>
-          </div>
-        )}
-
-        {/* Floating Participants Panel - Left Side */}
-        {showParticipants && (
-          <div className="absolute top-4 left-4 w-80 max-h-[calc(100%-2rem)] bg-white rounded-lg shadow-2xl z-30 overflow-hidden">
-            <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 hover:bg-gray-100"
-              onClick={() => setShowParticipants(false)}
-            >
-              ✕
-            </Button>
-          </div>
-        )}
+        {/* Desktop floating panels */}
+        {!isMobile && <DesktopFloatingChat />}
+        {!isMobile && <DesktopFloatingParticipants />}
       </div>
 
       {/* Controls Bar */}
-      <div className="border-t bg-gray-800 p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Left Controls */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant={showParticipants ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setShowParticipants(!showParticipants)}
-              className="gap-2"
-            >
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">{participants.length}</span>
-            </Button>
-            <Button
-              variant={showChat ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setShowChat(!showChat)}
-              className="gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span className="hidden sm:inline">Chat</span>
-            </Button>
-          </div>
+      <ControlsBar />
 
-          {/* Center Controls */}
-          <MediaControls
-            isMuted={localParticipant?.formatted.isMuted || false}
-            isCameraOn={localParticipant?.formatted.isCameraOn || false}
-            isScreenSharing={localParticipant?.formatted.isScreenSharing || false}
-            onToggleMute={toggleMicrophone}
-            onToggleCamera={toggleCamera}
-            onToggleScreenShare={toggleScreenShare}
-          />
-
-          {/* Right Controls */}
-          <Button
-            onClick={handleLeaveRoom}
-            variant="destructive"
-            size="sm"
-            className="gap-2"
-          >
-            <PhoneOff className="w-4 h-4" />
-            <span className="hidden sm:inline">Quitter</span>
-          </Button>
-        </div>
-      </div>
+      {/* Mobile bottom sheets */}
+      {isMobile && (
+        <>
+          <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
+            <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
+          </BottomSheet>
+          <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
+            <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
+          </BottomSheet>
+        </>
+      )}
     </div>
   );
 };
 
 export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom }) => {
-  const {
-    error,
-    serverUrl,
-    token,
-  } = useLiveKitRoom(roomId);
+  const { error, serverUrl, token } = useLiveKitRoom(roomId);
 
   if (error) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">Failed to connect to room: {error}</p>
+        <div className="text-center p-6">
+          <p className="text-red-500 mb-4">Failed to connect: {error}</p>
         </div>
       </div>
     );
@@ -346,14 +361,14 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>Loading connection info...</p>
+          <p className="text-white/80">Connexion en cours...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <LiveKitRoomComponent 
+    <LiveKitRoomComponent
       serverUrl={serverUrl}
       token={token}
       connect={true}

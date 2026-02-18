@@ -35,7 +35,7 @@ export function MediaControls({
 }: MediaControlsProps) {
   return (
     <div className={cn(
-      "flex items-center justify-center gap-3 sm:gap-4",
+      "flex items-center justify-center gap-2 sm:gap-3",
       isRTL && "flex-row-reverse"
     )}>
       {/* Microphone Toggle */}
@@ -43,25 +43,19 @@ export function MediaControls({
         whileHover={{ scale: 1.1, y: -2 }}
         whileTap={{ scale: 0.9 }}
         onClick={onToggleMute}
+        aria-label={isMuted ? 'Activer le micro' : 'Couper le micro'}
         className={cn(
           "rounded-full flex items-center justify-center transition-all duration-300",
-          compact ? "w-11 h-11" : "w-12 h-12 sm:w-14 sm:h-14",
+          compact ? "w-10 h-10" : "w-11 h-11 sm:w-14 sm:h-14",
           isMuted 
             ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30' 
             : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
         )}
-        title={isMuted ? 'Activer le micro' : 'Couper le micro'}
       >
         {isMuted ? (
-          <MicOff className={cn(
-            "text-white",
-            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
-          )} />
+          <MicOff className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
         ) : (
-          <Mic className={cn(
-            "text-white",
-            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
-          )} />
+          <Mic className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
         )}
       </motion.button>
 
@@ -70,54 +64,43 @@ export function MediaControls({
         whileHover={{ scale: 1.1, y: -2 }}
         whileTap={{ scale: 0.9 }}
         onClick={onToggleCamera}
+        aria-label={isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
         className={cn(
           "rounded-full flex items-center justify-center transition-all duration-300",
-          compact ? "w-11 h-11" : "w-12 h-12 sm:w-14 sm:h-14",
+          compact ? "w-10 h-10" : "w-11 h-11 sm:w-14 sm:h-14",
           !isCameraOn 
             ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30' 
             : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
         )}
-        title={isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
       >
         {isCameraOn ? (
-          <Video className={cn(
-            "text-white",
-            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
-          )} />
+          <Video className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
         ) : (
-          <VideoOff className={cn(
-            "text-white",
-            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
-          )} />
+          <VideoOff className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
         )}
       </motion.button>
 
-      {/* Screen Share Toggle */}
-      <motion.button
-        whileHover={{ scale: 1.1, y: -2 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={onToggleScreenShare}
-        className={cn(
-          "rounded-full flex items-center justify-center transition-all duration-300",
-          compact ? "w-11 h-11" : "w-12 h-12 sm:w-14 sm:h-14",
-          isScreenSharing 
-            ? 'bg-cyan-500 hover:bg-cyan-600 shadow-lg shadow-cyan-500/30' 
-            : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
-        )}
-        title={isScreenSharing ? 'Arrêter le partage' : 'Partager l\'écran'}
-      >
-        {isScreenSharing ? (
-          <MonitorUp className={cn(
-            "text-white",
-            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
-          )} />
-        ) : (
-          <MonitorOff className={cn(
-            "text-white",
-            compact ? "w-5 h-5" : "w-5 h-5 sm:w-6 sm:h-6"
-          )} />
-        )}
-      </motion.button>
+      {/* Screen Share Toggle — hidden on mobile (not supported) */}
+      {!compact && (
+        <motion.button
+          whileHover={{ scale: 1.1, y: -2 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onToggleScreenShare}
+          aria-label={isScreenSharing ? 'Arrêter le partage' : "Partager l'écran"}
+          className={cn(
+            "rounded-full flex items-center justify-center transition-all duration-300 w-11 h-11 sm:w-14 sm:h-14",
+            isScreenSharing 
+              ? 'bg-cyan-500 hover:bg-cyan-600 shadow-lg shadow-cyan-500/30' 
+              : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
+          )}
+        >
+          {isScreenSharing ? (
+            <MonitorUp className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+          ) : (
+            <MonitorOff className="text-white w-5 h-5 sm:w-6 sm:h-6" />
+          )}
+        </motion.button>
+      )}
     </div>
   );
 }

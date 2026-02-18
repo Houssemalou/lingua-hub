@@ -525,7 +525,7 @@ export default function AdminRooms() {
                       {room.duration}m
                     </span>
                   </div>
-                  <Badge variant={typeof room.level === 'string' ? room.level.toLowerCase() : 'default'}>{room.level || 'N/A'}</Badge>
+                  <Badge variant="outline">{room.level || 'N/A'}</Badge>
                 </div>
                 <div className={cn("pt-2 border-t border-border", isRTL && "text-right")}>
                   <p className="text-xs text-muted-foreground">

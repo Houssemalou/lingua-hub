@@ -60,9 +60,9 @@ export function ParticipantCard({
   const isFull = size === 'full';
 
   const sizeClasses = {
-    small: 'h-32 sm:h-40',
-    medium: 'h-48 sm:h-56 lg:h-64',
-    large: 'h-full min-h-[300px]',
+    small: 'h-28 sm:h-36',
+    medium: 'h-36 sm:h-48 lg:h-56',
+    large: 'h-full min-h-[200px] sm:min-h-[280px]',
     full: 'w-full h-full',
   };
 
