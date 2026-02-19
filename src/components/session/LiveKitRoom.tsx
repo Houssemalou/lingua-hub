@@ -5,7 +5,7 @@ import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
 import { VideoGrid } from './VideoGrid';
 import { MediaControls } from './MediaControls';
-import { ChatPanel } from './ChatPanel';
+import { ChatPanel, type ChatMessage } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
 import { PhoneOff, MessageSquare, Users, X, ChevronDown } from 'lucide-react';
@@ -65,7 +65,7 @@ const BottomSheet: React.FC<{
 );
 
 // Inner component that has access to LiveKit context
-const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => {
+const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ roomId, onLeaveRoom }) => {
   const participants = useParticipants();
   const room = useRoomContext();
   const isMobile = useIsMobile();
@@ -100,16 +100,16 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
 
   // Handle incoming chat messages
   useEffect(() => {
-    const handleDataReceived = (payload: Uint8Array, participant: any) => {
+    const handleDataReceived = (payload: Uint8Array, participant: RemoteParticipant) => {
       try {
         const decoder = new TextDecoder();
         const data = JSON.parse(decoder.decode(payload));
-        if (data.type === 'chat') {
+        if (data?.type === 'chat') {
           const newMessage: ChatMessage = {
-            id: `${participant.identity}-${data.timestamp}`,
+            id: `${participant.identity}-${data.timestamp || Date.now()}`,
             type: 'chat',
             message: data.message,
-            timestamp: data.timestamp,
+            timestamp: data.timestamp || Date.now(),
             sender: { id: participant.identity, name: participant.name || 'Anonymous' },
           };
           setMessages(prev => [...prev, newMessage]);
@@ -124,9 +124,12 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
     return () => { room.off('dataReceived', handleDataReceived); };
   }, [room, showChat]);
 
-  const handleOpenChat = () => {
-    setShowChat(true);
-    setUnreadCount(0);
+  const handleToggleChat = () => {
+    setShowChat(s => {
+      const next = !s;
+      if (next) setUnreadCount(0);
+      return next;
+    });
   };
 
   const handleSendMessage = (message: string) => {
@@ -165,7 +168,7 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
   // Floating panel for desktop
   const DesktopFloatingChat = () => showChat && !isMobile ? (
     <div className="absolute top-4 right-4 bottom-20 w-[360px] bg-white rounded-2xl shadow-2xl z-30 border border-gray-200 overflow-hidden flex flex-col">
-      <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
+      <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
       <Button variant="ghost" size="icon" className="absolute top-3 right-3 hover:bg-gray-100 rounded-full z-50" onClick={() => setShowChat(false)}>
         <X className="w-4 h-4" />
       </Button>
@@ -184,8 +187,12 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
   // Controls bar — compact on mobile
   const ControlsBar = () => (
     <div className={cn(
-      "relative z-20 border-t border-white/5 bg-black/60 backdrop-blur-xl",
-      isMobile ? "p-2 pb-safe" : "p-3 sm:p-4"
+      "border-t border-white/5 bg-black/60 backdrop-blur-xl",
+      isMobile
+        ? showChat
+          ? "fixed bottom-[58%] left-0 right-0 z-40 p-2 pb-safe"
+          : "fixed bottom-0 left-0 right-0 z-20 p-2 pb-safe"
+        : "relative z-20 p-3 sm:p-4"
     )}>
       <div className={cn("mx-auto flex items-center justify-between", isMobile ? "max-w-full gap-1" : "max-w-5xl")}>
         {/* Left: Participants + Chat */}
@@ -194,7 +201,7 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
             <Button
               variant="ghost"
               size={isMobile ? "sm" : "sm"}
-              onClick={() => setShowParticipants(!showParticipants)}
+              onClick={() => setShowParticipants(s => !s)}
               className={cn(
                 "rounded-full font-semibold transition-all border-0 relative",
                 isMobile ? "px-2 h-9" : "px-4",
@@ -212,7 +219,7 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
             <Button
               variant="ghost"
               size={isMobile ? "sm" : "sm"}
-              onClick={handleOpenChat}
+              onClick={handleToggleChat}
               className={cn(
                 "rounded-full font-semibold transition-all border-0 relative",
                 isMobile ? "px-2 h-9" : "px-4",
@@ -280,7 +287,7 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
         {isMobile && (
           <>
             <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
-              <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
+              <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
             </BottomSheet>
             <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
               <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
@@ -332,7 +339,7 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
       {isMobile && (
         <>
           <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
-            <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
+            <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
           </BottomSheet>
           <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
             <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
@@ -374,7 +381,7 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
       connect={true}
       onDisconnected={onLeaveRoom}
     >
-      <RoomContent onLeaveRoom={onLeaveRoom} />
+      <RoomContent roomId={roomId} onLeaveRoom={onLeaveRoom} />
     </LiveKitRoomComponent>
   );
 };

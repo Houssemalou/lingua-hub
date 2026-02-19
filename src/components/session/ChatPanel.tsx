@@ -21,13 +21,41 @@ interface ChatPanelProps {
   messages?: ChatMessage[];
   onSendMessage: (message: string) => void;
   currentUserId?: string;
+  visible?: boolean;           // used to autofocus when panel opens
+  roomId?: string;             // used to persist draft per room
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessage, currentUserId = '' }) => {
-  const [message, setMessage] = useState('');
+export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessage, currentUserId = '', visible = false, roomId }) => {
+  // restore draft from sessionStorage when available
+  const initialDraft = React.useMemo(() => {
+    try {
+      if (roomId) return sessionStorage.getItem(`chat-draft:${roomId}`) ?? '';
+    } catch (e) {
+      /* ignore */
+    }
+    return '';
+  }, [roomId]);
+
+  const [message, setMessage] = useState(initialDraft);
   const msgs = messages;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // persist draft when it changes
+  useEffect(() => {
+    try {
+      if (roomId) sessionStorage.setItem(`chat-draft:${roomId}`, message);
+    } catch (e) { /* ignore */ }
+  }, [message, roomId]);
+
+  // focus the input when the panel becomes visible
+  useEffect(() => {
+    if (visible) {
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [visible]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,6 +70,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
     if (message.trim()) {
       onSendMessage(message);
       setMessage('');
+      try { if (roomId) sessionStorage.removeItem(`chat-draft:${roomId}`); } catch (e) { /* ignore */ }
     }
   };
 
@@ -147,8 +176,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
       <div className="p-3 border-t bg-white shadow-inner">
         <div className="flex gap-2 items-end">
           <Input
+            ref={inputRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => setMessage((e.currentTarget as HTMLInputElement).value)}
             onKeyPress={handleKeyPress}
             placeholder="Tapez votre message..."
             className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white rounded-xl text-black placeholder:text-gray-400 caret-black"
