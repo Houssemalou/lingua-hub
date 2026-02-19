@@ -161,7 +161,8 @@ export default function AdminRooms() {
 
       const res = await RoomService.create(payload);
       if ((res as any).success) {
-        const created = (res as any).data as RoomModel;
+        const rawData = (res as any).data;
+        const created = (rawData?.data || rawData) as RoomModel;
         // Prepend to list
         setRooms(prev => [created, ...prev]);
         toast.success(isRTL ? 'تم إنشاء الغرفة بنجاح!' : 'Salle créée avec succès !');

@@ -52,6 +52,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/admin/rooms', icon: DoorOpen, label: t('nav.rooms') },
     { to: '/admin/students', icon: Users, label: t('nav.students') },
     { to: '/admin/settings', icon: Settings, label: t('nav.settings') },
+    { to: '/admin/profile', icon: User, label: t('nav.profile') },
   ];
 
   const studentNavItems = [
@@ -59,6 +60,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
     { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     { to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' },
+    { to: '/student/quizzes', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/student/evaluations', icon: GraduationCap, label: t('nav.evaluations') || 'Évaluations' },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
   ];
@@ -346,7 +348,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
             {role === 'admin' && (
               <>
                 <Avatar className="w-9 h-9">
-                  <AvatarFallback>A</AvatarFallback>
+                  <AvatarFallback>{(user?.name || user?.email || 'A').charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <AnimatePresence mode="wait">
                   {(!collapsed || isMobile) && (
@@ -357,7 +359,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
                       className={cn("flex-1 min-w-0", isRTL && "text-right")}
                     >
                       <p className="text-sm font-medium text-sidebar-foreground truncate">
-                        {user?.email}
+                        {user?.name || user?.email}
                       </p>
                       <p className="text-xs text-sidebar-foreground/60 truncate">
                         {t('nav.admin')}

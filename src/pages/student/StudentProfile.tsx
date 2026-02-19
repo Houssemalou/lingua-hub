@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Edit2, Save, X, Camera } from 'lucide-react';
+import { User, Edit2, Save, X, Camera, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { currentStudent } from '@/data/mockData';
+import { StudentService } from '@/services/StudentService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
@@ -30,32 +30,88 @@ const item = {
 };
 
 export default function StudentProfile() {
-  const { user } = useAuth();
+  const { user, updateUser, refreshProfile } = useAuth();
   const { t, isRTL, language } = useLanguage();
-  
-  // Use student profile from auth context if available, otherwise fallback to mock data
-  const studentData = user?.student || currentStudent;
-  
+
+  // Refresh profile from backend on mount (picks up level changes from professors)
+  useEffect(() => {
+    refreshProfile();
+  }, []);
+
+  const studentData = user?.student;
+
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState({
-    nickname: studentData.nickname,
-    bio: studentData.bio,
+    nickname: studentData?.nickname || '',
+    bio: studentData?.bio || '',
+    name: studentData?.name || '',
   });
 
-  const handleSave = () => {
-    toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profil mis à jour avec succès !');
-    setIsEditing(false);
+  const handleEdit = () => {
+    setProfile({
+      nickname: studentData?.nickname || '',
+      bio: studentData?.bio || '',
+      name: studentData?.name || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!studentData) return;
+
+    setIsSaving(true);
+    try {
+      const response = await StudentService.update(studentData.id, {
+        name: profile.name.trim() || undefined,
+        nickname: profile.nickname.trim() || undefined,
+        bio: profile.bio.trim(),
+      });
+
+      if (response.success && response.data) {
+        const updated = response.data;
+        updateUser({
+          student: {
+            ...studentData,
+            name: updated.name || studentData.name,
+            nickname: updated.nickname || studentData.nickname,
+            bio: updated.bio || '',
+            avatar: updated.avatar || studentData.avatar,
+            level: updated.level || studentData.level,
+            totalSessions: updated.totalSessions ?? studentData.totalSessions,
+            hoursLearned: updated.hoursLearned ?? studentData.hoursLearned,
+            skills: updated.skills || studentData.skills,
+            joinedAt: updated.joinedAt || studentData.joinedAt,
+          },
+          name: updated.name || user?.name || '',
+        });
+        toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profil mis à jour avec succès !');
+        setIsEditing(false);
+      } else {
+        toast.error(response.error || (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil'));
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error(isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
     setProfile({
-      nickname: studentData.nickname,
-      bio: studentData.bio,
+      nickname: studentData?.nickname || '',
+      bio: studentData?.bio || '',
+      name: studentData?.name || '',
     });
     setIsEditing(false);
   };
 
   const dateLocale = language === 'ar' ? ar : fr;
+
+  if (!studentData) {
+    return null;
+  }
 
   return (
     <motion.div
@@ -116,9 +172,9 @@ export default function StudentProfile() {
                     </p>
                   </div>
                   {!isEditing ? (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setIsEditing(true)} 
+                    <Button
+                      variant="outline"
+                      onClick={handleEdit}
                       className={cn("gap-2 w-full sm:w-auto", isRTL && "flex-row-reverse")}
                     >
                       <Edit2 className="w-4 h-4" />
@@ -126,19 +182,25 @@ export default function StudentProfile() {
                     </Button>
                   ) : (
                     <div className={cn("flex gap-2 w-full sm:w-auto", isRTL && "flex-row-reverse")}>
-                      <Button 
-                        variant="outline" 
-                        onClick={handleCancel} 
+                      <Button
+                        variant="outline"
+                        onClick={handleCancel}
+                        disabled={isSaving}
                         className={cn("gap-2 flex-1 sm:flex-none", isRTL && "flex-row-reverse")}
                       >
                         <X className="w-4 h-4" />
                         {isRTL ? 'إلغاء' : 'Annuler'}
                       </Button>
-                      <Button 
-                        onClick={handleSave} 
+                      <Button
+                        onClick={handleSave}
+                        disabled={isSaving}
                         className={cn("gap-2 flex-1 sm:flex-none", isRTL && "flex-row-reverse")}
                       >
-                        <Save className="w-4 h-4" />
+                        {isSaving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
                         {isRTL ? 'حفظ' : 'Enregistrer'}
                       </Button>
                     </div>
@@ -147,6 +209,15 @@ export default function StudentProfile() {
 
                 {isEditing ? (
                   <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">{isRTL ? 'الاسم' : 'Nom'}</Label>
+                      <Input
+                        id="name"
+                        value={profile.name}
+                        onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                        placeholder={isRTL ? 'اسمك' : 'Votre nom'}
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="nickname">{isRTL ? 'اسم المستخدم' : 'Pseudo'}</Label>
                       <Input
@@ -171,11 +242,11 @@ export default function StudentProfile() {
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground">{isRTL ? 'اسم المستخدم' : 'Pseudo'}</p>
-                      <p className="text-foreground font-medium">@{profile.nickname}</p>
+                      <p className="text-foreground font-medium">@{studentData.nickname}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">{isRTL ? 'نبذة عنك' : 'Bio'}</p>
-                      <p className="text-foreground">{profile.bio || (isRTL ? 'لا توجد نبذة بعد' : 'Pas de bio encore')}</p>
+                      <p className="text-foreground">{studentData.bio || (isRTL ? 'لا توجد نبذة بعد' : 'Pas de bio encore')}</p>
                     </div>
                   </div>
                 )}
@@ -207,7 +278,7 @@ export default function StudentProfile() {
           <CardContent className="p-4 sm:p-6 text-center">
             <p className="text-2xl sm:text-4xl font-bold text-success">7</p>
             <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-              {isRTL ? 'تتابع 🔥' : 'Série 🔥'}
+              {isRTL ? 'تتابع' : 'Série'}
             </p>
           </CardContent>
         </Card>

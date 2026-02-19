@@ -3,11 +3,11 @@ import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Trophy, 
-  Clock, 
-  User, 
-  Zap, 
+import {
+  Trophy,
+  Clock,
+  User,
+  Zap,
   Image,
   Star,
   ArrowRight,
@@ -16,23 +16,25 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
-import { 
-  ProfessorChallenge, 
-  challengeSubjects, 
+import {
+  ProfessorChallenge,
+  challengeSubjects,
   difficultyConfig,
   calculateChallengePoints,
-  hasStudentCompletedChallenge
 } from '@/data/professorChallenges';
 
 interface ChallengeCardProps {
   challenge: ProfessorChallenge;
   studentId: string;
   onPlay: (challengeId: string) => void;
+  completedChallengeIds?: Set<string>;
 }
 
-export function ChallengeCard({ challenge, studentId, onPlay }: ChallengeCardProps) {
+export function ChallengeCard({ challenge, studentId, onPlay, completedChallengeIds }: ChallengeCardProps) {
   const { language, isRTL } = useLanguage();
-  const isCompleted = hasStudentCompletedChallenge(studentId, challenge.id);
+  const isCompleted = completedChallengeIds
+    ? completedChallengeIds.has(challenge.id)
+    : false;
 
   const subject = challengeSubjects.find(s => s.id === challenge.subject);
   const difficulty = difficultyConfig.find(d => d.id === challenge.difficulty);
@@ -80,8 +82,8 @@ export function ChallengeCard({ challenge, studentId, onPlay }: ChallengeCardPro
     >
       <Card className={cn(
         "relative overflow-hidden h-full flex flex-col transition-all",
-        isCompleted 
-          ? "bg-success/5 border-success/30" 
+        isCompleted
+          ? "bg-success/5 border-success/30"
           : "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10"
       )}>
         {/* Animated background gradient */}
@@ -103,9 +105,9 @@ export function ChallengeCard({ challenge, studentId, onPlay }: ChallengeCardPro
         {/* Image Section */}
         {challenge.imageUrl && (
           <div className="relative h-32 overflow-hidden">
-            <img 
-              src={challenge.imageUrl} 
-              alt={getTitle()} 
+            <img
+              src={challenge.imageUrl}
+              alt={getTitle()}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
@@ -115,14 +117,14 @@ export function ChallengeCard({ challenge, studentId, onPlay }: ChallengeCardPro
         <div className="relative p-4 flex-1 flex flex-col">
           {/* Header badges */}
           <div className={cn("flex items-center gap-2 flex-wrap mb-3", isRTL && "flex-row-reverse")}>
-            <Badge 
+            <Badge
               className="gap-1"
               style={{ backgroundColor: `${subject?.color}20`, color: subject?.color }}
             >
               <span>{subject?.icon}</span>
               {getSubjectName()}
             </Badge>
-            <Badge 
+            <Badge
               variant="outline"
               style={{ borderColor: difficulty?.color, color: difficulty?.color }}
             >
@@ -174,8 +176,8 @@ export function ChallengeCard({ challenge, studentId, onPlay }: ChallengeCardPro
 
             {/* Play button */}
             {!isCompleted && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 onClick={() => onPlay(challenge.id)}
                 className="gap-1 group"
               >

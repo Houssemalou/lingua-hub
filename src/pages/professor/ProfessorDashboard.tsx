@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  CalendarCheck, 
-  Clock, 
+import {
+  Users,
+  CalendarCheck,
+  Clock,
   TrendingUp,
   Play,
   Star,
-  Loader2,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,8 +62,69 @@ export default function ProfessorDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div>
+          <Skeleton className="h-8 w-72" />
+          <Skeleton className="h-4 w-96 mt-2" />
+        </div>
+        {/* Stats grid skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="glass-card">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-7 w-12" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Two column grid skeleton */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-8 w-20" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-5 w-12 rounded-full" />
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-5 w-8 rounded-full" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-2">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-5 w-10 rounded-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

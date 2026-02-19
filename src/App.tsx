@@ -15,6 +15,7 @@ import AdminLiveSession from "./pages/admin/AdminLiveSession";
 import AdminStudents from "./pages/admin/AdminStudents";
 
 import AdminPlatformSettings from "./pages/admin/AdminPlatformSettings";
+import AdminProfile from "./pages/admin/AdminProfile";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import StudentSessions from "./pages/student/StudentSessions";
 import StudentLiveRoom from "./pages/student/StudentLiveRoom";
@@ -30,6 +31,7 @@ import ProfessorLiveRoom from "./pages/professor/ProfessorLiveRoom";
 import ProfessorSessionSummaries from "./pages/professor/ProfessorSessionSummaries";
 import ProfessorChallenges from "./pages/professor/ProfessorChallenges";
 import ProfessorEvaluations from "./pages/professor/ProfessorEvaluations";
+import StudentQuizzes from "./pages/student/StudentQuizzes";
 import StudentEvaluations from "./pages/student/StudentEvaluations";
 import AuthPage from "./pages/auth/AuthPage";
 import NotFound from "./pages/NotFound";
@@ -58,6 +60,7 @@ const App = () => (
                     <Route path="/admin/students" element={<AdminStudents />} />
 
                     <Route path="/admin/settings" element={<AdminPlatformSettings />} />
+                    <Route path="/admin/profile" element={<AdminProfile />} />
                     {/* Student Routes */}
                     <Route path="/student/dashboard" element={<StudentDashboard />} />
                     <Route path="/student/sessions" element={<StudentSessions />} />
@@ -66,6 +69,7 @@ const App = () => (
 
                     <Route path="/student/summaries" element={<StudentSessionSummaries />} />
                     <Route path="/student/games" element={<StudentGames />} />
+                    <Route path="/student/quizzes" element={<StudentQuizzes />} />
                     <Route path="/student/evaluations" element={<StudentEvaluations />} />
                     {/* Professor Routes */}
                     <Route path="/professor/dashboard" element={<ProfessorDashboard />} />

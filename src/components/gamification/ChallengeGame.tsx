@@ -4,24 +4,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Trophy, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Trophy,
+  Clock,
+  CheckCircle,
+  XCircle,
   Sparkles,
   AlertCircle,
   Star,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
-import { 
-  ProfessorChallenge, 
-  challengeSubjects, 
+import {
+  ProfessorChallenge,
+  challengeSubjects,
   difficultyConfig,
   calculateChallengePoints
 } from '@/data/professorChallenges';
+import { ChallengeService } from '@/services/ChallengeService';
 import confetti from 'canvas-confetti';
 
 interface ChallengeGameProps {
@@ -38,6 +40,9 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [submitting, setSubmitting] = useState(false);
+  const [revealedCorrectAnswer, setRevealedCorrectAnswer] = useState<number | null>(null);
+  const [earnedPoints, setEarnedPoints] = useState(0);
 
   const labels = {
     fr: {
@@ -102,6 +107,9 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
       setIsCorrect(null);
       setShowResult(false);
       setTimeLeft(60);
+      setSubmitting(false);
+      setRevealedCorrectAnswer(null);
+      setEarnedPoints(0);
     }
   }, [isOpen, challenge]);
 
@@ -127,17 +135,78 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
     return language === 'fr' ? challenge.optionsFr : language === 'ar' ? challenge.optionsAr : challenge.options;
   };
 
-  const handleSubmit = () => {
-    if (selectedAnswer === null) return;
+  const handleSubmit = async () => {
+    if (selectedAnswer === null || submitting) return;
 
+    setSubmitting(true);
+
+    const result = await ChallengeService.submitAnswer({
+      challengeId: challenge.id,
+      selectedAnswer,
+    });
+
+    setSubmitting(false);
+
+    if (!result.success || !result.data) {
+      // Fallback to local logic if API fails
+      handleLocalSubmit();
+      return;
+    }
+
+    const response = result.data;
+    const newAttempts = response.attemptNumber;
+    setAttempts(newAttempts);
+
+    if (response.isCorrect) {
+      setIsCorrect(true);
+      setShowResult(true);
+      setEarnedPoints(response.pointsEarned);
+      if (response.correctAnswer !== null) {
+        setRevealedCorrectAnswer(response.correctAnswer);
+      }
+
+      if (response.pointsEarned > 0) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+
+      setTimeout(() => {
+        onComplete(challenge.id, response.pointsEarned, newAttempts);
+      }, 2000);
+    } else {
+      setIsCorrect(false);
+      if (response.isFinalAttempt) {
+        setShowResult(true);
+        if (response.correctAnswer !== null) {
+          setRevealedCorrectAnswer(response.correctAnswer);
+        }
+        setTimeout(() => {
+          onComplete(challenge.id, 0, newAttempts);
+        }, 2000);
+      } else {
+        setTimeout(() => {
+          setIsCorrect(null);
+          setSelectedAnswer(null);
+        }, 1500);
+      }
+    }
+  };
+
+  // Fallback local submit if API is unavailable
+  const handleLocalSubmit = () => {
     const newAttempts = attempts + 1;
     setAttempts(newAttempts);
 
     if (selectedAnswer === challenge.correctAnswer) {
       setIsCorrect(true);
       setShowResult(true);
+      setRevealedCorrectAnswer(challenge.correctAnswer);
       const points = calculateChallengePoints(challenge.basePoints, challenge.difficulty, newAttempts);
-      
+      setEarnedPoints(points);
+
       if (points > 0) {
         confetti({
           particleCount: 100,
@@ -145,7 +214,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
           origin: { y: 0.6 }
         });
       }
-      
+
       setTimeout(() => {
         onComplete(challenge.id, points, newAttempts);
       }, 2000);
@@ -153,6 +222,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
       setIsCorrect(false);
       if (newAttempts >= 2) {
         setShowResult(true);
+        setRevealedCorrectAnswer(challenge.correctAnswer);
         setTimeout(() => {
           onComplete(challenge.id, 0, newAttempts);
         }, 2000);
@@ -167,6 +237,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
 
   const currentPoints = calculateChallengePoints(challenge.basePoints, challenge.difficulty, attempts + 1);
   const options = getOptions();
+  const correctAnswerIndex = revealedCorrectAnswer ?? (showResult ? challenge.correctAnswer : null);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -186,7 +257,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
                 <AlertCircle className="w-3 h-3" />
                 {t.attempt} {attempts + 1} {t.of} 2
               </Badge>
-              <Badge 
+              <Badge
                 className="gap-1"
                 style={{ backgroundColor: `${difficulty?.color}20`, color: difficulty?.color }}
               >
@@ -213,9 +284,9 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
               animate={{ opacity: 1, scale: 1 }}
               className="relative rounded-xl overflow-hidden"
             >
-              <img 
-                src={challenge.imageUrl} 
-                alt="Challenge" 
+              <img
+                src={challenge.imageUrl}
+                alt="Challenge"
                 className="w-full h-48 object-cover"
               />
             </motion.div>
@@ -244,25 +315,25 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
                 className={cn(
                   "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-3",
                   isRTL && "flex-row-reverse text-right",
-                  selectedAnswer === index 
-                    ? "border-primary bg-primary/10" 
+                  selectedAnswer === index
+                    ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50",
-                  showResult && index === challenge.correctAnswer && "border-success bg-success/10",
-                  showResult && selectedAnswer === index && index !== challenge.correctAnswer && "border-destructive bg-destructive/10",
+                  showResult && correctAnswerIndex === index && "border-success bg-success/10",
+                  showResult && selectedAnswer === index && index !== correctAnswerIndex && "border-destructive bg-destructive/10",
                   showResult && "pointer-events-none"
                 )}
                 onClick={() => setSelectedAnswer(index)}
-                disabled={showResult}
+                disabled={showResult || submitting}
               >
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shrink-0",
-                  selectedAnswer === index 
-                    ? "bg-primary text-primary-foreground" 
+                  selectedAnswer === index
+                    ? "bg-primary text-primary-foreground"
                     : "bg-muted",
-                  showResult && index === challenge.correctAnswer && "bg-success text-success-foreground",
-                  showResult && selectedAnswer === index && index !== challenge.correctAnswer && "bg-destructive text-destructive-foreground"
+                  showResult && correctAnswerIndex === index && "bg-success text-success-foreground",
+                  showResult && selectedAnswer === index && index !== correctAnswerIndex && "bg-destructive text-destructive-foreground"
                 )}>
-                  {showResult && index === challenge.correctAnswer ? (
+                  {showResult && correctAnswerIndex === index ? (
                     <CheckCircle className="w-5 h-5" />
                   ) : showResult && selectedAnswer === index ? (
                     <XCircle className="w-5 h-5" />
@@ -322,7 +393,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
                     <div className="flex items-center justify-center gap-2 mt-2">
                       <Zap className="w-5 h-5 text-yellow-500" />
                       <span className="text-xl font-bold">
-                        +{calculateChallengePoints(challenge.basePoints, challenge.difficulty, attempts)} XP
+                        +{earnedPoints} XP
                       </span>
                     </div>
                   </>
@@ -330,9 +401,11 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
                   <>
                     <XCircle className="w-16 h-16 mx-auto text-muted-foreground" />
                     <h3 className="text-xl font-bold mt-4">{t.noPoints}</h3>
-                    <p className="text-muted-foreground mt-2">
-                      {t.thirdAttempt} <span className="font-bold text-success">{options[challenge.correctAnswer]}</span>
-                    </p>
+                    {correctAnswerIndex !== null && (
+                      <p className="text-muted-foreground mt-2">
+                        {t.thirdAttempt} <span className="font-bold text-success">{options[correctAnswerIndex]}</span>
+                      </p>
+                    )}
                   </>
                 )}
               </motion.div>
@@ -342,12 +415,16 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
           {/* Action buttons */}
           <div className={cn("flex justify-end gap-3", isRTL && "flex-row-reverse")}>
             {!showResult ? (
-              <Button 
+              <Button
                 onClick={handleSubmit}
-                disabled={selectedAnswer === null}
+                disabled={selectedAnswer === null || submitting}
                 className="gap-2"
               >
-                <Sparkles className="w-4 h-4" />
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
                 {t.submit}
               </Button>
             ) : (

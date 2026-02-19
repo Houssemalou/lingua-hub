@@ -167,7 +167,20 @@ const translations: Record<Language, Record<string, string>> = {
     'quiz.session': 'Session',
     'quiz.date': 'Date',
     'quiz.student': 'Étudiant',
-    
+    'quiz.timeLimit': 'Temps limite',
+    'quiz.minutes': 'minutes',
+    'quiz.noAvailable': 'Aucun quiz disponible pour le moment',
+    'quiz.takeQuiz': 'Passer le quiz',
+    'quiz.review': 'Revoir les réponses',
+    'quiz.yourAnswer': 'Votre réponse',
+    'quiz.correctAnswer': 'Bonne réponse',
+    'quiz.timeUp': 'Temps écoulé !',
+    'quiz.confirmSubmit': 'Êtes-vous sûr de vouloir terminer ce quiz ?',
+    'quiz.quizzesTaken': 'Quiz passés',
+    'quiz.avgScore': 'Score moyen',
+    'quiz.backToList': 'Retour à la liste',
+    'quiz.previous': 'Précédent',
+
     // Rooms
     'rooms.title': 'Gestion des salles',
     'rooms.subtitle': 'Créer et gérer vos salles d\'apprentissage des langues',
@@ -442,7 +455,20 @@ const translations: Record<Language, Record<string, string>> = {
     'quiz.session': 'الجلسة',
     'quiz.date': 'التاريخ',
     'quiz.student': 'الطالب',
-    
+    'quiz.timeLimit': 'الوقت المحدد',
+    'quiz.minutes': 'دقائق',
+    'quiz.noAvailable': 'لا توجد اختبارات متاحة حالياً',
+    'quiz.takeQuiz': 'خوض الاختبار',
+    'quiz.review': 'مراجعة الإجابات',
+    'quiz.yourAnswer': 'إجابتك',
+    'quiz.correctAnswer': 'الإجابة الصحيحة',
+    'quiz.timeUp': 'انتهى الوقت!',
+    'quiz.confirmSubmit': 'هل أنت متأكد من إنهاء هذا الاختبار؟',
+    'quiz.quizzesTaken': 'اختبارات تمت',
+    'quiz.avgScore': 'متوسط النتيجة',
+    'quiz.backToList': 'العودة للقائمة',
+    'quiz.previous': 'السابق',
+
     // Quiz Results (Admin)
     'quizResults.subtitle': 'عرض نتائج اختبارات جميع الطلاب',
     'quizResults.totalQuizzes': 'إجمالي الاختبارات',
