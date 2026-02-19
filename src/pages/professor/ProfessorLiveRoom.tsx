@@ -203,6 +203,7 @@ export default function ProfessorLiveRoom() {
         <LiveKitRoom
           roomId={room.id}
           onLeaveRoom={handleLeaveRoom}
+          isProfessor={true}
         />
       </div>
 
