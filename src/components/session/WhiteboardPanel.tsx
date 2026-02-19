@@ -10,6 +10,8 @@ import {
   loadSnapshot,
 } from 'tldraw';
 import 'tldraw/tldraw.css';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Room } from 'livekit-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -74,6 +76,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   const storeRef = useRef(store);
   const isSyncingRef = useRef(false);
   const lastSentRef = useRef<number>(0);
+  const watermarkObserverRef = useRef<MutationObserver | null>(null);
 
   storeRef.current = store;
 
@@ -198,6 +201,18 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     return () => clearTimeout(timer);
   }, [isProfessor, store, room, permissions]);
 
+  // Cleanup MutationObserver used to hide tldraw watermark
+  useEffect(() => {
+    return () => {
+      try {
+        watermarkObserverRef.current?.disconnect();
+        watermarkObserverRef.current = null;
+      } catch (e) {
+        /* ignore */
+      }
+    };
+  }, []);
+
   const togglePermissions = useCallback(() => {
     const next: WritingPermission = permissions === 'professor-only' ? 'all' : 'professor-only';
     setPermissions(next);
@@ -223,21 +238,133 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     );
   }, [permissions, room]);
 
-  // Export whiteboard as PNG
+  // Export whiteboard pages as a multi‑page PDF (one PDF page per tldraw page)
   const handleExport = useCallback(async () => {
     try {
-      // Use tldraw's built-in export via canvas
-      const canvas = document.querySelector('.tl-canvas') as HTMLCanvasElement | null;
-      if (!canvas) {
-        toast.error('Impossible d\'exporter le tableau');
+      const originalSnapshot = getSnapshot(store) as any;
+      const pages = originalSnapshot?.document?.pages ? Object.keys(originalSnapshot.document.pages) : [];
+
+      if (pages.length === 0) {
+        toast.error('Aucune page à exporter');
         return;
       }
 
-      // Try to find the SVG element inside tldraw
-      const svgEl = document.querySelector('.tl-svg-context svg') as SVGSVGElement | null;
-      if (svgEl) {
+      toast('Génération du PDF — veuillez patienter...');
+
+      let doc: any = null;
+      // Prevent broadcasting while we temporarily switch pages locally
+      isSyncingRef.current = true;
+
+      for (let i = 0; i < pages.length; i++) {
+        const pageId = pages[i];
+        // Load the same snapshot but with the selected page set to pageId
+        const snapForPage = {
+          ...originalSnapshot,
+          document: { ...originalSnapshot.document, selectedPageId: pageId },
+        };
+
+        loadSnapshot(store, snapForPage);
+        // Wait a short time for tldraw to re-render the requested page
+        await new Promise((r) => setTimeout(r, 220));
+
+        // Prefer the SVG export when available
+        const svgEl = document.querySelector('.tl-svg-context svg') as SVGSVGElement | null;
+        const canvasEl = document.querySelector('.tl-canvas') as HTMLCanvasElement | null;
+
+        let imgDataUrl: string | null = null;
+        let imgW = 800;
+        let imgH = 600;
+
+        if (svgEl) {
+          const serializer = new XMLSerializer();
+          const svgStr = serializer.serializeToString(svgEl);
+          const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+
+          await new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = url;
+          });
+
+          const rect = svgEl.getBoundingClientRect();
+          imgW = Math.round(rect.width || img.naturalWidth || 800);
+          imgH = Math.round(rect.height || img.naturalHeight || 600);
+
+          const scale = 2; // increase quality
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(imgW * scale);
+          canvas.height = Math.round(imgH * scale);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            imgDataUrl = canvas.toDataURL('image/png');
+          }
+
+          URL.revokeObjectURL(url);
+        } else if (canvasEl) {
+          // Use the rendered canvas directly
+          imgDataUrl = canvasEl.toDataURL('image/png');
+          imgW = canvasEl.width || imgW;
+          imgH = canvasEl.height || imgH;
+        } else {
+          // Last resort: capture the container with html2canvas
+          const container = document.querySelector('.tl-wrapper') || document.querySelector('.tl-root');
+          if (container) {
+            const captured = await html2canvas(container as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            imgDataUrl = captured.toDataURL('image/png');
+            imgW = captured.width;
+            imgH = captured.height;
+          }
+        }
+
+        if (!imgDataUrl) continue; // skip page on failure
+
+        // Create or append to the PDF using A4 pages and scale the image to fit while preserving aspect ratio
+        const A4_WIDTH_MM = 210;
+        const A4_HEIGHT_MM = 297;
+        const MARGIN_MM = 8; // small page margin
+        const PAGE_WIDTH_MM = A4_WIDTH_MM - MARGIN_MM * 2;
+        const PAGE_HEIGHT_MM = A4_HEIGHT_MM - MARGIN_MM * 2;
+        const PX_TO_MM = 25.4 / 96; // convert CSS pixels -> mm (approx)
+
+        const imgWidthMm = imgW * PX_TO_MM;
+        const imgHeightMm = imgH * PX_TO_MM;
+        const scale = Math.min(PAGE_WIDTH_MM / imgWidthMm, PAGE_HEIGHT_MM / imgHeightMm, 1);
+        const finalWmm = imgWidthMm * scale;
+        const finalHmm = imgHeightMm * scale;
+        const left = (A4_WIDTH_MM - finalWmm) / 2;
+        const top = (A4_HEIGHT_MM - finalHmm) / 2;
+        const orientation = finalWmm > finalHmm ? 'landscape' : 'portrait';
+
+        if (!doc) {
+          doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: orientation as any });
+          doc.addImage(imgDataUrl, 'PNG', left, top, finalWmm, finalHmm);
+        } else {
+          doc.addPage('a4', orientation as any);
+          doc.addImage(imgDataUrl, 'PNG', left, top, finalWmm, finalHmm);
+        }
+      }
+
+      // Restore original snapshot and re-enable syncing
+      loadSnapshot(store, originalSnapshot);
+      isSyncingRef.current = false;
+
+      if (doc) {
+        doc.save(`tableau-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`);
+        toast.success('Export PDF réussi');
+        return;
+      }
+
+      // If we reach here, fallback to previous behavior (SVG or JSON)
+      const fallbackSvg = document.querySelector('.tl-svg-context svg') as SVGSVGElement | null;
+      if (fallbackSvg) {
         const serializer = new XMLSerializer();
-        const svgStr = serializer.serializeToString(svgEl);
+        const svgStr = serializer.serializeToString(fallbackSvg);
         const blob = new Blob([svgStr], { type: 'image/svg+xml' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -245,11 +372,10 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         a.download = `tableau-${Date.now()}.svg`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Tableau exporté en SVG');
+        toast.success('Tableau exporté en SVG (fallback)');
         return;
       }
 
-      // Fallback: export snapshot as JSON
       const snapshot = getSnapshot(store);
       const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -258,9 +384,10 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       a.download = `tableau-${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Tableau exporté');
+      toast.success('Tableau exporté (JSON fallback)');
     } catch (e) {
       console.error('Export error', e);
+      isSyncingRef.current = false;
       toast.error('Erreur lors de l\'export');
     }
   }, [store]);
@@ -321,7 +448,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           )}
 
           {/* Export */}
-          <motion.div whileTap={{ scale: 0.95 }}>
+          
+          {/*<motion.div whileTap={{ scale: 0.95 }}>
             <Button
               size="sm"
               variant="outline"
@@ -331,7 +459,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Exporter</span>
             </Button>
-          </motion.div>
+          </motion.div>*/}
 
           {/* Close */}
           <motion.div whileTap={{ scale: 0.95 }}>
@@ -374,6 +502,50 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           onMount={(editor) => {
             // Enable touch/stylus input
             editor.updateInstanceState({ isReadonly: isReadOnly });
+
+            // Hide tldraw "Get a license for production" watermark if present
+            const hideLicenseNodes = (rootEl: Element | null) => {
+              if (!rootEl) return;
+              const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_ELEMENT, null);
+              let node = walker.nextNode() as Element | null;
+              while (node) {
+                const txt = (node.textContent || '').trim();
+                if (/get a license for production/i.test(txt)) {
+                  try { (node as HTMLElement).style.display = 'none'; (node as HTMLElement).setAttribute('data-hidden-by', 'whiteboard'); } catch (e) { /* ignore */ }
+                }
+                node = walker.nextNode() as Element | null;
+              }
+            };
+
+            const root = document.querySelector('.tl-root') || document.querySelector('.tl-wrapper');
+            hideLicenseNodes(root);
+
+            // Watch for dynamic re-insertion and remove the node again if added
+            try {
+              if (root && !watermarkObserverRef.current) {
+                const obs = new MutationObserver((mutations) => {
+                  for (const m of mutations) {
+                    for (const n of Array.from(m.addedNodes)) {
+                      if (n.nodeType === Node.ELEMENT_NODE) {
+                        const el = n as Element;
+                        if (/get a license for production/i.test((el.textContent || '').trim())) {
+                          try { (el as HTMLElement).style.display = 'none'; (el as HTMLElement).setAttribute('data-hidden-by', 'whiteboard'); } catch (e) { /* ignore */ }
+                        }
+                        el.querySelectorAll('*').forEach((sub) => {
+                          if (/get a license for production/i.test((sub.textContent || '').trim())) {
+                            try { (sub as HTMLElement).style.display = 'none'; (sub as HTMLElement).setAttribute('data-hidden-by', 'whiteboard'); } catch (e) { /* ignore */ }
+                          }
+                        });
+                      }
+                    }
+                  }
+                });
+                obs.observe(root, { childList: true, subtree: true });
+                watermarkObserverRef.current = obs;
+              }
+            } catch (err) {
+              /* ignore */
+            }
           }}
         />
 

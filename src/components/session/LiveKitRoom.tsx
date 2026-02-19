@@ -5,7 +5,7 @@ import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
 import { VideoGrid } from './VideoGrid';
 import { MediaControls } from './MediaControls';
-import { ChatPanel, type ChatMessage } from './ChatPanel';
+import { ChatPanel, ChatMessage } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
 import { WhiteboardPanel } from './WhiteboardPanel';
@@ -20,14 +20,6 @@ interface LiveKitRoomProps {
   roomId: string;
   onLeaveRoom: () => void;
   isProfessor?: boolean;
-}
-
-interface ChatMessage {
-  id: string;
-  type: 'chat';
-  message: string;
-  timestamp: number;
-  sender: { id: string; name: string };
 }
 
 // Bottom sheet component for mobile
