@@ -8,7 +8,8 @@ import { MediaControls } from './MediaControls';
 import { ChatPanel } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
-import { PhoneOff, MessageSquare, Users, X, ChevronDown } from 'lucide-react';
+import { WhiteboardPanel } from './WhiteboardPanel';
+import { PhoneOff, MessageSquare, Users, X, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface LiveKitRoomProps {
   roomId: string;
   onLeaveRoom: () => void;
+  isProfessor?: boolean;
+}
+
+interface ChatMessage {
+  id: string;
+  type: 'chat';
+  message: string;
+  timestamp: number;
+  sender: { id: string; name: string };
 }
 
 // Bottom sheet component for mobile
@@ -30,7 +40,6 @@ const BottomSheet: React.FC<{
   <AnimatePresence>
     {isOpen && (
       <>
-        {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -38,7 +47,6 @@ const BottomSheet: React.FC<{
           className="fixed inset-0 bg-black/60 z-40"
           onClick={onClose}
         />
-        {/* Sheet */}
         <motion.div
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
@@ -47,7 +55,6 @@ const BottomSheet: React.FC<{
           className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl"
           style={{ maxHeight: '75vh', display: 'flex', flexDirection: 'column' }}
         >
-          {/* Handle + header */}
           <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100">
             <div className="w-12 h-1 rounded-full bg-gray-300 absolute top-2 left-1/2 -translate-x-1/2" />
             <span className="font-semibold text-gray-900 text-base mt-2">{title}</span>
@@ -65,12 +72,13 @@ const BottomSheet: React.FC<{
 );
 
 // Inner component that has access to LiveKit context
-const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => {
+const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isProfessor?: boolean }> = ({ roomId, onLeaveRoom, isProfessor }) => {
   const participants = useParticipants();
   const room = useRoomContext();
   const isMobile = useIsMobile();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -162,7 +170,13 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
     onLeaveRoom();
   };
 
-  // Floating panel for desktop
+  const handleToggleWhiteboard = () => {
+    setShowWhiteboard(prev => !prev);
+    if (showChat) setShowChat(false);
+    if (showParticipants) setShowParticipants(false);
+  };
+
+  // Floating panel for desktop chat
   const DesktopFloatingChat = () => showChat && !isMobile ? (
     <div className="absolute top-4 right-4 bottom-20 w-[360px] bg-white rounded-2xl shadow-2xl z-30 border border-gray-200 overflow-hidden flex flex-col">
       <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
@@ -181,14 +195,14 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
     </div>
   ) : null;
 
-  // Controls bar — compact on mobile
+  // Controls bar
   const ControlsBar = () => (
     <div className={cn(
       "relative z-20 border-t border-white/5 bg-black/60 backdrop-blur-xl",
       isMobile ? "p-2 pb-safe" : "p-3 sm:p-4"
     )}>
       <div className={cn("mx-auto flex items-center justify-between", isMobile ? "max-w-full gap-1" : "max-w-5xl")}>
-        {/* Left: Participants + Chat */}
+        {/* Left: Participants + Chat + Whiteboard */}
         <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
@@ -230,6 +244,24 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
               )}
             </Button>
           </motion.div>
+          {/* Whiteboard button */}
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="ghost"
+              size={isMobile ? "sm" : "sm"}
+              onClick={handleToggleWhiteboard}
+              className={cn(
+                "rounded-full font-semibold transition-all border-0",
+                isMobile ? "px-2 h-9" : "px-4",
+                showWhiteboard
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg"
+                  : "bg-white/10 hover:bg-white/20 text-white"
+              )}
+            >
+              <PenLine className="w-4 h-4" />
+              {!isMobile && <span className="ml-1">Tableau</span>}
+            </Button>
+          </motion.div>
         </div>
 
         {/* Center: Media Controls */}
@@ -261,6 +293,33 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
     </div>
   );
 
+  // If whiteboard is open, show it full-screen replacing video
+  if (showWhiteboard) {
+    return (
+      <div className="flex flex-col h-full bg-gray-900">
+        <div className="flex-1 relative min-h-0">
+          <WhiteboardPanel
+            room={room}
+            isProfessor={isProfessor ?? false}
+            participantCount={participants.length}
+            onClose={() => setShowWhiteboard(false)}
+          />
+        </div>
+        <ControlsBar />
+        {isMobile && (
+          <>
+            <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
+              <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} />
+            </BottomSheet>
+            <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
+              <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
+            </BottomSheet>
+          </>
+        )}
+      </div>
+    );
+  }
+
   // Screen share layout
   if (isScreenSharing && screenSharingParticipant) {
     return (
@@ -276,7 +335,6 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
           {!isMobile && <DesktopFloatingParticipants />}
         </div>
         <ControlsBar />
-        {/* Mobile bottom sheets */}
         {isMobile && (
           <>
             <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
@@ -343,7 +401,7 @@ const RoomContent: React.FC<{ onLeaveRoom: () => void }> = ({ onLeaveRoom }) => 
   );
 };
 
-export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom }) => {
+export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom, isProfessor }) => {
   const { error, serverUrl, token } = useLiveKitRoom(roomId);
 
   if (error) {
@@ -374,7 +432,7 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
       connect={true}
       onDisconnected={onLeaveRoom}
     >
-      <RoomContent onLeaveRoom={onLeaveRoom} />
+      <RoomContent roomId={roomId} onLeaveRoom={onLeaveRoom} isProfessor={isProfessor} />
     </LiveKitRoomComponent>
   );
 };
