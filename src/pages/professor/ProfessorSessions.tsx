@@ -11,11 +11,16 @@ import {
   Bot,
   UserCircle,
   DoorOpen,
+  Plus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -25,8 +30,9 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { RoomService } from '@/services/RoomService';
-import { RoomModel } from '@/models';
+import { RoomModel, CreateRoomDTO, StudentModel } from '@/models';
 import { toast } from 'sonner';
+import { StudentService } from '@/services/StudentService';
 import { canStartRoom, canJoinRoom, formatTimeUntilJoinable } from '@/lib/roomUtils';
 
 const container = {
@@ -42,6 +48,13 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
+// same lists as admin so professor can pick
+const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
+const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese'];
+const scienceSubjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology'];
+const allSubjects = [...languages, ...scienceSubjects];
+
+
 export default function ProfessorSessions() {
   const { user } = useAuth();
   const { t, language, isRTL } = useLanguage();
@@ -53,6 +66,19 @@ export default function ProfessorSessions() {
   const [sessions, setSessions] = useState<RoomModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
+
+  // creation state
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [roomName, setRoomName] = useState('');
+  const [roomLanguage, setRoomLanguage] = useState('');
+  const [roomLevel, setRoomLevel] = useState('A1');
+  const [roomDuration, setRoomDuration] = useState<string>('30');
+  const [scheduledAt, setScheduledAt] = useState<string>('');
+  const [maxStudents, setMaxStudents] = useState<number>(6);
+  const [objective, setObjective] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [students, setStudents] = useState<StudentModel[]>([]);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
   const dateLocale = language === 'ar' ? ar : fr;
 
@@ -87,6 +113,85 @@ export default function ProfessorSessions() {
 
     loadSessions();
   }, [isRTL]);
+
+  // load students for inviting (professor can invite students when creating a session)
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        const studentsResponse = await StudentService.getAll();
+        if (studentsResponse && (studentsResponse as any).success !== undefined) {
+          if ((studentsResponse as any).success) {
+            setStudents((studentsResponse as any).data?.data || []);
+          } else {
+            console.error('Failed to load students', studentsResponse);
+          }
+        } else {
+          setStudents((studentsResponse as any)?.data || []);
+        }
+      } catch (err) {
+        console.error('Error loading students:', err);
+      }
+    };
+    loadStudents();
+  }, []);
+
+  const toggleStudent = (studentId: string) => {
+    setSelectedStudents(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const handleCreateRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!roomName || !roomLanguage || !roomLevel || !scheduledAt) {
+      toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Please fill in all required fields');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const payload: CreateRoomDTO = {
+        name: roomName,
+        language: roomLanguage,
+        level: roomLevel as any,
+        objective,
+        scheduledAt,
+        duration: Number(roomDuration),
+        maxStudents,
+        animatorType: 'professor',
+        professorId: professor?.id,
+        invitedStudents: selectedStudents,
+      };
+
+      const res = await RoomService.create(payload);
+      if ((res as any).success) {
+        const rawData = (res as any).data;
+        const created = (rawData?.data || rawData) as RoomModel;
+        setSessions(prev => [created, ...prev]);
+        toast.success(isRTL ? 'تم إنشاء الجلسة بنجاح!' : 'Session créée avec succès !');
+        // Reset form
+        setRoomName('');
+        setRoomLanguage('');
+        setRoomLevel('A1');
+        setRoomDuration('30');
+        setScheduledAt('');
+        setMaxStudents(6);
+        setObjective('');
+        setSelectedStudents([]);
+        setIsCreateDialogOpen(false);
+      } else {
+        toast.error((res as any).message || (res as any).error || (isRTL ? 'فشل في إنشاء الجلسة' : 'Failed to create session'));
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : (isRTL ? 'فشل في إنشاء الجلسة' : 'Failed to create session'));
+      console.error('Create session error:', err);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const filteredSessions = (Array.isArray(sessions) ? sessions : []).filter((session) => {
     const matchesSearch = (session.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,7 +284,132 @@ export default function ProfessorSessions() {
             <SelectItem value="completed">{isRTL ? 'مكتمل' : 'Terminé'}</SelectItem>
           </SelectContent>
         </Select>
+        <Button className={cn("gap-2", isRTL && "flex-row-reverse")} onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4" />
+          {isRTL ? 'إنشاء جلسة' : 'Créer une session'}
+        </Button>
       </motion.div>
+
+      {/* Create Session Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isRTL ? 'إنشاء جلسة جديدة' : 'Créer une nouvelle session'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateRoom} className="space-y-6 mt-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">{isRTL ? 'اسم الجلسة' : 'Nom de la session'}</Label>
+                <Input id="name" placeholder={isRTL ? 'مثال: نادي المحادثة الإسبانية' : 'ex: Club de conversation espagnol'} required value={roomName} onChange={(e) => setRoomName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="language">{isRTL ? 'اللغة' : 'Langue'}</Label>
+                <Select value={roomLanguage} onValueChange={setRoomLanguage} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isRTL ? 'اختر لغة' : 'Sélectionner une langue'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages.map((lang) => (
+                      <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="level">{isRTL ? 'المستوى' : 'Niveau'}</Label>
+                <Select value={roomLevel} onValueChange={setRoomLevel} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isRTL ? 'اختر مستوى' : 'Sélectionner un niveau'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {levels.map((level) => (
+                      <SelectItem key={level} value={level}>{level}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="duration">{isRTL ? 'المدة (دقائق)' : 'Durée (minutes)'}</Label>
+                <Select value={roomDuration} onValueChange={setRoomDuration} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isRTL ? 'اختر المدة' : 'Sélectionner la durée'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
+                    <SelectItem value="45">45 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
+                    <SelectItem value="60">60 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
+                    <SelectItem value="90">90 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="date">{isRTL ? 'التاريخ والوقت' : 'Date & Heure'}</Label>
+                <Input id="date" type="datetime-local" required value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxStudents">{isRTL ? 'الحد الأقصى للطلاب' : 'Max Étudiants'}</Label>
+                <Input id="maxStudents" type="number" min="1" max="20" value={maxStudents} onChange={(e) => setMaxStudents(Number(e.target.value))} required />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="objective">{isRTL ? 'هدف الجلسة' : 'Objectif de la session'}</Label>
+              <Textarea
+                id="objective"
+                placeholder={isRTL ? 'صف ما سيتعلمه أو يمارسه الطلاب...' : 'Décrivez ce que les étudiants vont apprendre ou pratiquer...'}
+                rows={3}
+                required
+                value={objective}
+                onChange={(e) => setObjective(e.target.value)}
+              />
+            </div>
+            <div className="space-y-3">
+              <Label>{isRTL ? 'دعوة الطلاب' : 'Inviter des étudiants'}</Label>
+              <div className="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto p-1">
+                {students.length > 0 ? (
+                  students.map((student) => (
+                    <label
+                      key={student.id}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors",
+                        isRTL && "flex-row-reverse"
+                      )}
+                    >
+                      <Checkbox
+                        checked={selectedStudents.includes(student.id)}
+                        onCheckedChange={() => toggleStudent(student.id)}
+                      />
+                      <img src={student.avatar} alt="" className="w-8 h-8 rounded-full" />
+                      <div className={cn("flex-1 min-w-0", isRTL && "text-right")}>
+                        <p className="text-sm font-medium truncate">{student.name}</p>
+                        <p className="text-xs text-muted-foreground">{student.level}</p>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>{isRTL ? 'لا يوجد طلاب متاحين' : 'Aucun étudiant disponible'}</p>
+                  </div>
+                )}
+              </div>
+              {selectedStudents.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {selectedStudents.length} {isRTL ? 'طالب(طلاب) محدد' : 'étudiant(s) sélectionné(s)'}
+                </p>
+              )}
+            </div>
+            <div className={cn("flex justify-end gap-3", isRTL && "flex-row-reverse")}>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                {isRTL ? 'إلغاء' : 'Annuler'}
+              </Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? (isRTL ? 'جارٍ الإنشاء...' : 'Création...') : (isRTL ? 'إنشاء' : 'Créer')}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Sessions Grid */}
       <motion.div variants={item} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
