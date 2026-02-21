@@ -76,7 +76,6 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   const storeRef = useRef(store);
   const isSyncingRef = useRef(false);
   const lastSentRef = useRef<number>(0);
-  const watermarkObserverRef = useRef<MutationObserver | null>(null);
 
   storeRef.current = store;
 
@@ -200,18 +199,6 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     }, 800);
     return () => clearTimeout(timer);
   }, [isProfessor, store, room, permissions]);
-
-  // Cleanup MutationObserver used to hide tldraw watermark
-  useEffect(() => {
-    return () => {
-      try {
-        watermarkObserverRef.current?.disconnect();
-        watermarkObserverRef.current = null;
-      } catch (e) {
-        /* ignore */
-      }
-    };
-  }, []);
 
   const togglePermissions = useCallback(() => {
     const next: WritingPermission = permissions === 'professor-only' ? 'all' : 'professor-only';
@@ -502,50 +489,6 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           onMount={(editor) => {
             // Enable touch/stylus input
             editor.updateInstanceState({ isReadonly: isReadOnly });
-
-            // Hide tldraw "Get a license for production" watermark if present
-            const hideLicenseNodes = (rootEl: Element | null) => {
-              if (!rootEl) return;
-              const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_ELEMENT, null);
-              let node = walker.nextNode() as Element | null;
-              while (node) {
-                const txt = (node.textContent || '').trim();
-                if (/get a license for production/i.test(txt)) {
-                  try { (node as HTMLElement).style.display = 'none'; (node as HTMLElement).setAttribute('data-hidden-by', 'whiteboard'); } catch (e) { /* ignore */ }
-                }
-                node = walker.nextNode() as Element | null;
-              }
-            };
-
-            const root = document.querySelector('.tl-root') || document.querySelector('.tl-wrapper');
-            hideLicenseNodes(root);
-
-            // Watch for dynamic re-insertion and remove the node again if added
-            try {
-              if (root && !watermarkObserverRef.current) {
-                const obs = new MutationObserver((mutations) => {
-                  for (const m of mutations) {
-                    for (const n of Array.from(m.addedNodes)) {
-                      if (n.nodeType === Node.ELEMENT_NODE) {
-                        const el = n as Element;
-                        if (/get a license for production/i.test((el.textContent || '').trim())) {
-                          try { (el as HTMLElement).style.display = 'none'; (el as HTMLElement).setAttribute('data-hidden-by', 'whiteboard'); } catch (e) { /* ignore */ }
-                        }
-                        el.querySelectorAll('*').forEach((sub) => {
-                          if (/get a license for production/i.test((sub.textContent || '').trim())) {
-                            try { (sub as HTMLElement).style.display = 'none'; (sub as HTMLElement).setAttribute('data-hidden-by', 'whiteboard'); } catch (e) { /* ignore */ }
-                          }
-                        });
-                      }
-                    }
-                  }
-                });
-                obs.observe(root, { childList: true, subtree: true });
-                watermarkObserverRef.current = obs;
-              }
-            } catch (err) {
-              /* ignore */
-            }
           }}
         />
 
