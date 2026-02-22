@@ -242,7 +242,8 @@ export function StudentChatbot({
     setIsConnecting(true);
     try {
       // Create room via API
-      const response = await fetch('http://localhost:3200/api/room/create', {
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://91.134.137.202/assistant';
+      const response = await fetch(`${aiBase}/api/room/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,7 +313,8 @@ export function StudentChatbot({
     if (!roomName) return;
 
     try {
-      await fetch('http://localhost:3200/api/room/close', {
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || '/assistant';
+      await fetch(`${aiBase}/api/room/close`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

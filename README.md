@@ -71,10 +71,14 @@ cd lingua-hub
 
 ### 2. Configuration
 
-**Frontend (.env)**
+**Frontend (.env) — note for Docker/nginx**
 ```env
-VITE_API_URL=http://localhost:8081/api
+# when running inside the lingua-hub container we route through nginx
+# the frontend can then use relative URLs for both services
+VITE_API_URL=/api
+VITE_AI_ASSISTANT_URL=/assistant
 VITE_LIVEKIT_URL=ws://localhost:7880
+# (during local dev you may still point to http://localhost:8081/api etc.)
 ```
 
 **Backend (easyLearn/src/main/resources/application.yml)**
