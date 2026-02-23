@@ -70,7 +70,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     createTLStore({ shapeUtils: defaultShapeUtils })
   );
   const [permissions, setPermissions] = useState<WritingPermission>('professor-only');
-  const [isReadOnly, setIsReadOnly] = useState(true); // start locked until prof enables
+  const [isReadOnly, setIsReadOnly] = useState(!isProfessor);
   const [connectedCount, setConnectedCount] = useState(participantCount);
   const [showParticipantMenu, setShowParticipantMenu] = useState(false);
   const storeRef = useRef(store);
@@ -80,14 +80,13 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   storeRef.current = store;
 
   // Update read-only state based on permissions
-  // previously the professor was always writable; to honor the "give the hand"
-  // requirement we treat the professor the same as students. the toggle button
-  // switches between `professor-only` (nobody can write until the prof enables)
-  // and `all` (everyone can write). the professor can still toggle the permission
-  // to start/stop editing.
   useEffect(() => {
-    setIsReadOnly(permissions === 'professor-only');
-  }, [permissions]);
+    if (isProfessor) {
+      setIsReadOnly(false);
+    } else {
+      setIsReadOnly(permissions === 'professor-only');
+    }
+  }, [permissions, isProfessor]);
 
   // Listen for incoming whiteboard data from LiveKit
   useEffect(() => {

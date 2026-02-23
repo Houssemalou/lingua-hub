@@ -97,7 +97,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   }));
 
   const localParticipant = formattedParticipants.find(p => p.formatted.isLocal);
-  const isProfessor = localParticipant?.formatted.role === 'professor' || localParticipant?.formatted.role === 'admin';
+  const isProfessor = localParticipant?.formatted.role === 'professor';
   const screenSharingParticipant = formattedParticipants.find(p => p.formatted.isScreenSharing);
   const isScreenSharing = !!screenSharingParticipant;
 
