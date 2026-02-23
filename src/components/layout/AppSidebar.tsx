@@ -82,8 +82,11 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     : studentNavItems;
 
   const handleNavClick = () => {
+    // closing the drawer immediately can unmount the NavLink before the
+    // router processes the click, which makes the link appear non-functional
+    // on small screens.  Use a micro-task so navigation happens first.
     if (isMobile && onClose) {
-      onClose();
+      setTimeout(onClose, 0);
     }
   };
 
@@ -348,7 +351,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
             {role === 'admin' && (
               <>
                 <Avatar className="w-9 h-9">
-                  <AvatarFallback>{(user?.name || user?.email || 'A').charAt(0).toUpperCase()}</AvatarFallback>
+                  <AvatarFallback>{(user?.username || user?.email || 'A').charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <AnimatePresence mode="wait">
                   {(!collapsed || isMobile) && (
@@ -359,7 +362,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
                       className={cn("flex-1 min-w-0", isRTL && "text-right")}
                     >
                       <p className="text-sm font-medium text-sidebar-foreground truncate">
-                        {user?.name || user?.email}
+                        {user?.username || user?.email}
                       </p>
                       <p className="text-xs text-sidebar-foreground/60 truncate">
                         {t('nav.admin')}

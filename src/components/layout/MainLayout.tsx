@@ -64,6 +64,15 @@ export function MainLayout() {
     setMobileMenuOpen(false);
   };
 
+  // whenever the location changes on a mobile device we want to auto-close the
+  // sidebar; this avoids having to rely on the onClick handlers inside the
+  // menu and ensures the close happens *after* navigation.
+  useEffect(() => {
+    if (isMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [location.pathname, isMobile]);
+
   // Live room pages are full-screen fixed — render without sidebar/padding
   if (isLiveRoomPage) {
     return (
