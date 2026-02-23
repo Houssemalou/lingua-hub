@@ -8,7 +8,8 @@ import { MediaControls } from './MediaControls';
 import { ChatPanel, type ChatMessage } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
-import { PhoneOff, MessageSquare, Users, X, ChevronDown } from 'lucide-react';
+import { WhiteboardPanel } from './WhiteboardPanel';
+import { PhoneOff, MessageSquare, Users, X, ChevronDown, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -71,6 +72,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   const isMobile = useIsMobile();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -95,6 +97,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   }));
 
   const localParticipant = formattedParticipants.find(p => p.formatted.isLocal);
+  const isProfessor = localParticipant?.formatted.role === 'professor' || localParticipant?.formatted.role === 'admin';
   const screenSharingParticipant = formattedParticipants.find(p => p.formatted.isScreenSharing);
   const isScreenSharing = !!screenSharingParticipant;
 
@@ -195,8 +198,26 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
         : "relative z-20 p-3 sm:p-4"
     )}>
       <div className={cn("mx-auto flex items-center justify-between", isMobile ? "max-w-full gap-1" : "max-w-5xl")}>
-        {/* Left: Participants + Chat */}
+        {/* Left: Participants + Chat (and whiteboard toggle) */}
         <div className={cn("flex items-center", isMobile ? "gap-1" : "gap-2")}>
+          {/* whiteboard button */}
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="ghost"
+              size={isMobile ? "sm" : "sm"}
+              onClick={() => setShowWhiteboard(w => !w)}
+              className={cn(
+                "rounded-full font-semibold transition-all border-0 relative",
+                isMobile ? "px-2 h-9" : "px-4",
+                showWhiteboard
+                  ? "bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg"
+                  : "bg-white/10 hover:bg-white/20 text-white"
+              )}
+            >
+              <Pencil className={cn(isMobile ? "w-4 h-4" : "w-4 h-4")} />
+              {!isMobile && <span className="ml-1">Tableau</span>}
+            </Button>
+          </motion.div>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               variant="ghost"
@@ -284,6 +305,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
         </div>
         <ControlsBar />
         {/* Mobile bottom sheets */}
+        {/* also allow opening whiteboard on mobile via bottom sheet toggle? currently handled by button above */}
         {isMobile && (
           <>
             <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
@@ -317,6 +339,17 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
 
       {/* Main Content Area */}
       <div className="flex-1 relative flex z-10 min-h-0">
+        {/* whiteboard overlay */}
+        {showWhiteboard && (
+          <div className="absolute inset-0 z-50">
+            <WhiteboardPanel
+              room={room}
+              isProfessor={isProfessor}
+              participantCount={participants.length}
+              onClose={() => setShowWhiteboard(false)}
+            />
+          </div>
+        )}
         <div className={cn(
           "flex-1 transition-all duration-300 min-h-0",
           formattedParticipants.length === 1 ? "p-0" : isMobile ? "p-2" : "p-3 sm:p-4"

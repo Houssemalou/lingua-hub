@@ -677,7 +677,7 @@ const downloadSummary = useCallback(async () => {
         {!isChatOpen && (
           <motion.button
             onClick={handleOpenChat}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
+            className="fixed bottom-6 right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             initial={{ scale: 0, opacity: 0 }}
@@ -699,7 +699,8 @@ const downloadSummary = useCallback(async () => {
               opacity: 1,
               scale: 1,
               y: 0,
-              height: isMinimized ? 'auto' : '600px'
+              // use viewport height instead of fixed pixels for better responsiveness
+              height: isMinimized ? 'auto' : '80vh'
             }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -707,7 +708,7 @@ const downloadSummary = useCallback(async () => {
             style={{ maxHeight: isMinimized ? '40vh' : '80vh' }}
           >
             {/* Chat Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 flex flex-col sm:flex-row items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                   <Bot className="w-5 h-5" />
@@ -935,7 +936,7 @@ const downloadSummary = useCallback(async () => {
             {/* Input Area */}
             {!isMinimized && (
               <div className="p-4 border-t bg-white/90 backdrop-blur-sm flex-none">
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex flex-wrap items-center gap-3 mb-3">
                   <button
                     className="text-xs px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
                     onClick={() => { setCurrentMessage('Corriger ma prononciation'); setTimeout(sendMessage, 150); }}
@@ -950,7 +951,7 @@ const downloadSummary = useCallback(async () => {
                   </button>
                 </div>
 
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center min-w-0">
                   <button
                     onClick={toggleRecording}
                     aria-label="Activer le micro"
@@ -970,7 +971,7 @@ const downloadSummary = useCallback(async () => {
                     onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Tapez votre message..."
                     aria-label="Message"
-                    className="flex-1 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white rounded-full text-sm placeholder:text-gray-400 px-4 py-2 shadow-sm"
+                    className="flex-1 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white rounded-full text-black text-sm placeholder:text-gray-400 px-4 py-2 shadow-sm"
                   />
 
                   <button
