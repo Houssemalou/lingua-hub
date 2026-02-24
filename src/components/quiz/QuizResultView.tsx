@@ -27,8 +27,10 @@ const item = {
 export function QuizResultView({ result, quiz, onBack }: QuizResultViewProps) {
   const { t, isRTL } = useLanguage();
 
-  const scorePercent = result.totalQuestions > 0
-    ? Math.round((result.score / result.totalQuestions) * 100)
+  // score is already a percentage from the backend
+  const scorePercent = result.score;
+  const correctCount = result.totalQuestions > 0
+    ? Math.round((result.score * result.totalQuestions) / 100)
     : 0;
   const passed = result.passed;
 
@@ -110,7 +112,7 @@ export function QuizResultView({ result, quiz, onBack }: QuizResultViewProps) {
             {/* Stats row */}
             <div className={cn('flex items-center gap-6 text-sm', isRTL && 'flex-row-reverse')}>
               <div className="text-center">
-                <p className="font-bold text-lg">{result.score}/{result.totalQuestions}</p>
+                <p className="font-bold text-lg">{correctCount}/{result.totalQuestions}</p>
                 <p className="text-muted-foreground">{isRTL ? 'إجابات صحيحة' : 'Bonnes réponses'}</p>
               </div>
               <Separator orientation="vertical" className="h-10" />

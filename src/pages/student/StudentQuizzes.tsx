@@ -87,11 +87,11 @@ export default function StudentQuizzes() {
   // Derived data
   const takenQuizIds = new Set(results.map((r) => r.quizId));
   const passedCount = results.filter((r) => r.passed).length;
+  // score is already a percentage from the backend
   const avgScore =
     results.length > 0
       ? Math.round(
-          results.reduce((sum, r) => sum + (r.totalQuestions > 0 ? (r.score / r.totalQuestions) * 100 : 0), 0) /
-            results.length
+          results.reduce((sum, r) => sum + r.score, 0) / results.length
         )
       : 0;
 
@@ -410,10 +410,8 @@ export default function StudentQuizzes() {
             ) : (
               <div className="space-y-3">
                 {filteredResults.map((result) => {
-                  const scorePercent =
-                    result.totalQuestions > 0
-                      ? Math.round((result.score / result.totalQuestions) * 100)
-                      : 0;
+                  // score is already a percentage from the backend
+                  const scorePercent = result.score;
 
                   return (
                     <motion.div key={result.id} variants={item}>
