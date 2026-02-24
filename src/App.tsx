@@ -34,6 +34,7 @@ import ProfessorEvaluations from "./pages/professor/ProfessorEvaluations";
 import StudentQuizzes from "./pages/student/StudentQuizzes";
 import StudentEvaluations from "./pages/student/StudentEvaluations";
 import AuthPage from "./pages/auth/AuthPage";
+import EmailVerificationPage from "./pages/auth/EmailVerificationPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Navigate to="/auth" replace />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/verify-email" element={<EmailVerificationPage />} />
                   <Route element={<MainLayout />}>
                     {/* Admin Routes */}
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />

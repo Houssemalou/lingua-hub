@@ -9,14 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen } from 'lucide-react';
+import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen, Mail, RefreshCw } from 'lucide-react';
+import { AuthService } from '@/services/AuthService';
 import { avatarOptions } from '@/data/avatars';
 import { cn } from '@/lib/utils';
 
 type AuthMode = 'login' | 'signup';
 type SignupRole = 'admin' | 'student' | 'professor' | null;
 type StudentStep = 'role' | 'avatar' | 'info' | 'token';
-type ProfessorStep = 'role' | 'avatar' | 'info' | 'token';
+type ProfessorStep = 'role' | 'avatar' | 'info' | 'token' | 'email-verification';
 
 const levelOptions: Array<'A1' | 'A2' | 'B1' | 'B2'> = ['A1', 'A2', 'B1', 'B2'];
 
@@ -45,6 +46,11 @@ export default function AuthPage() {
   const [accessToken, setAccessToken] = useState('');
   const [level, setLevel] = useState<'A1' | 'A2' | 'B1' | 'B2'>('A1');
   const [uniqueCode, setUniqueCode] = useState('');
+  // Email verification state
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+
   // Professor-specific fields
   const [languages, setLanguages] = useState<string[]>(['Français']);
   const [specialization, setSpecialization] = useState('');
@@ -145,10 +151,10 @@ export default function AuthPage() {
       specialization,
       accessToken,
     });
-    
+
     if (result.success) {
-      resetForm();
-      setMode('login');
+      setRegisteredEmail(email);
+      setProfessorStep('email-verification');
     } else {
       setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
@@ -866,6 +872,79 @@ export default function AuthPage() {
     </motion.div>
   );
 
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+    const result = await AuthService.resendVerificationEmail(registeredEmail);
+    if (result.success) {
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 5000);
+    } else {
+      setError(result.error || 'Erreur lors du renvoi');
+    }
+    setResendLoading(false);
+  };
+
+  const renderEmailVerification = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+        <CardHeader className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <CardTitle className="text-2xl">
+            {isRTL ? 'تحقق من بريدك الإلكتروني' : 'Vérifiez votre email'}
+          </CardTitle>
+          <CardDescription className="text-base mt-2">
+            {isRTL
+              ? `لقد أرسلنا رابط التحقق إلى ${registeredEmail}`
+              : `Nous avons envoyé un lien de vérification à ${registeredEmail}`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground text-center">
+            {isRTL
+              ? 'يرجى التحقق من بريدك الإلكتروني والنقر على الرابط لتفعيل حسابك. الرابط صالح لمدة 24 ساعة.'
+              : 'Veuillez consulter votre boîte de réception et cliquer sur le lien pour activer votre compte. Le lien est valable pendant 24 heures.'}
+          </div>
+          {resendSuccess && (
+            <p className="text-sm text-green-600 text-center">
+              {isRTL ? 'تم إرسال البريد الإلكتروني بنجاح!' : 'Email renvoyé avec succès !'}
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={handleResendVerification}
+            disabled={resendLoading}
+          >
+            <RefreshCw className={cn("w-4 h-4", resendLoading && "animate-spin")} />
+            {resendLoading
+              ? (isRTL ? 'جاري الإرسال...' : 'Envoi en cours...')
+              : (isRTL ? 'إعادة إرسال البريد الإلكتروني' : 'Renvoyer l\'email de vérification')}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              resetForm();
+              setMode('login');
+            }}
+          >
+            {isRTL ? 'العودة لتسجيل الدخول' : 'Retour à la connexion'}
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
   const renderContent = () => {
     if (mode === 'login') return renderLogin();
     
@@ -882,6 +961,8 @@ export default function AuthPage() {
           return renderProfessorInfo();
         case 'token':
           return renderProfessorTokenValidation();
+        case 'email-verification':
+          return renderEmailVerification();
         default:
           return renderRoleSelection();
       }
