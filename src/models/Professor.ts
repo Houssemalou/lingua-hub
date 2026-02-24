@@ -4,6 +4,10 @@
 
 export interface ProfessorModel {
   id: string;
+  // some backends return the underlying users table foreign key as `userId`
+  // (which may differ from the professor table primary key).  we keep it
+  // around for debugging/conditional logic when needed.
+  userId?: string;
   name: string;
   email: string;
   avatar: string;

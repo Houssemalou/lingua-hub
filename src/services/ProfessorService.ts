@@ -31,6 +31,7 @@ export const ProfessorService = {
     try {
       const response = await apiClient.get<{ success: boolean; message: string; data: ProfessorModel }>('/professors/me');
       if (response.success && response.data) {
+        console.log('Fetched professor profile:', response.data);
         return { success: true, data: response.data };
       }
       return { success: false, error: response.message || 'Failed to fetch profile' };

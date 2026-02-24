@@ -27,7 +27,8 @@ export interface RoomModel {
 export interface CreateRoomDTO {
   name: string;
   language: string;
-  level: LanguageLevel;
+  // allow empty string when level not applicable
+  level: LanguageLevel | '';
   objective: string;
   scheduledAt: string;
   duration: number;
@@ -50,7 +51,7 @@ export interface UpdateRoomDTO {
 export interface RoomFilters {
   status?: RoomStatus;
   language?: string;
-  level?: LanguageLevel;
+  level?: LanguageLevel | '';
   professorId?: string;
   animatorType?: AnimatorType;
   fromDate?: string;

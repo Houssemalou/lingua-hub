@@ -34,10 +34,10 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
-const languages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese'];
-const scienceSubjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology'];
-const allSubjects = [...languages, ...scienceSubjects];
+const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+// allowed language/subject options
+const languages = ['Français', 'Anglais', 'Arabe', 'Allemand', 'Mathématiques', 'Science', 'Informatique'];
+const levelEnabledLanguages = ['Français', 'Anglais', 'Arabe', 'Allemand'];
 
 export default function AdminRooms() {
   const navigate = useNavigate();
@@ -52,7 +52,7 @@ export default function AdminRooms() {
   // Form fields (controlled)
   const [roomName, setRoomName] = useState('');
   const [roomLanguage, setRoomLanguage] = useState('');
-  const [roomLevel, setRoomLevel] = useState('A1');
+  const [roomLevel, setRoomLevel] = useState('');
   const [roomDuration, setRoomDuration] = useState<string>('30');
   const [scheduledAt, setScheduledAt] = useState<string>('');
   const [maxStudents, setMaxStudents] = useState<number>(6);
@@ -131,6 +131,16 @@ export default function AdminRooms() {
     return matchesSearch && matchesStatus;
   });
 
+  const levelEnabled = levelEnabledLanguages.includes(roomLanguage);
+
+  useEffect(() => {
+    if (!levelEnabled) {
+      setRoomLevel('');
+    } else if (!roomLevel) {
+      setRoomLevel('A1');
+    }
+  }, [roomLanguage]);
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -139,7 +149,7 @@ export default function AdminRooms() {
       return;
     }
 
-    if (!roomName || !roomLanguage || !roomLevel || !scheduledAt || !selectedProfessor) {
+    if (!roomName || !roomLanguage || (levelEnabled && !roomLevel) || !scheduledAt || !selectedProfessor) {
       toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Please fill in all required fields');
       return;
     }
@@ -149,7 +159,7 @@ export default function AdminRooms() {
       const payload: CreateRoomDTO = {
         name: roomName,
         language: roomLanguage,
-        level: roomLevel as any,
+        level: levelEnabled ? (roomLevel as any) : ('' as any),
         objective,
         scheduledAt,
         duration: Number(roomDuration),
@@ -268,7 +278,7 @@ export default function AdminRooms() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="level">{isRTL ? 'المستوى' : 'Niveau'}</Label>
-                  <Select value={roomLevel} onValueChange={setRoomLevel} required>
+                  <Select value={roomLevel} onValueChange={setRoomLevel} required disabled={!levelEnabled}>
                     <SelectTrigger>
                       <SelectValue placeholder={isRTL ? 'اختر مستوى' : 'Sélectionner un niveau'} />
                     </SelectTrigger>

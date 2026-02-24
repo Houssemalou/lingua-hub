@@ -56,6 +56,14 @@ export function StudentChatbot({
   const [roomName, setRoomName] = useState<string | null>(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(10 * 60); // 10 minutes in seconds
   const [sessionTimer, setSessionTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+
+  // track viewport size for mobile-specific behaviour
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const roomRef = useRef<Room | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -172,7 +180,6 @@ export function StudentChatbot({
     ) => {
       const decoder = new TextDecoder();
       const message = decoder.decode(payload);
-      console.log('Data received:', message);
       handleDataMessage(message, participant);
     });
 
@@ -242,7 +249,7 @@ export function StudentChatbot({
     setIsConnecting(true);
     try {
       // Create room via API
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://91.134.137.202/assistant';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://localhost:3200';
       const response = await fetch(`${aiBase}/api/room/create`, {
         method: 'POST',
         headers: {
@@ -313,7 +320,7 @@ export function StudentChatbot({
     if (!roomName) return;
 
     try {
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || '/assistant';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://localhost:3200';
       await fetch(`${aiBase}/api/room/close`, {
         method: 'POST',
         headers: {
@@ -698,14 +705,22 @@ const downloadSummary = useCallback(async () => {
             animate={{
               opacity: 1,
               scale: 1,
-              y: 0,
-              // use viewport height instead of fixed pixels for better responsiveness
-              height: isMinimized ? 'auto' : '80vh'
+              y: 0
             }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed z-50 bottom-0 left-0 right-0 sm:bottom-6 sm:right-6 sm:left-auto w-full sm:w-96 max-w-[calc(100vw-3rem)] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
-            style={{ maxHeight: isMinimized ? '40vh' : '80vh' }}
+            className={cn(
+              "fixed z-50 bottom-0 left-0 right-0 sm:bottom-6 sm:right-6 sm:left-auto w-full sm:w-96 max-w-[calc(100vw-3rem)] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col",
+              // on small screens make chat take full viewport height when open
+              !isMinimized && isMobile ? "h-screen" : ""
+            )}
+            style={
+              isMinimized
+                ? { maxHeight: '40vh' }
+                : isMobile
+                ? { height: '100vh' }
+                : { maxHeight: '80vh' }
+            }
           >
             {/* Chat Header */}
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 flex flex-col sm:flex-row items-center justify-between gap-2">

@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const p = profileResponse.data;
           authUser.student = {
             id: String(p.id),
-            name: p.name || authUser.name,
+            name: p.name || authUser.username,
             email: p.email || authUser.email,
             avatar: p.avatar || '',
             nickname: p.nickname || '',
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const p = profileResponse.data;
           authUser.professor = {
             id: String(p.id),
-            name: p.name || authUser.name,
+            name: p.name || authUser.username,
             email: p.email || authUser.email,
             avatar: p.avatar || '',
             bio: p.bio || '',
@@ -139,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         } else if (response.data.user.role === 'professor') {
           const professorProfile: Professor = {
+            // initially use the user id; we'll fetch the real professor record right after
             id: response.data.user.id,
             name: response.data.user.name,
             email: response.data.user.email,
@@ -156,6 +157,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: response.data.user.role,
             professor: professorProfile,
           };
+
+          // fetch the full profile immediately so that we have the correct professor table ID
+          try {
+            const updated = await fetchProfile('professor', authUser);
+            authUser.professor = updated.professor; // update professor sub-object with full profile
+          } catch (err) {
+            console.warn('Could not refresh professor profile after login:', err);
+          }
         } else {
           // Admin
           authUser = {

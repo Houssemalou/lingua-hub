@@ -196,10 +196,10 @@ export function MainLayout() {
       )}
 
       {/* Admin Chatbot - Only visible for admin routes */}
-      {isAdminRoute && <AdminChatbot />}
+      {/*isAdminRoute && <AdminChatbot />*/}
 
       {/* Student Chatbot - Only on student routes (not live rooms) */}
-      {user && isStudentRoute && (
+      {user &&user.role === 'student' && isStudentRoute && (
         <StudentChatbot
           studentId={user.student?.id || user.id}
           studentName={user.student?.name || user.email}
