@@ -46,6 +46,9 @@ public class AuthService {
     @Autowired
     private JwtTokenProvider tokenProvider;
 
+    @Autowired
+    private EmailService emailService;
+
     // Valid access tokens for registration
     private static final List<String> VALID_STUDENT_TOKENS = Arrays.asList(
         "STUDENT2024", "LANG-ABC123", "EDU-TOKEN-01", "ACCESS-2024-XYZ"
@@ -123,14 +126,20 @@ public class AuthService {
             throw new BadRequestException("Email already in use");
         }
 
-        // Create new user
+        // Generate email verification token
+        String verificationToken = UUID.randomUUID().toString();
+
+        // Create new user with isActive=false and emailVerified=false
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(User.UserRole.PROFESSOR)
                 .avatar(request.getAvatar())
-                .isActive(true)
+                .isActive(false)
+                .emailVerified(false)
+                .emailVerificationToken(verificationToken)
+                .emailVerificationTokenExpiry(LocalDateTime.now().plusHours(24))
                 .build();
 
         user = userRepository.save(user);
@@ -146,20 +155,17 @@ public class AuthService {
 
         professorRepository.save(professor);
 
-        // Generate tokens
-        String token = tokenProvider.generateTokenFromUsername(user.getEmail());
-        String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
+        // Send verification email
+        emailService.sendVerificationEmail(user.getEmail(), user.getName(), verificationToken);
 
-        log.info("Professor registered successfully: {}", user.getEmail());
+        log.info("Professor registered successfully (pending email verification): {}", user.getEmail());
 
+        // Return response WITHOUT JWT tokens
         return AuthResponse.builder()
-                .token(token)
-                .refreshToken(refreshToken)
                 .userId(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .role(user.getRole().name())
-                .expiresIn(tokenProvider.getJwtExpirationMs())
                 .build();
     }
 
@@ -238,6 +244,14 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        // Check if user exists and is a professor with unverified email
+        User existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
+        if (existingUser != null
+                && existingUser.getRole() == User.UserRole.PROFESSOR
+                && Boolean.FALSE.equals(existingUser.getEmailVerified())) {
+            throw new BadRequestException("Veuillez vérifier votre email avant de vous connecter. Consultez votre boîte de réception.");
+        }
+
         // Authenticate user
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -255,7 +269,7 @@ public class AuthService {
         // Generate tokens
         String token = tokenProvider.generateToken(authentication);
         String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
-        
+
         log.info("User logged in successfully: {}, role: {}", user.getEmail(), user.getRole());
 
         return AuthResponse.builder()
@@ -295,6 +309,43 @@ public class AuthService {
         }
     }
     
+    @Transactional
+    public void verifyEmail(String token) {
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> new BadRequestException("Token de vérification invalide"));
+
+        if (user.getEmailVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Le token de vérification a expiré. Veuillez demander un nouvel email de vérification.");
+        }
+
+        user.setEmailVerified(true);
+        user.setIsActive(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerificationTokenExpiry(null);
+        userRepository.save(user);
+
+        log.info("Email verified successfully for user: {}", user.getEmail());
+    }
+
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("Aucun compte trouvé avec cet email"));
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new BadRequestException("Cet email est déjà vérifié");
+        }
+
+        String verificationToken = UUID.randomUUID().toString();
+        user.setEmailVerificationToken(verificationToken);
+        user.setEmailVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
+        userRepository.save(user);
+
+        emailService.sendVerificationEmail(user.getEmail(), user.getName(), verificationToken);
+
+        log.info("Verification email resent to: {}", user.getEmail());
+    }
+
     public AuthResponse getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));

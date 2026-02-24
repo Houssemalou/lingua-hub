@@ -17,6 +17,16 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
         
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
   servlet:
     multipart:
       max-file-size: 50MB
@@ -45,6 +55,7 @@ livekit:
 app:
   dev-mode: ${DEV_MODE:true} # Set to false in production
   allow-early-join: ${ALLOW_EARLY_JOIN:true} # Allow joining before scheduled time in dev mode
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
 
 # Python Service Configuration
 python-service:

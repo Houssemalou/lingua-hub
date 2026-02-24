@@ -9,14 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen } from 'lucide-react';
+import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen, Mail } from 'lucide-react';
+import { AuthService } from '@/services/AuthService';
 import { avatarOptions } from '@/data/avatars';
 import { cn } from '@/lib/utils';
 
 type AuthMode = 'login' | 'signup';
 type SignupRole = 'admin' | 'student' | 'professor' | null;
 type StudentStep = 'role' | 'avatar' | 'info' | 'token';
-type ProfessorStep = 'role' | 'avatar' | 'info' | 'token';
+type ProfessorStep = 'role' | 'avatar' | 'info' | 'token' | 'email-verification';
 
 const levelOptions: Array<'A1' | 'A2' | 'B1' | 'B2'> = ['A1', 'A2', 'B1', 'B2'];
 
@@ -33,6 +34,9 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   // Form states
   const [email, setEmail] = useState('');
@@ -134,7 +138,7 @@ export default function AuthPage() {
   const handleProfessorSignup = async () => {
     setLoading(true);
     setError('');
-    
+
     const result = await signupProfessor({
       email,
       password,
@@ -145,14 +149,24 @@ export default function AuthPage() {
       specialization,
       accessToken,
     });
-    
+
     if (result.success) {
-      resetForm();
-      setMode('login');
+      setRegisteredEmail(email);
+      setProfessorStep('email-verification');
     } else {
       setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
     setLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+    const result = await AuthService.resendVerificationEmail(registeredEmail);
+    if (result.success) {
+      setResendSuccess(true);
+    }
+    setResendLoading(false);
   };
 
   const resetForm = () => {
@@ -172,6 +186,8 @@ export default function AuthPage() {
     setLanguages(['Français']);
     setSpecialization('');
     setError('');
+    setRegisteredEmail('');
+    setResendSuccess(false);
   };
 
   const renderLogin = () => (
@@ -862,6 +878,58 @@ export default function AuthPage() {
     </motion.div>
   );
 
+  const renderEmailVerification = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
+      <Card className="w-full max-w-md mx-auto glass-card">
+        <CardHeader className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <CardTitle className="text-2xl">
+            {isRTL ? 'تحقق من بريدك الإلكتروني' : 'Vérifiez votre email'}
+          </CardTitle>
+          <CardDescription className="text-base">
+            {isRTL
+              ? `لقد أرسلنا رابط التحقق إلى ${registeredEmail}. يرجى النقر على الرابط لتفعيل حسابك.`
+              : `Nous avons envoyé un lien de vérification à ${registeredEmail}. Veuillez cliquer sur le lien pour activer votre compte.`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              {isRTL
+                ? 'لم تستلم البريد الإلكتروني؟'
+                : 'Vous n\'avez pas reçu l\'email ?'}
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleResendVerification}
+              disabled={resendLoading || resendSuccess}
+              className="w-full"
+            >
+              {resendLoading
+                ? (isRTL ? 'جاري الإرسال...' : 'Envoi en cours...')
+                : resendSuccess
+                ? (isRTL ? 'تم إعادة الإرسال !' : 'Email renvoyé !')
+                : (isRTL ? 'إعادة إرسال البريد الإلكتروني' : 'Renvoyer l\'email')}
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={resetForm}
+          >
+            {isRTL ? 'العودة لتسجيل الدخول' : 'Retour à la connexion'}
+          </Button>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
   const renderContent = () => {
     if (mode === 'login') return renderLogin();
     
@@ -878,6 +946,8 @@ export default function AuthPage() {
           return renderProfessorInfo();
         case 'token':
           return renderProfessorTokenValidation();
+        case 'email-verification':
+          return renderEmailVerification();
         default:
           return renderRoleSelection();
       }

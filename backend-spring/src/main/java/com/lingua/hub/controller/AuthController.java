@@ -107,6 +107,46 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Admin registration successful", response));
     }
 
+    @GetMapping("/verify-email")
+    @Operation(
+        summary = "Vérifier l'email d'un professeur",
+        description = "Vérifie l'adresse email d'un professeur via le token envoyé par email"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Email vérifié avec succès"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "Token invalide ou expiré"
+        )
+    })
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok(ApiResponse.success("Email vérifié avec succès. Vous pouvez maintenant vous connecter.", null));
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(
+        summary = "Renvoyer l'email de vérification",
+        description = "Renvoie un email de vérification à l'adresse spécifiée"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Email de vérification renvoyé"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "400",
+            description = "Email non trouvé ou déjà vérifié"
+        )
+    })
+    public ResponseEntity<ApiResponse<Void>> resendVerificationEmail(@RequestParam String email) {
+        authService.resendVerificationEmail(email);
+        return ResponseEntity.ok(ApiResponse.success("Email de vérification renvoyé avec succès", null));
+    }
+
     @PostMapping("/login")
     @Operation(
         summary = "Connexion utilisateur",

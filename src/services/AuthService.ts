@@ -228,20 +228,17 @@ export const AuthService = {
     }
   },
 
-  // Register Professor
-  async registerProfessor(data: ProfessorRegisterData): Promise<ApiResponse<{ user: AuthUser; tokens: AuthTokens }>> {
+  // Register Professor (no tokens returned — email verification required)
+  async registerProfessor(data: ProfessorRegisterData): Promise<ApiResponse<{ email: string }>> {
     try {
       const response = await apiClient.post<{
         success: boolean;
         message: string;
         data: {
-          token: string;
-          refreshToken: string;
           userId: string;
           email: string;
           name: string;
           role: string;
-          expiresIn: number;
         }
       }>('/auth/register/professor', data);
 
@@ -252,25 +249,9 @@ export const AuthService = {
         };
       }
 
-      const tokens: AuthTokens = {
-        accessToken: response.data.token,
-        refreshToken: response.data.refreshToken,
-        expiresIn: response.data.expiresIn,
-      };
-
-      const user: AuthUser = {
-        id: response.data.userId,
-        email: response.data.email,
-        name: response.data.name,
-        role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
-      };
-
-      storeTokens(tokens);
-      storeUser(user);
-
       return {
         success: true,
-        data: { user, tokens },
+        data: { email: response.data.email },
       };
     } catch (error) {
       console.error('Professor registration error:', error);
@@ -383,6 +364,56 @@ export const AuthService = {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',
+      };
+    }
+  },
+
+  // Verify email with token
+  async verifyEmail(token: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+      }>('/auth/verify-email', { token });
+
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.message || 'Email verification failed',
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Email verification error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Email verification failed',
+      };
+    }
+  },
+
+  // Resend verification email
+  async resendVerificationEmail(email: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+      }>('/auth/resend-verification', undefined, { email });
+
+      if (!response.success) {
+        return {
+          success: false,
+          error: response.message || 'Failed to resend verification email',
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Resend verification email error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to resend verification email',
       };
     }
   },
