@@ -72,7 +72,8 @@ export default function StudentSessions() {
   
   const filteredSessions = (Array.isArray(sessions) ? sessions : []).filter((session) => {
     if (statusFilter === 'all') return true;
-    return session.status === statusFilter;
+    // compare lowercased values in case backend casing differs
+    return typeof session.status === 'string' && session.status.toLowerCase() === statusFilter;
   }).sort((a, b) => {
     // Live first, then scheduled (by date), then completed
     if (a.status === 'live' && b.status !== 'live') return -1;

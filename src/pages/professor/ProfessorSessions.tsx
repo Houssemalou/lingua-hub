@@ -214,7 +214,8 @@ export default function ProfessorSessions() {
   const filteredSessions = (Array.isArray(sessions) ? sessions : []).filter((session) => {
     const matchesSearch = (session.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (session.language || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' ||
+      (typeof session.status === 'string' && session.status.toLowerCase() === statusFilter);
     return matchesSearch && matchesStatus;
   });
 

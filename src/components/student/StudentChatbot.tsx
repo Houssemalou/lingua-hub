@@ -249,7 +249,7 @@ export function StudentChatbot({
     setIsConnecting(true);
     try {
       // Create room via API
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://localhost:3200';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://91.134.137.202/assistant';
       const response = await fetch(`${aiBase}/api/room/create`, {
         method: 'POST',
         headers: {
@@ -320,7 +320,7 @@ export function StudentChatbot({
     if (!roomName) return;
 
     try {
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://localhost:3200';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'http://91.134.137.202/assistant';
       await fetch(`${aiBase}/api/room/close`, {
         method: 'POST',
         headers: {
