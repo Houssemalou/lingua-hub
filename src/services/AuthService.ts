@@ -30,7 +30,8 @@ export interface StudentRegisterData {
   nickname: string;
   bio?: string;
   avatar?: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2';
+  // primary school years 1..9
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
   accessToken: string;
 }
 

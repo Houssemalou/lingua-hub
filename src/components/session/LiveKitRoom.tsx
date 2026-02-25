@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext } from '@livekit/components-react';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
+import { useAuth } from '@/contexts/AuthContext';
 import { VideoGrid } from './VideoGrid';
 import { MediaControls } from './MediaControls';
 import { ChatPanel, type ChatMessage } from './ChatPanel';
@@ -77,6 +78,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Convert LiveKit participants to our format
+  const { user } = useAuth();
+
   const formattedParticipants = participants.map((p) => ({
     formatted: {
       id: p.identity,
@@ -87,7 +90,10 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
       isScreenSharing: p.isScreenShareEnabled,
       isHost: p.isLocal,
       isCurrentUser: p.isLocal,
-      role: p.isLocal ? 'professor' as const : 'student' as const,
+      // derive role for the local participant from authenticated user
+      role: (p.isLocal
+        ? ((user?.role === 'professor' || user?.role === 'admin') ? 'professor' : 'student')
+        : 'student') as LiveKitParticipant['role'],
       isPicked: false,
       isLocal: p.isLocal,
       handRaised: false,
@@ -97,9 +103,20 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   }));
 
   const localParticipant = formattedParticipants.find(p => p.formatted.isLocal);
-  const isProfessor = localParticipant?.formatted.role === 'professor';
+  const isProfessor = (user?.role === 'professor' || user?.role === 'admin') || localParticipant?.formatted.role === 'professor';
   const screenSharingParticipant = formattedParticipants.find(p => p.formatted.isScreenSharing);
   const isScreenSharing = !!screenSharingParticipant;
+  // students should not see camera or screen-share buttons
+  const allowCamera = isProfessor;
+  const allowScreenShare = isProfessor;
+
+  // make sure student participants don't start with camera/screen on
+  useEffect(() => {
+    if (!isProfessor && room.localParticipant) {
+      room.localParticipant.setCameraEnabled(false).catch(() => {});
+      room.localParticipant.setScreenShareEnabled(false).catch(() => {});
+    }
+  }, [isProfessor, room]);
 
   // Handle incoming chat messages
   useEffect(() => {
@@ -126,6 +143,23 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
     room.on('dataReceived', handleDataReceived);
     return () => { room.off('dataReceived', handleDataReceived); };
   }, [room, showChat]);
+
+  // make sure we notify backend even if component unmounts unexpectedly
+  useEffect(() => {
+    return () => {
+      // fire-and-forget, cannot await in cleanup
+      RoomService.leave(roomId).catch(e => console.error('Error notifying leave on unmount:', e));
+    };
+  }, [roomId]);
+
+  // make sure non-professors start with camera/screen disabled
+  useEffect(() => {
+    if (!isProfessor && room.localParticipant) {
+      // quick fire and forget; some environments may reject if no device available
+      room.localParticipant.setCameraEnabled(false).catch(() => {});
+      room.localParticipant.setScreenShareEnabled(false).catch(() => {});
+    }
+  }, [isProfessor, room]);
 
   const handleToggleChat = () => {
     setShowChat(s => {
@@ -167,6 +201,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
     await room.disconnect();
     onLeaveRoom();
   };
+
 
   // Floating panel for desktop
   const DesktopFloatingChat = () => showChat && !isMobile ? (
@@ -269,6 +304,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
           onToggleCamera={toggleCamera}
           onToggleScreenShare={isMobile ? () => {} : toggleScreenShare}
           compact={isMobile}
+          allowCamera={allowCamera}
+          allowScreenShare={allowScreenShare}
         />
 
         {/* Right: Leave */}
@@ -386,6 +423,12 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
 export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom }) => {
   const { error, serverUrl, token } = useLiveKitRoom(roomId);
 
+  // notify backend when underlying connection drops at top level
+  const handleDisconnected = async () => {
+    try { await RoomService.leave(roomId); } catch (e) { console.error('Error notifying leave on disconnect (outer):', e); }
+    onLeaveRoom();
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -412,7 +455,7 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
       serverUrl={serverUrl}
       token={token}
       connect={true}
-      onDisconnected={onLeaveRoom}
+      onDisconnected={handleDisconnected}
     >
       <RoomContent roomId={roomId} onLeaveRoom={onLeaveRoom} />
     </LiveKitRoomComponent>

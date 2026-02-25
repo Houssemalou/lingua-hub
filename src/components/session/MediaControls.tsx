@@ -19,6 +19,9 @@ interface MediaControlsProps {
   onToggleMute: () => void;
   onToggleCamera: () => void;
   onToggleScreenShare: () => void;
+  // if false the corresponding button will be hidden (students shouldn\'t see camera/screen controls)
+  allowCamera?: boolean;
+  allowScreenShare?: boolean;
   isRTL?: boolean;
   compact?: boolean;
 }
@@ -30,6 +33,8 @@ export function MediaControls({
   onToggleMute,
   onToggleCamera,
   onToggleScreenShare,
+  allowCamera = true,
+  allowScreenShare = true,
   isRTL = false,
   compact = false,
 }: MediaControlsProps) {
@@ -60,28 +65,30 @@ export function MediaControls({
       </motion.button>
 
       {/* Camera Toggle */}
-      <motion.button
-        whileHover={{ scale: 1.1, y: -2 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={onToggleCamera}
-        aria-label={isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
-        className={cn(
-          "rounded-full flex items-center justify-center transition-all duration-300",
-          compact ? "w-10 h-10" : "w-11 h-11 sm:w-14 sm:h-14",
-          !isCameraOn 
-            ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30' 
-            : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
-        )}
-      >
-        {isCameraOn ? (
-          <Video className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
-        ) : (
-          <VideoOff className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
-        )}
-      </motion.button>
+      {allowCamera !== false && (
+        <motion.button
+          whileHover={{ scale: 1.1, y: -2 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onToggleCamera}
+          aria-label={isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
+          className={cn(
+            "rounded-full flex items-center justify-center transition-all duration-300",
+            compact ? "w-10 h-10" : "w-11 h-11 sm:w-14 sm:h-14",
+            !isCameraOn 
+              ? 'bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30' 
+              : 'bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/20'
+          )}
+        >
+          {isCameraOn ? (
+            <Video className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
+          ) : (
+            <VideoOff className={cn("text-white", compact ? "w-4 h-4" : "w-5 h-5 sm:w-6 sm:h-6")} />
+          )}
+        </motion.button>
+      )}
 
       {/* Screen Share Toggle — hidden on mobile (not supported) */}
-      {!compact && (
+      {allowScreenShare !== false && !compact && (
         <motion.button
           whileHover={{ scale: 1.1, y: -2 }}
           whileTap={{ scale: 0.9 }}

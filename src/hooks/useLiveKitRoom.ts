@@ -36,6 +36,9 @@ export const useLiveKitRoom = (roomId: string) => {
     // Add local participant
     const localParticipant = room.localParticipant;
     if (localParticipant) {
+      const localRole: 'professor' | 'student' | 'admin' =
+        (user?.role === 'professor' || user?.role === 'admin') ? 'professor' : 'student';
+
       participantList.push({
         id: localParticipant.identity,
         name: localParticipant.name || 'You',
@@ -45,7 +48,7 @@ export const useLiveKitRoom = (roomId: string) => {
         isScreenSharing: localParticipant.isScreenShareEnabled === true,
         isHost: true, // Assume local user is host for now
         isCurrentUser: true,
-        role: 'professor', // TODO: get from user context
+        role: localRole,
         isPicked: false,
         isLocal: true,
         handRaised: false, // TODO: implement hand raising
@@ -55,6 +58,7 @@ export const useLiveKitRoom = (roomId: string) => {
 
     // Add remote participants
     room.remoteParticipants.forEach((participant: RemoteParticipant) => {
+      // if you add metadata to the LiveKit participant you could detect role here
       participantList.push({
         id: participant.identity,
         name: participant.name || 'Anonymous',
@@ -64,7 +68,7 @@ export const useLiveKitRoom = (roomId: string) => {
         isScreenSharing: participant.isScreenShareEnabled === true,
         isHost: false,
         isCurrentUser: false,
-        role: 'student', // TODO: get from participant metadata
+        role: 'student', // default assumption for remote users
         isPicked: false,
         isLocal: false,
         handRaised: false, // TODO: implement hand raising
@@ -73,7 +77,7 @@ export const useLiveKitRoom = (roomId: string) => {
     });
 
     setParticipants(participantList);
-  }, [room]);
+  }, [room, user]);
 
   // Set up event listeners once
   useEffect(() => {

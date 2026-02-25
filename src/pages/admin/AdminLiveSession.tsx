@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { LiveKitRoom } from '@/components/session/LiveKitRoom';
+import { getLevelLabel } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
 import { RoomModel } from '@/models';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -87,7 +88,10 @@ export default function AdminLiveSession() {
     return () => clearInterval(interval);
   }, [isSessionActive]);
 
-  const handleLeaveRoom = () => {
+  const handleLeaveRoom = async () => {
+    if (room && room.id) {
+      try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
+    }
     navigate('/admin/rooms');
   };
 

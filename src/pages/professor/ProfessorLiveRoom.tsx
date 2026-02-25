@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { LiveKitRoom } from '@/components/session/LiveKitRoom';
+import { getLevelLabel } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
 import { RoomModel } from '@/models';
 import { useAuth } from '@/contexts/AuthContext';
@@ -77,7 +78,10 @@ export default function ProfessorLiveRoom() {
     return () => clearInterval(interval);
   }, [isSessionActive]);
 
-  const handleLeaveRoom = () => {
+  const handleLeaveRoom = async () => {
+    if (room && room.id) {
+      try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
+    }
     navigate('/professor/sessions');
   };
 
@@ -192,8 +196,8 @@ export default function ProfessorLiveRoom() {
           <div className={cn("min-w-0", isRTL ? 'text-right' : '')}>
             <h1 className="text-sm sm:text-xl font-bold text-white truncate">{room.name}</h1>
             <p className="text-xs text-white/60 hidden sm:block">
-              {room.language} • {room.level} • {isRTL ? 'مباشر' : 'Live'}
-            </p>
+                {room.language} • {getLevelLabel(room.level)} • {isRTL ? 'مباشر' : 'Live'}
+              </p>
           </div>
         </div>
         <div className={cn("flex items-center gap-2 shrink-0", isRTL && "flex-row-reverse")}>

@@ -16,7 +16,7 @@ export interface StudentModel {
   avatar: string;
   nickname: string;
   bio: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
   joinedAt: string;
   skills: StudentSkills;
   totalSessions: number;
@@ -31,7 +31,7 @@ export interface CreateStudentDTO {
   password: string;
   nickname: string;
   bio?: string;
-  level: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
 }
 
 export interface UpdateStudentDTO {
@@ -39,11 +39,11 @@ export interface UpdateStudentDTO {
   nickname?: string;
   bio?: string;
   avatar?: string;
-  level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level?: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
 }
 
 export interface StudentFilters {
-  level?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+  level?: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
   search?: string;
   sortBy?: 'name' | 'level' | 'joinedAt' | 'totalSessions';
   sortOrder?: 'asc' | 'desc';

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { LiveKitRoom } from '@/components/session/LiveKitRoom';
+import { getLevelLabel } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
 import { RoomModel } from '@/models';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -44,7 +45,10 @@ export default function StudentLiveRoom() {
     loadRoom();
   }, [roomId]);
 
-  const handleLeaveRoom = () => {
+  const handleLeaveRoom = async () => {
+    if (room && room.id) {
+      try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
+    }
     navigate('/student/sessions');
   };
 
@@ -114,7 +118,7 @@ export default function StudentLiveRoom() {
           <div className={cn("min-w-0", isRTL ? 'text-right' : '')}>
             <h1 className="text-sm sm:text-xl font-bold text-white truncate">{room.name}</h1>
             <p className="text-xs text-white/60 hidden sm:block">
-              {room.language} • {room.level} • {isRTL ? 'مباشر' : 'Live'}
+              {room.language} • {getLevelLabel(room.level)} • {isRTL ? 'مباشر' : 'Live'}
             </p>
           </div>
         </div>

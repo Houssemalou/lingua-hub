@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { getLevelLabel, normalizeLevelToYear } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
 import { RoomModel, CreateRoomDTO, StudentModel } from '@/models';
 import { toast } from 'sonner';
@@ -48,8 +49,8 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-// same lists as admin so professor can pick
-const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+// same lists as admin so professor can pick (school years)
+const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9'];
 // languages/subjects kept per requirements
 const languages = ['Français', 'Anglais', 'Arabe', 'Allemand', 'Mathématiques', 'Science', 'Informatique'];
 // enabled values for level dropdown (matching the displayed strings)
@@ -80,6 +81,7 @@ export default function ProfessorSessions() {
   const [creating, setCreating] = useState(false);
   const [students, setStudents] = useState<StudentModel[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [inviteFilterLevel, setInviteFilterLevel] = useState<string>('');
 
   const dateLocale = language === 'ar' ? ar : fr;
 
@@ -151,7 +153,7 @@ export default function ProfessorSessions() {
     if (!levelEnabled) {
       setRoomLevel('');
     } else if (!roomLevel) {
-      setRoomLevel('A1');
+      setRoomLevel('YEAR1');
     }
   }, [roomLanguage]);
 
@@ -174,13 +176,15 @@ export default function ProfessorSessions() {
       const payload: CreateRoomDTO = {
         name: roomName,
         language: roomLanguage,
-        level: levelEnabled ? (roomLevel as any) : ('' as any),
+        level: levelEnabled ? (normalizeLevelToYear(roomLevel) as any) : ('' as any),
         objective,
         scheduledAt,
         duration: Number(roomDuration),
         maxStudents,
         animatorType: 'professor',
-        professorId: professor?.id,
+        // Some auth profiles may not have the full `professor` record loaded yet;
+        // fall back to the top-level `user.id` so the backend receives an identifier.
+        professorId: professor?.id || user?.id,
         invitedStudents: selectedStudents,
       };
 
@@ -193,7 +197,7 @@ export default function ProfessorSessions() {
         // Reset form
         setRoomName('');
         setRoomLanguage('');
-        setRoomLevel('A1');
+        setRoomLevel('YEAR1');
         setRoomDuration('30');
         setScheduledAt('');
         setMaxStudents(6);
@@ -341,9 +345,9 @@ export default function ProfessorSessions() {
                     <SelectValue placeholder={isRTL ? 'اختر مستوى' : 'Sélectionner un niveau'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {levels.map((level) => (
-                      <SelectItem key={level} value={level}>{level}</SelectItem>
-                    ))}
+                      {levels.map((level) => (
+                        <SelectItem key={level} value={level}>{getLevelLabel(level)}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -384,27 +388,42 @@ export default function ProfessorSessions() {
             </div>
             <div className="space-y-3">
               <Label>{isRTL ? 'دعوة الطلاب' : 'Inviter des étudiants'}</Label>
+              <div className="flex items-center gap-3 mb-2">
+                <Select value={inviteFilterLevel} onValueChange={setInviteFilterLevel}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder={isRTL ? 'تصفية حسب المستوى' : 'Filtrer par niveau'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">{isRTL ? 'كل المستويات' : 'Tous les niveaux'}</SelectItem>
+                    {levels.map((lv) => (
+                      <SelectItem key={lv} value={lv}>{getLevelLabel(lv)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto p-1">
                 {students.length > 0 ? (
-                  students.map((student) => (
-                    <label
-                      key={student.id}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors",
-                        isRTL && "flex-row-reverse"
-                      )}
-                    >
-                      <Checkbox
-                        checked={selectedStudents.includes(student.id)}
-                        onCheckedChange={() => toggleStudent(student.id)}
-                      />
-                      <img src={student.avatar} alt="" className="w-8 h-8 rounded-full" />
-                      <div className={cn("flex-1 min-w-0", isRTL && "text-right")}>
-                        <p className="text-sm font-medium truncate">{student.name}</p>
-                        <p className="text-xs text-muted-foreground">{student.level}</p>
-                      </div>
-                    </label>
-                  ))
+                  students
+                    .filter(s => !inviteFilterLevel || inviteFilterLevel === '__all__' || s.level === inviteFilterLevel)
+                    .map((student) => (
+                      <label
+                        key={student.id}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors",
+                          isRTL && "flex-row-reverse"
+                        )}
+                      >
+                        <Checkbox
+                          checked={selectedStudents.includes(student.id)}
+                          onCheckedChange={() => toggleStudent(student.id)}
+                        />
+                        <img src={student.avatar} alt="" className="w-8 h-8 rounded-full" />
+                        <div className={cn("flex-1 min-w-0", isRTL && "text-right")}>
+                          <p className="text-sm font-medium truncate">{student.name}</p>
+                          <p className="text-xs text-muted-foreground">{getLevelLabel(student.level)}</p>
+                        </div>
+                      </label>
+                    ))
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -522,7 +541,7 @@ export default function ProfessorSessions() {
                         {session.duration}m
                       </span>
                     </div>
-                    <Badge variant={session.level.toLowerCase() as any}>{session.level}</Badge>
+                    <Badge variant={session.level.toLowerCase() as any}>{getLevelLabel(session.level)}</Badge>
                   </div>
                   <div className={cn("pt-2 border-t border-border", isRTL && "text-right")}>
                     <p className="text-xs text-muted-foreground">

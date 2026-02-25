@@ -13,13 +13,14 @@ import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRigh
 import { AuthService } from '@/services/AuthService';
 import { avatarOptions } from '@/data/avatars';
 import { cn } from '@/lib/utils';
+import { getLevelLabel } from '@/lib/levelLabels';
 
 type AuthMode = 'login' | 'signup';
 type SignupRole = 'admin' | 'student' | 'professor' | null;
 type StudentStep = 'role' | 'avatar' | 'info' | 'token';
 type ProfessorStep = 'role' | 'avatar' | 'info' | 'token' | 'email-verification';
 
-const levelOptions: Array<'A1' | 'A2' | 'B1' | 'B2'> = ['A1', 'A2', 'B1', 'B2'];
+const levelOptions: Array<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9'> = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9'];
 
 export default function AuthPage() {
   const { isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, user } = useAuth();
@@ -44,7 +45,7 @@ export default function AuthPage() {
   const [bio, setBio] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(avatarOptions[0].url);
   const [accessToken, setAccessToken] = useState('');
-  const [level, setLevel] = useState<'A1' | 'A2' | 'B1' | 'B2'>('A1');
+  const [level, setLevel] = useState<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9'>('YEAR1');
   const [uniqueCode, setUniqueCode] = useState('');
   // Email verification state
   const [registeredEmail, setRegisteredEmail] = useState('');
@@ -173,7 +174,7 @@ export default function AuthPage() {
     setBio('');
     setSelectedAvatar(avatarOptions[0].url);
     setAccessToken('');
-    setLevel('A1');
+    setLevel('YEAR1');
     setUniqueCode('');
     setLanguages(['Français']);
     setSpecialization('');
@@ -553,7 +554,7 @@ export default function AuthPage() {
                   size="sm"
                   onClick={() => setLevel(l)}
                 >
-                  {l}
+                  {getLevelLabel(l)}
                 </Button>
               ))}
             </div>
