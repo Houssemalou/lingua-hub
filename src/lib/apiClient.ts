@@ -57,7 +57,10 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
       // Try to refresh token
       const refreshed = await refreshAccessToken();
       if (!refreshed) {
-        // Redirect to login
+        // Redirect to authentication page (route is "/auth" in our router)
+        // previously this pointed to "/login" which caused a 404 because there is no
+        // route defined for that path. Use the correct path so users are taken back
+        // to the login/signup screen when their tokens expire.
         window.location.href = '/login';
         throw new Error('Authentication failed');
       }
