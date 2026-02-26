@@ -1,26 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Filter, Users, Clock, DoorOpen, Play, Eye, Bot, UserCircle } from 'lucide-react';
+import { Search, Filter, Clock, Play, Eye, Bot, UserCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+// Dialog (create room) removed for admin UI
 import { format, formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
-import { getLevelLabel, normalizeLevelToYear } from '@/lib/levelLabels';
+import { getLevelLabel } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
 import { ProfessorService } from '@/services/ProfessorService';
-import { StudentService } from '@/services/StudentService';
-import { RoomModel, ProfessorModel, StudentModel, CreateRoomDTO } from '@/models';
+import { RoomModel, ProfessorModel } from '@/models';
 
 const container = {
   hidden: { opacity: 0 },
@@ -45,26 +39,11 @@ export default function AdminRooms() {
   const { isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [inviteFilterLevel, setInviteFilterLevel] = useState<string>('');
-  const [animatorType, setAnimatorType] = useState<'ai' | 'professor'>('professor');
-  const [selectedProfessor, setSelectedProfessor] = useState<string>('');
-
-  // Form fields (controlled)
-  const [roomName, setRoomName] = useState('');
-  const [roomLanguage, setRoomLanguage] = useState('');
-  const [roomLevel, setRoomLevel] = useState('');
-  const [roomDuration, setRoomDuration] = useState<string>('30');
-  const [scheduledAt, setScheduledAt] = useState<string>('');
-  const [maxStudents, setMaxStudents] = useState<number>(6);
-  const [objective, setObjective] = useState('');
-  const [creating, setCreating] = useState(false);
+  
 
   // State for backend data
   const [rooms, setRooms] = useState<RoomModel[]>([]);
   const [professors, setProfessors] = useState<ProfessorModel[]>([]);
-  const [students, setStudents] = useState<StudentModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,17 +80,7 @@ export default function AdminRooms() {
           setProfessors((professorsResponse as any)?.data || []);
         }
 
-        // Load students
-        const studentsResponse = await StudentService.getAll();
-        if (studentsResponse && (studentsResponse as any).success !== undefined) {
-          if ((studentsResponse as any).success) {
-            setStudents((studentsResponse as any).data?.data || []);
-          } else {
-            setError((studentsResponse as any).message || (studentsResponse as any).error || 'Failed to load students');
-          }
-        } else {
-          setStudents((studentsResponse as any)?.data || []);
-        }
+        // (students are not loaded in admin rooms; admin cannot invite/create sessions here)
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -133,80 +102,7 @@ export default function AdminRooms() {
     return matchesSearch && matchesStatus;
   });
 
-  const levelEnabled = levelEnabledLanguages.includes(roomLanguage);
-
-  useEffect(() => {
-    if (!levelEnabled) {
-      setRoomLevel('');
-    } else if (!roomLevel) {
-      setRoomLevel('YEAR1');
-    }
-  }, [roomLanguage]);
-
-  const handleCreateRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (professors.length === 0) {
-      toast.error(isRTL ? 'لا يمكن إنشاء غرفة بدون أساتذة' : 'Cannot create a room without professors');
-      return;
-    }
-
-    if (!roomName || !roomLanguage || (levelEnabled && !roomLevel) || !scheduledAt || !selectedProfessor) {
-      toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Please fill in all required fields');
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const payload: CreateRoomDTO = {
-        name: roomName,
-        language: roomLanguage,
-        level: levelEnabled ? (normalizeLevelToYear(roomLevel) as any) : ('' as any),
-        objective,
-        scheduledAt,
-        duration: Number(roomDuration),
-        maxStudents,
-        animatorType: 'professor',
-        professorId: selectedProfessor,
-        invitedStudents: selectedStudents,
-      };
-
-      const res = await RoomService.create(payload);
-      if ((res as any).success) {
-        const rawData = (res as any).data;
-        const created = (rawData?.data || rawData) as RoomModel;
-        // Prepend to list
-        setRooms(prev => [created, ...prev]);
-        toast.success(isRTL ? 'تم إنشاء الغرفة بنجاح!' : 'Salle créée avec succès !');
-        // Reset form
-        setRoomName('');
-        setRoomLanguage('');
-        setRoomLevel('YEAR1');
-        setRoomDuration('30');
-        setScheduledAt('');
-        setMaxStudents(6);
-        setObjective('');
-        setSelectedStudents([]);
-        setSelectedProfessor('');
-        setIsCreateDialogOpen(false);
-      } else {
-        toast.error((res as any).message || (res as any).error || (isRTL ? 'فشل في إنشاء الغرفة' : 'Failed to create room'));
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : (isRTL ? 'فشل في إنشاء الغرفة' : 'Failed to create room'));
-      console.error('Create room error:', err);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const toggleStudent = (studentId: string) => {
-    setSelectedStudents(prev =>
-      prev.includes(studentId)
-        ? prev.filter(id => id !== studentId)
-        : [...prev, studentId]
-    );
-  };
+  
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -245,212 +141,9 @@ export default function AdminRooms() {
             {isRTL ? 'إدارة الغرف' : 'Gestion des Salles'}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isRTL ? 'إنشاء وإدارة غرف تعلم اللغات الخاصة بك' : 'Créer et gérer vos salles d\'apprentissage'}
-          </p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className={cn("gap-2", isRTL && "flex-row-reverse")}>
-              <Plus className="w-4 h-4" />
-              {isRTL ? 'إنشاء غرفة' : 'Créer une Salle'}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{isRTL ? 'إنشاء غرفة جديدة' : 'Créer une nouvelle Salle'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateRoom} className="space-y-6 mt-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{isRTL ? 'اسم الغرفة' : 'Nom de la salle'}</Label>
-                  <Input id="name" placeholder={isRTL ? 'مثال: نادي المحادثة الإسبانية' : 'ex: Club de conversation espagnol'} required value={roomName} onChange={(e) => setRoomName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="language">{isRTL ? 'اللغة' : 'Langue'}</Label>
-                  <Select value={roomLanguage} onValueChange={setRoomLanguage} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isRTL ? 'اختر لغة' : 'Sélectionner une langue'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages.map((lang) => (
-                        <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="level">{isRTL ? 'المستوى' : 'Niveau'}</Label>
-                  <Select value={roomLevel} onValueChange={setRoomLevel} required disabled={!levelEnabled}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isRTL ? 'اختر مستوى' : 'Sélectionner un niveau'} />
-                    </SelectTrigger>
-                      <SelectContent>
-                        {levels.map((level) => (
-                          <SelectItem key={level} value={level}>{getLevelLabel(level)}</SelectItem>
-                        ))}
-                      </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">{isRTL ? 'المدة (دقائق)' : 'Durée (minutes)'}</Label>
-                  <Select value={roomDuration} onValueChange={setRoomDuration} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isRTL ? 'اختر المدة' : 'Sélectionner la durée'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30">30 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
-                      <SelectItem value="45">45 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
-                      <SelectItem value="60">60 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
-                      <SelectItem value="90">90 {isRTL ? 'دقيقة' : 'minutes'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">{isRTL ? 'التاريخ والوقت' : 'Date & Heure'}</Label>
-                  <Input id="date" type="datetime-local" required value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxStudents">{isRTL ? 'الحد الأقصى للطلاب' : 'Max Étudiants'}</Label>
-                  <Input id="maxStudents" type="number" min="1" max="20" value={maxStudents} onChange={(e) => setMaxStudents(Number(e.target.value))} required />
-                </div>
-              </div>
-
-              {/* Animator Type Selection */}
-              <div className="space-y-3">
-                <Label>{isRTL ? 'نوع المنشط' : 'Type d\'animateur'}</Label>
-                <RadioGroup
-                  value={animatorType}
-                  onValueChange={(value) => setAnimatorType(value as 'ai' | 'professor')}
-                  className="grid grid-cols-2 gap-4"
-                >
-
-                  <label
-                    className={cn(
-                      "flex items-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                      "border-accent bg-accent/5"
-                    )}
-                  >
-                    <RadioGroupItem value="professor" id="professor" checked={true} />
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <UserCircle className="w-5 h-5 text-accent" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{isRTL ? 'أستاذ' : 'Professeur'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {isRTL ? 'جلسة يقودها أستاذ' : 'Session animée par un professeur'}
-                      </p>
-                    </div>
-                  </label>
-                </RadioGroup>
-
-                {/* Professor Selection */}
-                {animatorType === 'professor' && (
-                  <div className="space-y-2 mt-4">
-                    <Label>{isRTL ? 'اختر الأستاذ' : 'Sélectionner le professeur'}</Label>
-                    <Select value={selectedProfessor} onValueChange={setSelectedProfessor} required disabled={professors.length === 0}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={professors.length === 0 ? (isRTL ? 'لا يوجد أساتذة' : 'Aucun professeur') : (isRTL ? 'اختر أستاذًا' : 'Choisir un professeur')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {professors.length > 0 ? (
-                          professors.map((prof) => (
-                            <SelectItem key={prof.id} value={prof.id}>
-                              <div className="flex items-center gap-2">
-                                <img src={prof.avatar} alt="" className="w-6 h-6 rounded-full" />
-                                <span>{prof.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  ({prof.languages.slice(0, 2).join(', ')})
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="__no_professor__" disabled>
-                            {isRTL ? 'لا يوجد أساتذة متاحين' : 'Aucun professeur disponible'}
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {professors.length === 0 && (
-                      <p className="text-sm text-muted-foreground mt-2">{isRTL ? 'لا يوجد أساتذة. أضف أستاذًا أولاً.' : 'No professors available. Please add a professor first.'}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="objective">{isRTL ? 'هدف الجلسة' : 'Objectif de la session'}</Label>
-                <Textarea
-                  id="objective"
-                  placeholder={isRTL ? 'صف ما سيتعلمه أو يمارسه الطلاب...' : 'Décrivez ce que les étudiants vont apprendre ou pratiquer...'}
-                  rows={3}
-                  required
-                  value={objective}
-                  onChange={(e) => setObjective(e.target.value)}
-                />
-              </div>
-              <div className="space-y-3">
-                <Label>{isRTL ? 'دعوة الطلاب' : 'Inviter des étudiants'}</Label>
-                <div className="flex items-center gap-3 mb-2">
-                  <Select value={inviteFilterLevel} onValueChange={setInviteFilterLevel}>
-                    <SelectTrigger className="w-44">
-                      <SelectValue placeholder={isRTL ? 'تصفية حسب المستوى' : 'Filtrer par niveau'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">{isRTL ? 'كل المستويات' : 'Tous les niveaux'}</SelectItem>
-                      {levels.map((lv) => (
-                        <SelectItem key={lv} value={lv}>{getLevelLabel(lv)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto p-1">
-                  {students.length > 0 ? (
-                    students
-                      .filter(s => !inviteFilterLevel || inviteFilterLevel === '__all__' || s.level === inviteFilterLevel)
-                      .map((student) => (
-                        <label
-                          key={student.id}
-                          className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors",
-                            isRTL && "flex-row-reverse"
-                          )}
-                        >
-                          <Checkbox
-                            checked={selectedStudents.includes(student.id)}
-                            onCheckedChange={() => toggleStudent(student.id)}
-                          />
-                          <img src={student.avatar} alt="" className="w-8 h-8 rounded-full" />
-                          <div className={cn("flex-1 min-w-0", isRTL && "text-right")}>
-                            <p className="text-sm font-medium truncate">{student.name}</p>
-                            <p className="text-xs text-muted-foreground">{getLevelLabel(student.level)}</p>
-                          </div>
-                        </label>
-                      ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p>{isRTL ? 'لا يوجد طلاب متاحين' : 'Aucun étudiant disponible'}</p>
-                    </div>
-                  )}
-                </div>
-                {selectedStudents.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {selectedStudents.length} {isRTL ? 'طالب(طلاب) محدد' : 'étudiant(s) sélectionné(s)'}
-                  </p>
-                )}
-              </div>
-              <div className={cn("flex justify-end gap-3", isRTL && "flex-row-reverse")}>
-                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  {isRTL ? 'إلغاء' : 'Annuler'}
-                </Button>
-                <Button type="submit" disabled={creating || professors.length === 0 || selectedProfessor === ''}>
-                  {creating ? (isRTL ? 'جاري الإنشاء...' : 'Creating...') : (isRTL ? 'إنشاء الغرفة' : 'Créer la Salle')}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              {isRTL ? 'إدارة غرف التعلم' : 'Gérer les salles d\'apprentissage'}
+            </p>
+          </div>
       </motion.div>
 
       {/* Filters */}

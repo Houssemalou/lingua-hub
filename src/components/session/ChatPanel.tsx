@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,7 +24,7 @@ interface ChatPanelProps {
   roomId?: string;             // used to persist draft per room
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessage, currentUserId = '', visible = false, roomId }) => {
+const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMessage, currentUserId = '', visible = false, roomId }) => {
   // restore draft from sessionStorage when available
   const initialDraft = React.useMemo(() => {
     try {
@@ -41,6 +40,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const userScrolledRef = useRef(false);
+  // autoScroll disabled – user scrolls manually
 
   // persist draft when it changes
   useEffect(() => {
@@ -49,21 +50,42 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
     } catch (e) { /* ignore */ }
   }, [message, roomId]);
 
-  // focus the input when the panel becomes visible
+  // when panel is shown, scroll once to bottom so user sees latest messages
   useEffect(() => {
-    if (visible) {
-      const t = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
+    if (visible && scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [visible]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+
+  // scroll-to-bottom helper
+  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior });
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    }
   };
 
+  // track user's manual scroll: if user is not at bottom, don't auto-scroll on incoming messages
+  const onScroll = () => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40; // threshold
+    userScrolledRef.current = !atBottom;
+  };
+
+  // auto-scroll when new messages arrive, unless the user manually scrolled up
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    if (!userScrolledRef.current || atBottom) {
+      // smooth only when visible and user at bottom
+      scrollToBottom(visible ? 'smooth' : 'auto');
+      userScrolledRef.current = false;
+    }
+  }, [messages, visible]);
 
 
   const sendMessage = () => {
@@ -91,7 +113,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
+    <div className="chat-panel-root h-full w-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
       <div className="p-4 border-b bg-white shadow-sm">
         <div className="flex items-center gap-3">
@@ -106,7 +128,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
+      <div
+        className="flex-1 p-3 overflow-auto"
+        ref={scrollAreaRef}
+        onScroll={onScroll}
+      >
         <div className="space-y-3">
           {msgs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-12 text-center">
@@ -123,7 +149,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
                 <div
                   key={msg.id}
                   className={cn(
-                    "flex gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300",
+                    "flex gap-2",
                     isSelf ? "flex-row-reverse" : "flex-row"
                   )}
                 >
@@ -170,7 +196,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
           )}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input Area */}
       <div className="p-3 border-t bg-white shadow-inner">
@@ -180,6 +206,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
             value={message}
             onChange={(e) => setMessage((e.currentTarget as HTMLInputElement).value)}
             onKeyPress={handleKeyPress}
+            onMouseDown={(e) => { e.stopPropagation(); }}
+            onTouchStart={(e) => { e.stopPropagation(); }}
             placeholder="Tapez votre message..."
             className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white rounded-xl text-black placeholder:text-gray-400 caret-black"
           />
@@ -197,3 +225,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ messages = [], onSendMessa
     </div>
   );
 };
+
+export const ChatPanel = React.memo(ChatPanelComponent);
+ChatPanel.displayName = "ChatPanel";

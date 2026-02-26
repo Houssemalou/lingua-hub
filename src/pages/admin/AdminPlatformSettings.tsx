@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Palette, Image, RotateCcw, Check, Upload } from 'lucide-react';
+import { Palette, RotateCcw } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { cn } from '@/lib/utils';
@@ -21,14 +21,9 @@ const colorPresets = [
 
 const AdminPlatformSettings = () => {
   const { t, isRTL } = useLanguage();
-  const { settings, updateLogo, updateColors, resetToDefaults } = usePlatform();
-  const [logoInput, setLogoInput] = useState(settings.logoUrl);
+  const { settings, updateColors, resetToDefaults } = usePlatform();
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
-  const handleLogoSave = () => {
-    updateLogo(logoInput);
-    toast.success(isRTL ? 'تم تحديث الشعار بنجاح' : 'Logo mis à jour avec succès');
-  };
 
   const handlePresetSelect = (preset: typeof colorPresets[0]) => {
     setSelectedPreset(preset.name);
@@ -60,63 +55,7 @@ const AdminPlatformSettings = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Logo Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
-              <Image className="w-5 h-5 text-primary" />
-              {isRTL ? 'شعار المنصة' : 'Logo de la plateforme'}
-            </CardTitle>
-            <CardDescription>
-              {isRTL ? 'أضف شعارك الخاص ليظهر في واجهة الطلاب' : 'Ajoutez votre logo pour l\'afficher dans l\'interface étudiant'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="logo-url">
-                {isRTL ? 'رابط الشعار' : 'URL du logo'}
-              </Label>
-              <div className={cn("flex gap-2", isRTL && "flex-row-reverse")}>
-                <Input
-                  id="logo-url"
-                  placeholder="https://example.com/logo.png"
-                  value={logoInput}
-                  onChange={(e) => setLogoInput(e.target.value)}
-                  className={isRTL ? "text-right" : ""}
-                />
-                <Button onClick={handleLogoSave} size="icon">
-                  <Check className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Logo Preview */}
-            {settings.logoUrl && (
-              <div className="mt-4">
-                <Label>{isRTL ? 'معاينة' : 'Aperçu'}</Label>
-                <div className="mt-2 p-4 bg-muted rounded-lg flex items-center justify-center">
-                  <img 
-                    src={settings.logoUrl} 
-                    alt="Logo preview" 
-                    className="max-h-16 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150x50?text=Logo';
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {!settings.logoUrl && (
-              <div className="mt-4 p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg text-center">
-                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {isRTL ? 'أدخل رابط الشعار أعلاه' : 'Entrez l\'URL du logo ci-dessus'}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Logo settings removed per admin UI requirements */}
 
         {/* Color Palette */}
         <Card>

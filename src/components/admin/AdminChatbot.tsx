@@ -63,7 +63,6 @@ export function AdminChatbot() {
       const responses = [
         "Je peux vous aider à gérer les étudiants, les salles et les quiz. Que souhaitez-vous faire?",
         "Pour voir les statistiques détaillées, accédez au tableau de bord principal.",
-        "Vous pouvez créer une nouvelle salle depuis le menu 'Salles'.",
         "Les résultats des quiz sont disponibles dans la section 'Résultats Quiz'.",
         "Pour modifier les paramètres de la plateforme, utilisez la section 'Paramètres'.",
       ];

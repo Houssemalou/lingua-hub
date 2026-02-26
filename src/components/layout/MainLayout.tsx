@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, LayoutDashboard, CalendarCheck, FileText, Gamepad2, User, Users, DoorOpen, Settings, GraduationCap, Swords, ClipboardList } from 'lucide-react';
+import { Menu, X, LayoutDashboard, CalendarCheck, FileText, Gamepad2, User, Users, Settings, GraduationCap, Swords, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminChatbot } from '@/components/admin/AdminChatbot';
 import { StudentChatbot } from '@/components/student/StudentChatbot';
@@ -45,7 +45,6 @@ export function MainLayout() {
   ];
   const adminBottomNav = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Tableau' },
-    { to: '/admin/rooms', icon: DoorOpen, label: 'Salles' },
     { to: '/admin/students', icon: Users, label: 'Élèves' },
     { to: '/admin/settings', icon: Settings, label: 'Config' },
   ];

@@ -15,6 +15,7 @@ export interface Student {
   };
   totalSessions: number;
   hoursLearned: number;
+  createdBy?: string;
 }
 
 export interface Professor {
@@ -28,6 +29,7 @@ export interface Professor {
   joinedAt: string;
   totalSessions: number;
   rating: number;
+  createdBy?: string;
 }
 
 export interface Room {

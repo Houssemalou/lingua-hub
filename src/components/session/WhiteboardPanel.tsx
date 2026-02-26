@@ -36,6 +36,7 @@ interface WhiteboardPanelProps {
   isProfessor: boolean;
   participantCount: number;
   onClose: () => void;
+  roomId?: string;
 }
 
 type WritingPermission = 'professor-only' | 'all';
@@ -64,6 +65,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   isProfessor,
   participantCount,
   onClose,
+  roomId,
 }) => {
   const isMobile = useIsMobile();
   const [store] = useState(() =>
@@ -100,6 +102,12 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           isSyncingRef.current = true;
           loadSnapshot(storeRef.current, msg.snapshot);
           setPermissions(msg.permissions);
+          // persist received snapshot locally
+          try {
+            if (roomId) sessionStorage.setItem(`whiteboard-snapshot:${roomId}`, JSON.stringify(msg.snapshot));
+          } catch (e) {
+            // ignore
+          }
           isSyncingRef.current = false;
           toast.success('Tableau synchronisé');
         } else if (data.type === 'whiteboard-sync') {
@@ -137,6 +145,23 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       room.off('dataReceived', handleDataReceived);
     };
   }, [room, isProfessor]);
+
+  // Load persisted snapshot when opening the whiteboard
+  useEffect(() => {
+    try {
+      if (roomId) {
+        const saved = sessionStorage.getItem(`whiteboard-snapshot:${roomId}`);
+        if (saved) {
+          const snap = JSON.parse(saved);
+          isSyncingRef.current = true;
+          loadSnapshot(storeRef.current, snap);
+          isSyncingRef.current = false;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [roomId]);
 
   // Subscribe to store changes and broadcast via LiveKit (throttled)
   useEffect(() => {
@@ -176,7 +201,29 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     );
 
     return unsubscribe;
-  }, [store, room, permissions, isReadOnly]);
+    }, [store, room, permissions, isReadOnly]);
+
+    // Persist snapshot locally on store changes (throttled)
+    useEffect(() => {
+      let timer: number | null = null;
+      const unsub = store.listen(() => {
+        if (isSyncingRef.current) return;
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          try {
+            const snap = getSnapshot(storeRef.current);
+            if (roomId) sessionStorage.setItem(`whiteboard-snapshot:${roomId}`, JSON.stringify(snap));
+          } catch (e) {
+            // ignore
+          }
+        }, 700);
+      }, { source: 'user', scope: 'document' });
+
+      return () => {
+        unsub();
+        if (timer) window.clearTimeout(timer);
+      };
+    }, [roomId]);
 
   // Send full snapshot when professor opens whiteboard (to sync late-joiners)
   useEffect(() => {

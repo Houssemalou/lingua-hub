@@ -39,10 +39,23 @@ export const StudentService = {
     }
   },
 
-  // Get all students (no backend filtering, filtering done on frontend)
-  async getAll(): Promise<PaginatedResponse<StudentModel>> {
+  // Get all students (accepts optional filters). If `createdBy` is provided
+  // the backend exposes a dedicated endpoint `/students/created-by/{createdById}`
+  // which accepts pagination & sort query params.
+  async getAll(filters?: StudentFilters): Promise<PaginatedResponse<StudentModel>> {
     try {
-      return await apiClient.get<PaginatedResponse<StudentModel>>('/students');
+      if (filters && filters.createdBy) {
+        const params: Record<string, unknown> = {
+          page: filters.page ?? 0,
+          size: filters.limit ?? 10,
+          sortBy: filters.sortBy ?? 'createdAt',
+          sortOrder: filters.sortOrder ?? 'desc',
+        };
+        return await apiClient.get<PaginatedResponse<StudentModel>>(`/students/created-by/${filters.createdBy}`, params);
+      }
+
+      // Fallback to generic `/students` endpoint when no creator filter is provided
+      return await apiClient.get<PaginatedResponse<StudentModel>>('/students', filters as Record<string, unknown>);
     } catch (error) {
       console.error('Error fetching students:', error);
       throw error;

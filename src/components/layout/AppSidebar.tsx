@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Users,
-  DoorOpen,
   CalendarCheck,
   User,
   Moon,
@@ -49,7 +48,6 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
 
   const adminNavItems = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { to: '/admin/rooms', icon: DoorOpen, label: t('nav.rooms') },
     { to: '/admin/students', icon: Users, label: t('nav.students') },
     { to: '/admin/settings', icon: Settings, label: t('nav.settings') },
     { to: '/admin/profile', icon: User, label: t('nav.profile') },

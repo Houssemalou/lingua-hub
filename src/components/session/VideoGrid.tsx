@@ -66,8 +66,8 @@ export function VideoGrid({
   };
 
   // Get card size based on number of visible participants
-  const getCardSize = (count: number): 'small' | 'medium' | 'large' => {
-    if (count === 1) return 'large';
+  const getCardSize = (count: number): 'small' | 'medium' | 'large' | 'full' => {
+    if (count === 1) return 'full';
     if (count <= 2) return 'large';
     if (count <= 6) return 'medium';
     return 'small';
@@ -100,7 +100,7 @@ export function VideoGrid({
 
       {/* Main Video Grid - paginated */}
       <div className={cn(
-        "flex-1 grid gap-2 sm:gap-4 content-center",
+        "flex-1 grid gap-2 sm:gap-4 items-stretch h-full",
         getGridCols(paginatedParticipants.length)
       )}>
         {paginatedParticipants.map((participant) => (

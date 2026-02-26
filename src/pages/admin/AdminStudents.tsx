@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { StudentService } from '@/services/StudentService';
 
@@ -35,6 +36,7 @@ const item = {
 
 export default function AdminStudents() {
   const { t, isRTL } = useLanguage();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [students, setStudents] = useState<StudentData[]>([]);
@@ -44,7 +46,9 @@ export default function AdminStudents() {
     const fetchStudents = async () => {
       try {
         setLoading(true);
-        const response = await StudentService.getAll();
+        // Only fetch students created by this admin
+        const adminId = user?.id;
+        const response = adminId ? await StudentService.getAll({ createdBy: adminId } as any) : [];
         // Normalize different possible response shapes:
         // - PaginatedResponse: { data: [...] }
         // - direct array: [ ... ]
@@ -80,7 +84,7 @@ export default function AdminStudents() {
       }
     };
     fetchStudents();
-  }, []);
+  }, [user?.id]);
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

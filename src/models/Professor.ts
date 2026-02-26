@@ -20,6 +20,7 @@ export interface ProfessorModel {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: string;
 }
 
 export interface CreateProfessorDTO {
@@ -29,6 +30,7 @@ export interface CreateProfessorDTO {
   bio?: string;
   languages: string[];
   specialization: string;
+  createdBy?: string;
 }
 
 export interface UpdateProfessorDTO {

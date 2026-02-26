@@ -121,7 +121,8 @@ export default function ProfessorSessions() {
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const studentsResponse = await StudentService.getAll();
+        // Load only students created by the same admin who created this professor.
+        const studentsResponse = await StudentService.getAll({ createdBy: professor!.createdBy } as any);
         if (studentsResponse && (studentsResponse as any).success !== undefined) {
           if ((studentsResponse as any).success) {
             setStudents((studentsResponse as any).data?.data || []);
@@ -135,8 +136,14 @@ export default function ProfessorSessions() {
         console.error('Error loading students:', err);
       }
     };
-    loadStudents();
-  }, []);
+
+    // Only attempt to load when we know the professor's creator (admin) id.
+    if (professor && professor.createdBy) {
+      loadStudents();
+    } else {
+      setStudents([]);
+    }
+  }, [professor?.createdBy]);
 
   const toggleStudent = (studentId: string) => {
     setSelectedStudents(prev =>
@@ -425,10 +432,18 @@ export default function ProfessorSessions() {
                       </label>
                     ))
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>{isRTL ? 'لا يوجد طلاب متاحين' : 'Aucun étudiant disponible'}</p>
-                  </div>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      {professor && !professor.createdBy ? (
+                        <p>
+                          {isRTL
+                            ? 'لم يتم ربط حساب الأستاذ بمُنشئ (createdBy). يرجى الاتصال بالمسؤول.'
+                            : 'Votre profil professeur n\'est pas lié à un administrateur (createdBy). Contactez votre admin.'}
+                        </p>
+                      ) : (
+                        <p>{isRTL ? 'لا يوجد طلاب متاحين' : 'Aucun étudiant disponible'}</p>
+                      )}
+                    </div>
                 )}
               </div>
               {selectedStudents.length > 0 && (

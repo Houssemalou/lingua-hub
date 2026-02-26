@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext } from '@livekit/components-react';
 import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
@@ -203,15 +204,22 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   };
 
 
-  // Floating panel for desktop
-  const DesktopFloatingChat = () => showChat && !isMobile ? (
-    <div className="absolute top-4 right-4 bottom-20 w-[360px] bg-white rounded-2xl shadow-2xl z-30 border border-gray-200 overflow-hidden flex flex-col">
-      <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
-      <Button variant="ghost" size="icon" className="absolute top-3 right-3 hover:bg-gray-100 rounded-full z-50" onClick={() => setShowChat(false)}>
-        <X className="w-4 h-4" />
-      </Button>
-    </div>
-  ) : null;
+  // Floating chat panel for desktop; rendered via portal to avoid caret floating
+  const DesktopFloatingChat = () => {
+    if (!showChat || isMobile) return null;
+    const panel = (
+      <div
+        className="fixed top-4 right-4 h-[60vh] w-[360px] bg-white rounded-2xl shadow-2xl z-50 border border-gray-200 overflow-hidden flex flex-col"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
+        <Button variant="ghost" size="icon" className="absolute top-3 right-3 hover:bg-gray-100 rounded-full z-60" onClick={() => setShowChat(false)}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+    return typeof document !== 'undefined' ? createPortal(panel, document.body) : panel;
+  };
 
   const DesktopFloatingParticipants = () => showParticipants && !isMobile ? (
     <div className="absolute top-4 right-4 w-[340px] max-h-[calc(100vh-180px)] bg-white rounded-2xl shadow-2xl z-30 overflow-hidden border border-gray-200">
@@ -330,13 +338,15 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   if (isScreenSharing && screenSharingParticipant) {
     return (
       <div className="flex flex-col h-full bg-gray-900">
-        <div className="flex-1 relative">
-          <ScreenShareLayout
-            screenShareParticipant={screenSharingParticipant.liveKit}
-            localParticipant={screenSharingParticipant.formatted.isCurrentUser ? screenSharingParticipant.liveKit : undefined}
-            participantName={screenSharingParticipant.formatted.name}
-            isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
-          />
+        <div className="flex-1 relative flex min-h-0">
+          <div className="flex-1 min-h-0">
+            <ScreenShareLayout
+              screenShareParticipant={screenSharingParticipant.liveKit}
+              localParticipant={screenSharingParticipant.formatted.isCurrentUser ? screenSharingParticipant.liveKit : undefined}
+              participantName={screenSharingParticipant.formatted.name}
+              isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
+            />
+          </div>
           {!isMobile && <DesktopFloatingChat />}
           {!isMobile && <DesktopFloatingParticipants />}
         </div>
@@ -384,6 +394,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
               isProfessor={isProfessor}
               participantCount={participants.length}
               onClose={() => setShowWhiteboard(false)}
+              roomId={roomId}
             />
           </div>
         )}

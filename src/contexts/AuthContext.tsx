@@ -74,11 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             avatar: p.avatar || '',
             nickname: p.nickname || '',
             bio: p.bio || '',
-            level: p.level || 'A1',
+            level: p.level || 'YEAR1',
             joinedAt: p.joinedAt || new Date().toISOString(),
             skills: p.skills || { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
             totalSessions: p.totalSessions || 0,
             hoursLearned: p.hoursLearned || 0,
+            createdBy: p.createdBy || undefined,
           };
         }
       } catch (error) {
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             joinedAt: p.joinedAt || new Date().toISOString(),
             totalSessions: p.totalSessions || 0,
             rating: p.rating || 0,
+            createdBy: p.createdBy || undefined,
           };
         }
       } catch (error) {
@@ -123,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: response.data.user.email,
             avatar: localStorage.getItem('temp_student_avatar') || '',
             nickname: localStorage.getItem('temp_student_nickname') || '', // Will be fetched s
-            level: (localStorage.getItem('temp_student_level') as 'A1' | 'A2' | 'B1' | 'B2') || 'A1',
+            level: (localStorage.getItem('temp_student_level') as 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6') || 'YEAR1',
             joinedAt: new Date().toISOString(),
             skills: { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
             totalSessions: 0,

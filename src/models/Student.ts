@@ -23,6 +23,7 @@ export interface StudentModel {
   hoursLearned: number;
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: string;
 }
 
 export interface CreateStudentDTO {
@@ -49,4 +50,5 @@ export interface StudentFilters {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  createdBy?: string;
 }
