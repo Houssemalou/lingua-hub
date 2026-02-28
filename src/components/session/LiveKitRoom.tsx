@@ -198,8 +198,13 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
     await room.localParticipant.setScreenShareEnabled(!room.localParticipant.isScreenShareEnabled);
   };
   const handleLeaveRoom = async () => {
-    try { await RoomService.leave(roomId); } catch (e) { console.error('Error notifying leave:', e); }
-    await room.disconnect();
+    // Do NOT notify backend on explicit "Quitter" click — backend will be notified
+    // on disconnect/unmount or via webhook when the room finishes.
+    try {
+      await room.disconnect();
+    } catch (e) {
+      console.error('Error disconnecting from room:', e);
+    }
     onLeaveRoom();
   };
 

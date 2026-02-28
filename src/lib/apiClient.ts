@@ -3,7 +3,8 @@
 // Centralized HTTP client for all backend requests
 // ============================================
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.134.137.202/api';
+//const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.134.137.202/api';
+const API_BASE_URL = 'http://localhost:8081/api';
 
 export interface ApiRequestConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
