@@ -40,7 +40,6 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const userScrolledRef = useRef(false);
   // autoScroll disabled – user scrolls manually
 
   // persist draft when it changes
@@ -59,33 +58,12 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
 
 
 
-  // scroll-to-bottom helper
-  const scrollToBottom = (behavior: ScrollBehavior = 'auto') => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior });
-      messagesEndRef.current?.scrollIntoView({ behavior });
-    }
+  // automatic scrolling removed; users control scroll manually
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // track user's manual scroll: if user is not at bottom, don't auto-scroll on incoming messages
-  const onScroll = () => {
-    const el = scrollAreaRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40; // threshold
-    userScrolledRef.current = !atBottom;
-  };
-
-  // auto-scroll when new messages arrive, unless the user manually scrolled up
-  useEffect(() => {
-    const el = scrollAreaRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    if (!userScrolledRef.current || atBottom) {
-      // smooth only when visible and user at bottom
-      scrollToBottom(visible ? 'smooth' : 'auto');
-      userScrolledRef.current = false;
-    }
-  }, [messages, visible]);
+  // no effect on messages
 
 
   const sendMessage = () => {
@@ -113,7 +91,7 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
   };
 
   return (
-    <div className="chat-panel-root h-full w-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
+    <div className="chat-panel-root h-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
       <div className="p-4 border-b bg-white shadow-sm">
         <div className="flex items-center gap-3">
@@ -131,7 +109,6 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
       <div
         className="flex-1 p-3 overflow-auto"
         ref={scrollAreaRef}
-        onScroll={onScroll}
       >
         <div className="space-y-3">
           {msgs.length === 0 ? (
@@ -206,8 +183,7 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
             value={message}
             onChange={(e) => setMessage((e.currentTarget as HTMLInputElement).value)}
             onKeyPress={handleKeyPress}
-            onMouseDown={(e) => { e.stopPropagation(); }}
-            onTouchStart={(e) => { e.stopPropagation(); }}
+          
             placeholder="Tapez votre message..."
             className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white rounded-xl text-black placeholder:text-gray-400 caret-black"
           />

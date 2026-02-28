@@ -22,6 +22,7 @@ import {
   Unlock,
   Eye,
   Pencil,
+  Eraser,
   ChevronDown,
   FileImage,
 } from 'lucide-react';
@@ -71,6 +72,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   const [store] = useState(() =>
     createTLStore({ shapeUtils: defaultShapeUtils })
   );
+  const editorRef = useRef<any>(null);
+  const [currentTool, setCurrentTool] = useState<string>('select');
   const [permissions, setPermissions] = useState<WritingPermission>('professor-only');
   const [isReadOnly, setIsReadOnly] = useState(!isProfessor);
   const [connectedCount, setConnectedCount] = useState(participantCount);
@@ -89,6 +92,23 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       setIsReadOnly(permissions === 'professor-only');
     }
   }, [permissions, isProfessor]);
+
+  // When write permissions change, update the editor state and default tool
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.updateInstanceState?.({ isReadonly: isReadOnly });
+    if (!isProfessor && !isReadOnly) {
+      // Give students the pen by default when they are granted write access
+      const preferred = 'draw';
+      try {
+        editor.selectTool?.(preferred);
+        setCurrentTool(preferred);
+      } catch (e) {
+        // ignore if API unavailable
+      }
+    }
+  }, [isReadOnly, isProfessor]);
 
   // Listen for incoming whiteboard data from LiveKit
   useEffect(() => {
@@ -458,6 +478,43 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
         {/* Right: actions */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Pen / Eraser tools for users who can write */}
+          {canWrite && (
+            <div className="flex items-center gap-1">
+              <motion.div whileTap={{ scale: 0.95 }}>
+                <Button
+                  size="sm"
+                  variant={currentTool === 'draw' ? 'default' : 'outline'}
+                  onClick={() => {
+                    try {
+                      editorRef.current?.selectTool?.('draw');
+                      setCurrentTool('draw');
+                    } catch (e) {}
+                  }}
+                  className="h-8 text-xs rounded-full gap-1"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Stylo</span>
+                </Button>
+              </motion.div>
+              <motion.div whileTap={{ scale: 0.95 }}>
+                <Button
+                  size="sm"
+                  variant={currentTool === 'eraser' ? 'default' : 'outline'}
+                  onClick={() => {
+                    try {
+                      editorRef.current?.selectTool?.('eraser');
+                      setCurrentTool('eraser');
+                    } catch (e) {}
+                  }}
+                  className="h-8 text-xs rounded-full gap-1"
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Gomme</span>
+                </Button>
+              </motion.div>
+            </div>
+          )}
           {/* Professor-only: toggle permissions */}
           {isProfessor && (
             <motion.div whileTap={{ scale: 0.95 }}>
@@ -534,7 +591,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           hideUi={isReadOnly}
           inferDarkMode
           onMount={(editor) => {
-            // Enable touch/stylus input
+            // Store editor reference and enable touch/stylus input
+            editorRef.current = editor;
             editor.updateInstanceState({ isReadonly: isReadOnly });
           }}
         />

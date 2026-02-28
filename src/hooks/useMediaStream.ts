@@ -14,6 +14,32 @@ interface MediaStreamState {
 
 export function useMediaStream(options: UseMediaStreamOptions = {}) {
   const { onError } = options;
+
+  // Safe wrappers for browser compatibility and secure-context checks
+  const getUserMediaSafe = async (constraints: MediaStreamConstraints) => {
+    const nav = navigator as any;
+    if (nav.mediaDevices && typeof nav.mediaDevices.getUserMedia === 'function') {
+      return nav.mediaDevices.getUserMedia(constraints);
+    }
+    const legacy = nav.webkitGetUserMedia || nav.mozGetUserMedia || nav.getUserMedia;
+    if (legacy) {
+      return new Promise<MediaStream>((resolve, reject) => {
+        legacy.call(nav, constraints, resolve, reject);
+      });
+    }
+    throw new Error('getUserMedia is not supported in this browser or secure context');
+  };
+
+  const getDisplayMediaSafe = async (options: any) => {
+    const nav = navigator as any;
+    if (nav.mediaDevices && typeof nav.mediaDevices.getDisplayMedia === 'function') {
+      return nav.mediaDevices.getDisplayMedia(options);
+    }
+    if (nav.getDisplayMedia) {
+      return nav.getDisplayMedia(options);
+    }
+    throw new Error('getDisplayMedia is not supported in this browser or secure context');
+  };
   
   const [state, setState] = useState<MediaStreamState>({
     isMuted: true,
@@ -54,7 +80,7 @@ export function useMediaStream(options: UseMediaStreamOptions = {}) {
         setState(prev => ({ ...prev, isCameraOn: false }));
       } else {
         // Turn on camera
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await getUserMediaSafe({
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
@@ -94,7 +120,7 @@ export function useMediaStream(options: UseMediaStreamOptions = {}) {
         }));
       } else {
         // Start screen sharing
-        const stream = await navigator.mediaDevices.getDisplayMedia({
+        const stream = await getDisplayMediaSafe({
           video: {
             displaySurface: 'monitor',
           },
@@ -132,7 +158,7 @@ export function useMediaStream(options: UseMediaStreamOptions = {}) {
   // Request microphone permission
   const requestMicrophoneAccess = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await getUserMediaSafe({ audio: true });
       setState(prev => ({
         ...prev,
         localStream: stream,
