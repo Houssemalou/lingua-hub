@@ -701,39 +701,43 @@ const downloadSummary = useCallback(async () => {
       <AnimatePresence>
         {isChatOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            initial={{ opacity: 0, scale: isMobile ? 1 : 0.8, y: isMobile ? '100%' : 20 }}
             animate={{
               opacity: 1,
               scale: 1,
               y: 0
             }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            exit={{ opacity: 0, scale: isMobile ? 1 : 0.8, y: isMobile ? '100%' : 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className={cn(
-              "fixed z-50 bottom-0 left-0 right-0 sm:bottom-6 sm:right-6 sm:left-auto w-full sm:w-96 max-w-[calc(100vw-3rem)] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col",
-              // on small screens make chat take full viewport height when open
-              !isMinimized && isMobile ? "h-screen" : ""
+              "fixed z-50 bg-white shadow-2xl border border-gray-200 overflow-hidden flex flex-col",
+              // Mobile: full-screen
+              "inset-0 sm:inset-auto",
+              // Desktop: positioned bottom-right widget
+              "sm:bottom-6 sm:right-6 sm:w-[420px] md:w-[460px] sm:rounded-2xl",
+              // Minimized state
+              isMinimized && "sm:max-h-[40vh]"
             )}
             style={
               isMinimized
-                ? { maxHeight: '40vh' }
+                ? { maxHeight: isMobile ? undefined : '40vh' }
                 : isMobile
-                ? { height: '100vh' }
+                ? {}
                 : { maxHeight: '80vh' }
             }
           >
             {/* Chat Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5" />
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 sm:p-4 flex items-center justify-between gap-2 flex-shrink-0 safe-area-top">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Assistant IA</h3>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-sm truncate">Assistant IA</h3>
                   <p className="text-xs opacity-90">Niveau {level}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 {/* Session Timer */}
                 {isChatOpen && (
                   <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1">
@@ -792,7 +796,7 @@ const downloadSummary = useCallback(async () => {
 
             {/* Messages Area */}
             {!isMinimized && (
-              <div className="flex-1 overflow-auto p-4 space-y-3">
+              <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3 min-h-0">
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
@@ -889,7 +893,7 @@ const downloadSummary = useCallback(async () => {
                               </div>
                             )}
 
-                            <div className={cn("flex flex-col max-w-[75%]", isUser && "items-end")}>
+                            <div className={cn("flex flex-col max-w-[80%] sm:max-w-[75%]", isUser && "items-end")}>
                               <div className={cn("rounded-xl px-3 py-2 shadow-sm text-sm", isUser ? "bg-blue-100 text-gray-900" : "bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 text-gray-800")}>
                                 <p className="leading-relaxed break-words italic" style={isUser ? { direction: 'rtl' } : {}}>{message.content}</p>
                               </div>
@@ -921,7 +925,7 @@ const downloadSummary = useCallback(async () => {
                               <MessageCircle className="w-3 h-3 text-white" />
                             </div>
                           )}
-                          <div className={cn("flex flex-col max-w-[75%]", message.isUser && "items-end")}>
+                          <div className={cn("flex flex-col max-w-[80%] sm:max-w-[75%]", message.isUser && "items-end")}>
                             <div
                               className={cn(
                                 "rounded-xl px-3 py-2 shadow-sm text-sm",
@@ -950,16 +954,16 @@ const downloadSummary = useCallback(async () => {
 
             {/* Input Area */}
             {!isMinimized && (
-              <div className="p-4 border-t bg-white/90 backdrop-blur-sm flex-none">
-                <div className="flex flex-wrap items-center gap-3 mb-3">
+              <div className="p-3 sm:p-4 border-t bg-white/90 backdrop-blur-sm flex-none pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <button
-                    className="text-xs px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition"
                     onClick={() => { setCurrentMessage('Corriger ma prononciation'); setTimeout(sendMessage, 150); }}
                   >
                     Corriger prononciation
                   </button>
                   <button
-                    className="text-xs px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition"
                     onClick={() => { setCurrentMessage('Donne-moi un exercice de vocabulaire'); setTimeout(sendMessage, 150); }}
                   >
                     Exercice vocabulaire
@@ -971,7 +975,7 @@ const downloadSummary = useCallback(async () => {
                     onClick={toggleRecording}
                     aria-label="Activer le micro"
                     className={cn(
-                      "w-9 h-9 rounded-full flex items-center justify-center transition-colors",
+                      "w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
                       isRecording
                         ? "bg-red-500 text-white animate-pulse"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -986,19 +990,19 @@ const downloadSummary = useCallback(async () => {
                     onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Tapez votre message..."
                     aria-label="Message"
-                    className="flex-1 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white rounded-full text-black text-sm placeholder:text-gray-400 px-4 py-2 shadow-sm"
+                    className="flex-1 min-w-0 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white rounded-full text-black text-sm placeholder:text-gray-400 px-4 py-2.5 sm:py-2 shadow-sm"
                   />
 
                   <button
                     onClick={sendMessage}
                     disabled={!currentMessage.trim()}
                     aria-label="Envoyer"
-                    className="bg-gradient-to-r from-indigo-500 to-blue-500 disabled:from-gray-300 disabled:to-gray-300 text-white p-2 rounded-full transition-shadow disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                    className="w-10 h-10 sm:w-auto sm:h-auto bg-gradient-to-r from-indigo-500 to-blue-500 disabled:from-gray-300 disabled:to-gray-300 text-white p-2.5 sm:p-2 rounded-full transition-shadow disabled:cursor-not-allowed shadow-sm hover:shadow-md flex-shrink-0 flex items-center justify-center"
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2">Appuyez sur Entrée pour envoyer • Suggestions rapides disponibles</p>
+                <p className="text-[10px] text-gray-400 mt-2 hidden sm:block">Appuyez sur Entrée pour envoyer • Suggestions rapides disponibles</p>
               </div>
             )}
           </motion.div>
