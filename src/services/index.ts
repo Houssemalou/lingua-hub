@@ -19,7 +19,6 @@ export type { AuthUser, LoginCredentials, RegisterData, AuthTokens } from './Aut
 
 // Re-export types from RecordingService
 export type { SessionRecording } from './RecordingService';
-export { RecordingStatus } from './RecordingService';
 
 // ============================================
 // API Configuration (à décommenter pour le backend)

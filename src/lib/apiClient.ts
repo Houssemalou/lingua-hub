@@ -3,8 +3,8 @@
 // Centralized HTTP client for all backend requests
 // ============================================
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.134.137.202/api';
-//const API_BASE_URL = 'http://localhost:8081/api';
+//const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://91.134.137.202/api';
+const API_BASE_URL = 'http://localhost:8081/api';
 
 export interface ApiRequestConfig {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -15,19 +15,24 @@ export interface ApiRequestConfig {
 
 // ============================================
 // Token Management
+// Tokens are now stored in HttpOnly cookies managed by the backend.
+// These functions are kept for backward compatibility but no longer
+// read/write tokens from localStorage.
 // ============================================
 
 const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_access_token');
+  // Token is now in HttpOnly cookie — not accessible from JS (by design)
+  return null;
 };
 
 const getRefreshToken = (): string | null => {
-  return localStorage.getItem('auth_refresh_token');
+  // Refresh token is now in HttpOnly cookie — not accessible from JS (by design)
+  return null;
 };
 
-const setAuthTokens = (accessToken: string, refreshToken: string) => {
-  localStorage.setItem('auth_access_token', accessToken);
-  localStorage.setItem('auth_refresh_token', refreshToken);
+const setAuthTokens = (_accessToken: string, _refreshToken: string) => {
+  // No-op: tokens are set by the backend via Set-Cookie headers
+  // This function is kept for backward compatibility
 };
 
 // ============================================
@@ -40,10 +45,8 @@ const createHeaders = (customHeaders?: Record<string, string>): HeadersInit => {
     ...customHeaders,
   };
 
-  const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  // No Authorization header needed — HttpOnly cookie is sent automatically
+  // via credentials: 'include'
 
   return headers;
 };
@@ -55,11 +58,11 @@ const createHeaders = (customHeaders?: Record<string, string>): HeadersInit => {
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     if (response.status === 401) {
-      // Try to refresh token
+      // Try to refresh token via cookie-based refresh endpoint
       const refreshed = await refreshAccessToken();
       if (!refreshed) {
         // Redirect to login
-        window.location.href = '/login';
+        window.location.href = '/auth';
         throw new Error('Authentication failed');
       }
       throw new Error('RETRY_REQUEST'); // Signal to retry
@@ -94,22 +97,20 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 // ============================================
 
 const refreshAccessToken = async (): Promise<boolean> => {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
-
   try {
+    // The refresh token is sent automatically via HttpOnly cookie
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include', // Send HttpOnly cookies
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) return false;
 
-    const data = await response.json();
-    setAuthTokens(data.data.accessToken, data.data.refreshToken);
+    // New tokens are set automatically via Set-Cookie headers in the response
     return true;
   } catch {
     return false;
@@ -153,22 +154,24 @@ export const apiClient: ApiClient = {
       }
     }
 
-    // Make request
+    // Make request with credentials: 'include' to send HttpOnly cookies
     try {
       const response = await fetch(url, {
         method,
         headers: createHeaders(headers),
         body: body ? JSON.stringify(body) : undefined,
+        credentials: 'include', // Send HttpOnly cookies automatically
       });
 
       return await handleResponse<T>(response);
     } catch (error) {
       if (error instanceof Error && error.message === 'RETRY_REQUEST') {
-        // Retry request with new token
+        // Retry request with new token (set via cookie from refresh)
         const response = await fetch(url, {
           method,
           headers: createHeaders(headers),
           body: body ? JSON.stringify(body) : undefined,
+          credentials: 'include',
         });
         return await handleResponse<T>(response);
       }

@@ -51,6 +51,7 @@ export default function AuthPage() {
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
 
   // Professor-specific fields
   const [languages, setLanguages] = useState<string[]>(['Français']);
@@ -104,9 +105,9 @@ export default function AuthPage() {
       accessToken,
     });
     if (result.success) {
-      // Redirect to login after successful signup
-      resetForm();
-      setMode('login');
+      // Show email verification screen for admin
+      setRegisteredEmail(email);
+      setShowEmailVerification(true);
     } else {
       setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
@@ -167,6 +168,7 @@ export default function AuthPage() {
     setSignupRole(null);
     setStudentStep('role');
     setProfessorStep('role');
+    setShowEmailVerification(false);
     setEmail('');
     setPassword('');
     setName('');
@@ -947,6 +949,8 @@ export default function AuthPage() {
   );
 
   const renderContent = () => {
+    // Show email verification screen for admin or professor after registration
+    if (showEmailVerification) return renderEmailVerification();
     if (mode === 'login') return renderLogin();
     
     if (signupRole === null) return renderRoleSelection();

@@ -12,6 +12,7 @@ import {
   UserCircle,
   DoorOpen,
   Plus,
+  Video,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getLevelLabel, normalizeLevelToYear } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
+import { RecordingService, SessionRecording } from '@/services/RecordingService';
 import { RoomModel, CreateRoomDTO, StudentModel } from '@/models';
 import { toast } from 'sonner';
 import { StudentService } from '@/services/StudentService';
@@ -82,6 +84,10 @@ export default function ProfessorSessions() {
   const [students, setStudents] = useState<StudentModel[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [inviteFilterLevel, setInviteFilterLevel] = useState<string>('');
+  const [recordingDialogOpen, setRecordingDialogOpen] = useState(false);
+  const [recordings, setRecordings] = useState<SessionRecording[]>([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
+  const [selectedSessionName, setSelectedSessionName] = useState('');
 
   const dateLocale = language === 'ar' ? ar : fr;
 
@@ -271,6 +277,33 @@ export default function ProfessorSessions() {
       return;
     }
     navigate(`/professor/room/${session.id}`);
+  };
+
+  const handleViewRecording = async (session: RoomModel) => {
+    const roomName = session.livekitRoomName;
+    if (!roomName) {
+      toast.error(isRTL ? 'لا يوجد اسم غرفة لايف كيت' : 'No LiveKit room name available');
+      return;
+    }
+    setSelectedSessionName(session.name);
+    setRecordingDialogOpen(true);
+    setLoadingRecordings(true);
+    setRecordings([]);
+    try {
+      const res = await RecordingService.getRecordingsByRoomName(roomName);
+      if (res.success && res.data) {
+        setRecordings(res.data);
+        if (res.data.length === 0) {
+          toast.info(isRTL ? 'لا توجد تسجيلات لهذه الجلسة' : 'Aucun enregistrement trouvé pour cette session');
+      }
+      } else {
+        toast.error(res.error || (isRTL ? 'فشل في جلب التسجيلات' : 'Échec du chargement des enregistrements'));
+      }
+    } catch {
+      toast.error(isRTL ? 'فشل في جلب التسجيلات' : 'Échec du chargement des enregistrements');
+    } finally {
+      setLoadingRecordings(false);
+    }
   };
 
   return (
@@ -607,17 +640,30 @@ export default function ProfessorSessions() {
                       </Button>
                     )}
                     {statusLower === 'completed' && (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/professor/summaries`);
-                        }}
-                        className="flex-1"
-                        variant="secondary"
-                      >
-                        <Eye className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
-                        {isRTL ? 'عرض الملخص' : 'View Summary'}
-                      </Button>
+                      <>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewRecording(session);
+                          }}
+                          variant="outline"
+                          size="icon"
+                          title={isRTL ? 'مشاهدة التسجيل' : 'Voir l\'enregistrement'}
+                        >
+                          <Video className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/professor/summaries`);
+                          }}
+                          className="flex-1"
+                          variant="secondary"
+                        >
+                          <Eye className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
+                          {isRTL ? 'عرض الملخص' : 'View Summary'}
+                        </Button>
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -640,6 +686,42 @@ export default function ProfessorSessions() {
           </p>
         </motion.div>
       )}
+
+      {/* Recording Dialog */}
+      <Dialog open={recordingDialogOpen} onOpenChange={setRecordingDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {isRTL ? `تسجيلات: ${selectedSessionName}` : `Enregistrements: ${selectedSessionName}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {loadingRecordings ? (
+              <p className="text-center text-muted-foreground py-8">
+                {isRTL ? 'جاري التحميل...' : 'Chargement...'}
+              </p>
+            ) : recordings.length === 0 ? (
+              <div className="text-center py-8">
+                <Video className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">
+                  {isRTL ? 'لا توجد تسجيلات متاحة' : 'Aucun enregistrement disponible'}
+                </p>
+              </div>
+            ) : (
+              recordings.map((rec) => (
+                <div key={rec.id} className="rounded-lg border border-border overflow-hidden">
+                  <video
+                    src={rec.recordingUrl}
+                    controls
+                    className="w-full max-h-[500px] bg-black"
+                    controlsList="nodownload"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

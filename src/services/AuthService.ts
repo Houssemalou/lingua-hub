@@ -1,10 +1,11 @@
 // ============================================
 // Authentication Service
 // Integrated with backend Spring Boot API
+// Tokens are now stored in HttpOnly cookies (not localStorage)
 // ============================================
 
 import { ApiResponse } from '@/models';
-import { apiClient, setAuthTokens as setClientTokens } from '@/lib/apiClient';
+import { apiClient } from '@/lib/apiClient';
 
 // ============================================
 // Types
@@ -67,9 +68,7 @@ export interface AuthTokens {
   expiresIn: number;
 }
 
-// Token storage keys
-const ACCESS_TOKEN_KEY = 'auth_access_token';
-const REFRESH_TOKEN_KEY = 'auth_refresh_token';
+// Storage key for user profile (non-sensitive data, OK in localStorage)
 const USER_KEY = 'auth_user';
 
 // ============================================
@@ -77,21 +76,16 @@ const USER_KEY = 'auth_user';
 // ============================================
 
 export const getStoredTokens = (): { accessToken: string | null; refreshToken: string | null } => {
+  // Tokens are now in HttpOnly cookies — not accessible from JS
   return {
-    accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
-    refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY),
+    accessToken: null,
+    refreshToken: null,
   };
 };
 
 export const getStoredUser = (): AuthUser | null => {
   const userStr = localStorage.getItem(USER_KEY);
   return userStr ? JSON.parse(userStr) : null;
-};
-
-const storeTokens = (tokens: AuthTokens) => {
-  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-  setClientTokens(tokens.accessToken, tokens.refreshToken);
 };
 
 const storeUser = (user: AuthUser) => {
@@ -110,7 +104,6 @@ const clearAuth = () => {
   });
   localStorage.clear();
   Object.entries(preserved).forEach(([key, val]) => localStorage.setItem(key, val));
-  setClientTokens('', '');
 };
 
 // ============================================
@@ -143,9 +136,10 @@ export const AuthService = {
         };
       }
 
+      // Tokens are set automatically via HttpOnly Set-Cookie headers from the backend
       const tokens: AuthTokens = {
-        accessToken: response.data.token,
-        refreshToken: response.data.refreshToken,
+        accessToken: '', // Token is in HttpOnly cookie, not accessible from JS
+        refreshToken: '',
         expiresIn: response.data.expiresIn,
       };
 
@@ -156,12 +150,9 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
       storeUser(user);
-      console.log('Login successful - Tokens stored:', tokens);
       console.log('Login successful - User stored:', user);
-      console.log('Login successful - localStorage accessToken:', !!localStorage.getItem(ACCESS_TOKEN_KEY));
-      console.log('Login successful - localStorage user:', !!localStorage.getItem(USER_KEY));
+      console.log('Login successful - Tokens in HttpOnly cookies (not accessible from JS)');
 
       return {
         success: true,
@@ -201,8 +192,8 @@ export const AuthService = {
       }
 
       const tokens: AuthTokens = {
-        accessToken: response.data.token,
-        refreshToken: response.data.refreshToken,
+        accessToken: '',
+        refreshToken: '',
         expiresIn: response.data.expiresIn,
       };
 
@@ -254,8 +245,8 @@ export const AuthService = {
       }
 
       const tokens: AuthTokens = {
-        accessToken: response.data?.token || '',
-        refreshToken: response.data?.refreshToken || '',
+        accessToken: '',
+        refreshToken: '',
         expiresIn: response.data?.expiresIn || 0,
       };
 
@@ -306,8 +297,8 @@ export const AuthService = {
       }
 
       const tokens: AuthTokens = {
-        accessToken: response.data.token,
-        refreshToken: response.data.refreshToken,
+        accessToken: '',
+        refreshToken: '',
         expiresIn: response.data.expiresIn,
       };
 
@@ -318,7 +309,7 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
+      // Tokens are managed via HttpOnly cookies from the backend
       storeUser(user);
 
       return {
@@ -359,8 +350,8 @@ export const AuthService = {
       }
 
       const tokens: AuthTokens = {
-        accessToken: response.data.token,
-        refreshToken: response.data.refreshToken,
+        accessToken: '',
+        refreshToken: '',
         expiresIn: response.data.expiresIn,
       };
 
@@ -371,7 +362,7 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
+      // Tokens are managed via HttpOnly cookies from the backend
       storeUser(user);
 
       return {
@@ -387,8 +378,15 @@ export const AuthService = {
     }
   },
 
-  // Logout
-  logout(): void {
+  // Logout - call backend to clear HttpOnly cookies, then clear local state
+  async logout(): Promise<void> {
+    try {
+      // Call backend logout endpoint which clears HttpOnly cookies
+      await apiClient.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    }
+    // Always clear local state regardless of API call result
     clearAuth();
   },
 
@@ -433,17 +431,9 @@ export const AuthService = {
     }
   },
 
-  // Refresh token
+  // Refresh token - the refresh token is sent via HttpOnly cookie automatically
   async refreshToken(): Promise<ApiResponse<{ user: AuthUser; tokens: AuthTokens }>> {
     try {
-      const storedTokens = getStoredTokens();
-      if (!storedTokens.refreshToken) {
-        return {
-          success: false,
-          error: 'No refresh token available',
-        };
-      }
-
       const response = await apiClient.post<{
         success: boolean;
         message: string;
@@ -456,7 +446,7 @@ export const AuthService = {
           role: string;
           expiresIn: number;
         }
-      }>('/auth/refresh', { refreshToken: storedTokens.refreshToken });
+      }>('/auth/refresh', {});
 
       if (!response.success) {
         clearAuth();
@@ -467,8 +457,8 @@ export const AuthService = {
       }
 
       const tokens: AuthTokens = {
-        accessToken: response.data.token,
-        refreshToken: response.data.refreshToken,
+        accessToken: '',
+        refreshToken: '',
         expiresIn: response.data.expiresIn,
       };
 
@@ -479,7 +469,7 @@ export const AuthService = {
         role: response.data.role.toLowerCase() as 'admin' | 'student' | 'professor',
       };
 
-      storeTokens(tokens);
+      // New tokens are set automatically via HttpOnly cookies
       storeUser(user);
 
       return {

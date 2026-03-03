@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer } from 'lucide-react';
+import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer, Video } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, formatDistanceToNow, isAfter, isBefore } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { RoomService } from '@/services/RoomService';
+import { RecordingService, SessionRecording } from '@/services/RecordingService';
 import { RoomModel } from '@/models';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -35,6 +37,10 @@ export default function StudentSessions() {
   const [sessions, setSessions] = useState<RoomModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
+  const [recordingDialogOpen, setRecordingDialogOpen] = useState(false);
+  const [recordings, setRecordings] = useState<SessionRecording[]>([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
+  const [selectedSessionName, setSelectedSessionName] = useState('');
   
   const dateLocale = language === 'ar' ? ar : fr;
 
@@ -91,6 +97,33 @@ export default function StudentSessions() {
         return <Clock className="w-4 h-4" />;
       default:
         return <CheckCircle className="w-4 h-4" />;
+    }
+  };
+
+  const handleViewRecording = async (session: RoomModel) => {
+    const roomName = session.livekitRoomName;
+    if (!roomName) {
+      toast.error(isRTL ? 'لا يوجد اسم غرفة لايف كيت' : 'No LiveKit room name available');
+      return;
+    }
+    setSelectedSessionName(session.name);
+    setRecordingDialogOpen(true);
+    setLoadingRecordings(true);
+    setRecordings([]);
+    try {
+      const res = await RecordingService.getRecordingsByRoomName(roomName);
+      if (res.success && res.data) {
+        setRecordings(res.data);
+        if (res.data.length === 0) {
+          toast.info(isRTL ? 'لا توجد تسجيلات لهذه الجلسة' : 'No recordings found for this session');
+        }
+      } else {
+        toast.error(res.error || (isRTL ? 'فشل في جلب التسجيلات' : 'Failed to fetch recordings'));
+      }
+    } catch {
+      toast.error(isRTL ? 'فشل في جلب التسجيلات' : 'Failed to fetch recordings');
+    } finally {
+      setLoadingRecordings(false);
     }
   };
 
@@ -239,9 +272,19 @@ export default function StudentSessions() {
                       );
                     })()}
                     {statusLower === 'completed' && (
-                        <Button variant="secondary">
-                          {isRTL ? 'عرض الملخص' : 'View Summary'}
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleViewRecording(session)}
+                            title={isRTL ? 'مشاهدة التسجيل' : 'Watch Recording'}
+                          >
+                            <Video className="w-4 h-4" />
+                          </Button>
+                          <Button variant="secondary">
+                            {isRTL ? 'عرض الملخص' : 'View Summary'}
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -265,6 +308,42 @@ export default function StudentSessions() {
           </p>
         </motion.div>
       )}
+
+      {/* Recording Dialog */}
+      <Dialog open={recordingDialogOpen} onOpenChange={setRecordingDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {isRTL ? `تسجيلات: ${selectedSessionName}` : `Recordings: ${selectedSessionName}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            {loadingRecordings ? (
+              <p className="text-center text-muted-foreground py-8">
+                {isRTL ? 'جاري التحميل...' : 'Loading...'}
+              </p>
+            ) : recordings.length === 0 ? (
+              <div className="text-center py-8">
+                <Video className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">
+                  {isRTL ? 'لا توجد تسجيلات متاحة' : 'No recordings available'}
+                </p>
+              </div>
+            ) : (
+              recordings.map((rec) => (
+                <div key={rec.id} className="rounded-lg border border-border overflow-hidden">
+                  <video
+                    src={rec.recordingUrl}
+                    controls
+                    className="w-full max-h-[500px] bg-black"
+                    controlsList="nodownload"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
