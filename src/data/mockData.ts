@@ -210,7 +210,6 @@ export const mockProfessors: Professor[] = [
     specialization: 'Conversation et grammaire',
     joinedAt: '2023-01-15',
     totalSessions: 156,
-    rating: 4.8,
   },
   {
     id: 'prof-2',
@@ -222,7 +221,6 @@ export const mockProfessors: Professor[] = [
     specialization: 'Business English',
     joinedAt: '2023-03-20',
     totalSessions: 98,
-    rating: 4.6,
   },
   {
     id: 'prof-3',
@@ -234,7 +232,6 @@ export const mockProfessors: Professor[] = [
     specialization: 'Culture et conversation',
     joinedAt: '2023-06-01',
     totalSessions: 72,
-    rating: 4.9,
   },
 ];
 

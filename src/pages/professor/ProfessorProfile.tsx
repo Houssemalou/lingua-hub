@@ -4,7 +4,6 @@ import {
   User,
   Mail,
   Calendar,
-  Star,
   Languages,
   BookOpen,
   Edit3,
@@ -26,6 +25,7 @@ import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 const container = {
   hidden: { opacity: 0 },
@@ -105,7 +105,6 @@ export default function ProfessorProfile() {
             specialization: updated.specialization || professor.specialization,
             languages: updated.languages || professor.languages,
             avatar: updated.avatar || professor.avatar,
-            rating: updated.rating ?? professor.rating,
             totalSessions: updated.totalSessions ?? professor.totalSessions,
             joinedAt: updated.joinedAt || professor.joinedAt,
           },
@@ -114,7 +113,7 @@ export default function ProfessorProfile() {
         toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profil mis à jour avec succès !');
         setIsEditing(false);
       } else {
-        toast.error(response.error || (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -158,12 +157,6 @@ export default function ProfessorProfile() {
                 />
                 <h2 className="text-xl font-bold text-foreground">{professor.name}</h2>
                 <p className="text-muted-foreground">{professor.email}</p>
-
-                <div className="flex items-center justify-center gap-1 mt-3">
-                  <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                  <span className="font-bold text-lg">{professor.rating}</span>
-                  <span className="text-muted-foreground">/5</span>
-                </div>
 
                 <div className="flex flex-wrap justify-center gap-2 mt-4">
                   {professor.languages.map((lang) => (

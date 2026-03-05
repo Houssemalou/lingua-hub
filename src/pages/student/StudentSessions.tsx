@@ -16,6 +16,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { fr, ar } from 'date-fns/locale';
 import { canJoinRoom, formatTimeUntilJoinable } from '@/lib/roomUtils';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 const container = {
   hidden: { opacity: 0 },
@@ -60,14 +61,14 @@ export default function StudentSessions() {
           if ((response as any).success) {
             setSessions((response as any).data?.data || []);
           } else {
-            toast.error((response as any).message || 'Failed to load sessions');
+            toast.error(getFriendlyErrorMessage((response as any).message, isRTL));
           }
         } else {
           setSessions((response as any)?.data || []);
         }
       } catch (err) {
         console.error('Error loading sessions:', err);
-        toast.error(isRTL ? 'فشل في تحميل الجلسات' : 'Failed to load sessions');
+        toast.error(isRTL ? 'فشل في تحميل الجلسات' : 'Échec du chargement des sessions');
       } finally {
         setLoading(false);
       }
@@ -118,10 +119,10 @@ export default function StudentSessions() {
           toast.info(isRTL ? 'لا توجد تسجيلات لهذه الجلسة' : 'No recordings found for this session');
         }
       } else {
-        toast.error(res.error || (isRTL ? 'فشل في جلب التسجيلات' : 'Failed to fetch recordings'));
+        toast.error(res.error || (isRTL ? 'فشل في جلب التسجيلات' : 'Échec de récupération des enregistrements'));
       }
     } catch {
-      toast.error(isRTL ? 'فشل في جلب التسجيلات' : 'Failed to fetch recordings');
+      toast.error(isRTL ? 'فشل في جلب التسجيلات' : 'Échec de récupération des enregistrements');
     } finally {
       setLoadingRecordings(false);
     }
@@ -232,7 +233,7 @@ export default function StudentSessions() {
                       <Button 
                         variant="live"
                         onClick={() => {
-                          const joinCheck = canJoinRoom(session);
+                          const joinCheck = canJoinRoom(session, isRTL);
                           if (!joinCheck.canJoin) {
                             toast.error(joinCheck.reason);
                             return;
@@ -240,11 +241,11 @@ export default function StudentSessions() {
                           navigate(`/student/room/${session.id}`);
                         }}
                       >
-                        {isRTL ? 'انضم الآن' : 'Join Now'}
+                        {isRTL ? 'انضم الآن' : 'Rejoindre'}
                       </Button>
                     )}
                     {statusLower === 'scheduled' && (() => {
-                      const joinCheck = canJoinRoom(session);
+                      const joinCheck = canJoinRoom(session, isRTL);
                       return (
                         <Button 
                           variant={joinCheck.canJoin ? "outline" : "secondary"}
@@ -265,7 +266,7 @@ export default function StudentSessions() {
                                 <Timer className="w-4 h-4" />
                                 {isRTL
                                   ? `متاح بعد ${joinCheck.minutesLeft} د`
-                                  : formatTimeUntilJoinable(session)}
+                                  : formatTimeUntilJoinable(session, isRTL)}
                               </>
                             )}
                         </Button>

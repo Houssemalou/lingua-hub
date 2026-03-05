@@ -61,9 +61,6 @@ export const ProfessorService = {
           p.email.toLowerCase().includes(search)
         );
       }
-      if (filters?.minRating) {
-        filtered = filtered.filter(p => p.rating >= filters.minRating!);
-      }
 
       const page = filters?.page || 1;
       const limit = filters?.limit || 10;

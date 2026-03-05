@@ -104,18 +104,10 @@ export function ParticipantCard({
           />
         ) : participant.isCameraOn && videoTrack ? (
           /* Display camera video */
-          <>
-            <VideoTrack
-              trackRef={{ participant: liveKitParticipant!, publication: videoPublication!, source: Track.Source.Camera }}
-              className="w-full h-full object-cover"
-            />
-            {audioTrack && audioPublication && (
-              <AudioTrack
-                trackRef={{ participant: liveKitParticipant!, publication: audioPublication, source: Track.Source.Microphone }}
-                volume={participant.isCurrentUser ? 0 : 1}
-              />
-            )}
-          </>
+          <VideoTrack
+            trackRef={{ participant: liveKitParticipant!, publication: videoPublication!, source: Track.Source.Camera }}
+            className="w-full h-full object-cover"
+          />
         ) : (
           /* Display avatar when camera is off - fun animated background */
           <div className="text-center w-full h-full bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900 flex items-center justify-center relative overflow-hidden">
@@ -158,6 +150,14 @@ export function ParticipantCard({
           </div>
         )}
       </div>
+
+      {/* Audio track — always rendered regardless of camera state so voice is always heard & recorded */}
+      {audioTrack && audioPublication && liveKitParticipant && (
+        <AudioTrack
+          trackRef={{ participant: liveKitParticipant, publication: audioPublication, source: Track.Source.Microphone }}
+          volume={participant.isCurrentUser ? 0 : 1}
+        />
+      )}
 
       {/* Picked indicator */}
       {participant.isPicked && (

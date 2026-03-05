@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 const container = {
   hidden: { opacity: 0 },
@@ -148,7 +149,7 @@ export default function ProfessorQuizzes() {
         setIsCreateDialogOpen(false);
         fetchData();
       } else {
-        toast.error(response.error || (isRTL ? 'فشل إنشاء الاختبار' : 'Erreur lors de la creation du quiz'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch {
       toast.error(isRTL ? 'فشل إنشاء الاختبار' : 'Erreur lors de la creation du quiz');
@@ -163,7 +164,7 @@ export default function ProfessorQuizzes() {
         toast.success(isRTL ? 'تم حذف الاختبار' : 'Quiz supprime');
         fetchData();
       } else {
-        toast.error(response.error || (isRTL ? 'فشل حذف الاختبار' : 'Erreur lors de la suppression'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch {
       toast.error(isRTL ? 'فشل حذف الاختبار' : 'Erreur lors de la suppression');
@@ -178,7 +179,7 @@ export default function ProfessorQuizzes() {
         toast.success(isRTL ? 'تم نشر الاختبار' : 'Quiz publie');
         fetchData();
       } else {
-        toast.error(response.error || (isRTL ? 'فشل نشر الاختبار' : 'Erreur lors de la publication'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch {
       toast.error(isRTL ? 'فشل نشر الاختبار' : 'Erreur lors de la publication');

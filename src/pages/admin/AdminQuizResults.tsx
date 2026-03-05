@@ -44,7 +44,7 @@ const AdminQuizResults = () => {
   if (!stats) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">No data available</p>
+        <p className="text-muted-foreground">{isRTL ? 'لا توجد بيانات متاحة' : 'Aucune donnée disponible'}</p>
       </div>
     );
   }
@@ -59,8 +59,8 @@ const AdminQuizResults = () => {
     <div className={cn("space-y-6", isRTL && "text-right")}>
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('nav.quizResults') || 'Evaluations & Results'}</h1>
-        <p className="text-sm sm:text-base text-muted-foreground">{t('quizResults.subtitle') || 'Overview of evaluations and student performance'}</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">{t('nav.quizResults')}</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">{t('quizResults.subtitle')}</p>
       </div>
 
       {/* Stats */}
@@ -73,7 +73,7 @@ const AdminQuizResults = () => {
               </div>
               <div className={isRTL ? "text-right" : ""}>
                 <p className="text-xl sm:text-2xl font-bold">{stats.totalEvaluations}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('quizResults.totalQuizzes') || 'Total Evaluations'}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('quizResults.totalQuizzes')}</p>
               </div>
             </div>
           </CardContent>
@@ -86,7 +86,7 @@ const AdminQuizResults = () => {
               </div>
               <div className={isRTL ? "text-right" : ""}>
                 <p className="text-xl sm:text-2xl font-bold">{stats.totalStudents}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('dashboard.totalStudents') || 'Students Evaluated'}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('dashboard.totalStudents')}</p>
               </div>
             </div>
           </CardContent>
@@ -99,7 +99,7 @@ const AdminQuizResults = () => {
               </div>
               <div className={isRTL ? "text-right" : ""}>
                 <p className="text-xl sm:text-2xl font-bold">{Math.round(stats.averageEvaluationScore)}%</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">{t('quizResults.average') || 'Average Score'}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('quizResults.average')}</p>
               </div>
             </div>
           </CardContent>
@@ -110,7 +110,7 @@ const AdminQuizResults = () => {
       {stats.levelDistribution.length > 0 && (
         <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg">{t('dashboard.levelDistribution') || 'Level Distribution'}</CardTitle>
+            <CardTitle className="text-lg">{t('dashboard.levelDistribution')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -118,7 +118,7 @@ const AdminQuizResults = () => {
                 <div key={ld.level} className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
                   <Badge variant={ld.level.toLowerCase() as any} className="w-12 justify-center">{ld.level}</Badge>
                   <Progress value={stats.totalStudents > 0 ? (ld.count / stats.totalStudents) * 100 : 0} className="h-3 flex-1" />
-                  <span className="text-sm font-medium text-foreground w-12 text-right">{ld.count} {t('students.students') || 'students'}</span>
+                  <span className="text-sm font-medium text-foreground w-12 text-right">{ld.count} {t('students.students')}</span>
                 </div>
               ))}
             </div>
@@ -130,7 +130,7 @@ const AdminQuizResults = () => {
       <div className="relative w-full sm:max-w-md">
         <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
         <Input
-          placeholder={t('quizResults.search') || 'Search students...'}
+          placeholder={t('quizResults.search')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className={cn("w-full", isRTL ? "pr-10 text-right" : "pl-10")}
@@ -140,7 +140,7 @@ const AdminQuizResults = () => {
       {/* Students Performance */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">{t('dashboard.recentStudents') || 'Student Performance'}</CardTitle>
+          <CardTitle className="text-lg">{t('dashboard.recentStudents')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -173,7 +173,7 @@ const AdminQuizResults = () => {
                       <Progress value={student.averageSkill} className="h-1.5 sm:h-2" />
                     </div>
                     <span className="text-xs sm:text-sm text-muted-foreground">
-                      {student.totalSessions} sessions
+                      {student.totalSessions} {isRTL ? 'جلسات' : 'sessions'}
                     </span>
                   </div>
                 </div>
@@ -181,7 +181,7 @@ const AdminQuizResults = () => {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>{t('dashboard.noQuizResults') || 'No results found'}</p>
+                <p>{t('dashboard.noQuizResults')}</p>
               </div>
             )}
           </div>

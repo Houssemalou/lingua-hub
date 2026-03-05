@@ -18,11 +18,10 @@ export function Leaderboard({ entries, currentStudentId }: LeaderboardProps) {
 
   const labels = {
     fr: { title: 'Classement', points: 'points', level: 'Niv.', streak: 'jours' },
-    ar: { title: 'لوحة المتصدرين', points: 'نقطة', level: 'مستوى', streak: 'أيام' },
-    en: { title: 'Leaderboard', points: 'points', level: 'Lvl.', streak: 'days' }
+    ar: { title: 'لوحة المتصدرين', points: 'نقطة', level: 'مستوى', streak: 'أيام' }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

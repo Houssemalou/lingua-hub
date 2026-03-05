@@ -26,6 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 import { SessionSummaryService, CreateSessionSummaryData, SessionSummary } from '@/services/SessionSummaryService';
 
 interface RoomSessionSummaryEditorProps {
@@ -170,7 +171,7 @@ export function RoomSessionSummaryEditor({
       onSaved?.();
       onClose();
     } else {
-      toast.error(response.error || (isRTL ? 'فشل في حفظ الملخص' : 'Échec de l\'enregistrement du résumé'));
+      toast.error(getFriendlyErrorMessage(response.error, isRTL));
     }
   };
 

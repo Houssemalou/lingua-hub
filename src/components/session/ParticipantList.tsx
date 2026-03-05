@@ -5,12 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Mic, MicOff, Video, VideoOff, MonitorUp, Crown, Hand, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveKitParticipant } from '@/hooks/useLiveKitRoom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ParticipantListProps {
   participants: LiveKitParticipant[];
 }
 
 export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }) => {
+  const { isRTL } = useLanguage();
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-slate-50 to-white rounded-lg overflow-hidden">
       {/* Header */}
@@ -21,8 +23,8 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }
               <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-base text-gray-900">Participants</h3>
-              <p className="text-xs text-gray-500">{participants.length} connecté{participants.length > 1 ? 's' : ''}</p>
+              <h3 className="font-semibold text-base text-gray-900">{isRTL ? 'المشاركون' : 'Participants'}</h3>
+              <p className="text-xs text-gray-500">{participants.length} {isRTL ? 'متصل(ون)' : `connecté${participants.length > 1 ? 's' : ''}`}</p>
             </div>
           </div>
         </div>
@@ -76,14 +78,14 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }
                   </span>
                   {participant.isCurrentUser && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700 border-blue-200">
-                      Vous
+                      {isRTL ? 'أنت' : 'Vous'}
                     </Badge>
                   )}
                   {participant.isHost && (
-                    <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" aria-label="Animateur" />
+                    <Crown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" aria-label={isRTL ? 'المنشط' : 'Animateur'} />
                   )}
                   {participant.handRaised && (
-                    <Hand className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 animate-bounce" aria-label="Main levée" />
+                    <Hand className="w-3.5 h-3.5 text-orange-500 flex-shrink-0 animate-bounce" aria-label={isRTL ? 'يد مرفوعة' : 'Main levée'} />
                   )}
                 </div>
 
@@ -97,7 +99,7 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }
                       participant.role === 'student' && "bg-green-100 text-green-700 border-green-200"
                     )}
                   >
-                    {participant.role === 'professor' ? '👨‍🏫 Prof' : '👨‍🎓 Élève'}
+                    {participant.role === 'professor' ? (isRTL ? '👨‍🏫 أستاذ' : '👨‍🏫 Prof') : (isRTL ? '👨‍🎓 تلميذ' : '👨‍🎓 Élève')}
                   </Badge>
                 )}
               </div>
@@ -152,8 +154,8 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }
               <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                 <Users className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-sm text-gray-500">Aucun participant</p>
-              <p className="text-xs text-gray-400 mt-1">En attente de connexions...</p>
+              <p className="text-sm text-gray-500">{isRTL ? 'لا يوجد مشاركون' : 'Aucun participant'}</p>
+              <p className="text-xs text-gray-400 mt-1">{isRTL ? 'في انتظار الاتصالات...' : 'En attente de connexions...'}</p>
             </div>
           )}
         </div>

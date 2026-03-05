@@ -53,6 +53,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { EvaluationService, EvaluationData, StudentData, CreateEvaluationData } from '@/services/EvaluationService';
@@ -120,7 +121,6 @@ function EvaluateStudentDialog({
   const [grammar, setGrammar] = useState(50);
   const [vocabulary, setVocabulary] = useState(50);
   const [fluency, setFluency] = useState(50);
-  const [assignedLevel, setAssignedLevel] = useState('');
   const [feedback, setFeedback] = useState('');
   const [strengths, setStrengths] = useState('');
   const [areasToImprove, setAreasToImprove] = useState('');
@@ -143,7 +143,6 @@ function EvaluateStudentDialog({
         grammar,
         vocabulary,
         fluency,
-        assignedLevel: assignedLevel || undefined,
         feedback: feedback || undefined,
         strengths: strengths ? strengths.split('\n').filter(s => s.trim()) : undefined,
         areasToImprove: areasToImprove ? areasToImprove.split('\n').filter(s => s.trim()) : undefined,
@@ -156,7 +155,7 @@ function EvaluateStudentDialog({
         resetForm();
         onSuccess();
       } else {
-        toast.error(response.error || (isRTL ? 'خطأ' : 'Erreur'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch {
       toast.error(isRTL ? 'خطأ غير متوقع' : 'Erreur inattendue');
@@ -171,7 +170,6 @@ function EvaluateStudentDialog({
     setGrammar(50);
     setVocabulary(50);
     setFluency(50);
-    setAssignedLevel('');
     setFeedback('');
     setStrengths('');
     setAreasToImprove('');
@@ -261,30 +259,6 @@ function EvaluateStudentDialog({
           </div>
 
           <Separator />
-
-          {/* Level assignment */}
-          <div className="space-y-2">
-            <Label className={cn(isRTL && "text-right block")}>
-              {isRTL ? 'تغيير المستوى (اختياري)' : 'Changer le niveau (optionnel)'}
-            </Label>
-            <Select value={assignedLevel} onValueChange={setAssignedLevel}>
-              <SelectTrigger>
-                <SelectValue placeholder={isRTL ? 'المستوى الحالي محفوظ' : 'Garder le niveau actuel'} />
-              </SelectTrigger>
-              <SelectContent>
-                {LEVELS.map(level => (
-                  <SelectItem key={level} value={level}>
-                    <span className="flex items-center gap-2">
-                      <Badge className={cn("text-xs", getLevelColor(level))}>{level}</Badge>
-                      {level === student.level && (
-                        <span className="text-xs text-muted-foreground">({isRTL ? 'حالي' : 'actuel'})</span>
-                      )}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Feedback */}
           <div className="space-y-2">
@@ -383,7 +357,7 @@ function ChangeLevelDialog({
         setNewLevel('');
         onSuccess();
       } else {
-        toast.error(response.error || (isRTL ? 'خطأ' : 'Erreur'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch {
       toast.error(isRTL ? 'خطأ غير متوقع' : 'Erreur inattendue');
@@ -821,7 +795,6 @@ export default function ProfessorEvaluations() {
                     </div>
 
                     <div className={cn("flex items-center gap-2 shrink-0", isRTL && "flex-row-reverse")}>
-                      <ChangeLevelDialog student={student} isRTL={isRTL} onSuccess={loadData} />
                       <EvaluateStudentDialog student={student} isRTL={isRTL} onSuccess={loadData} />
                     </div>
                   </div>

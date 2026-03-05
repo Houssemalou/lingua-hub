@@ -25,12 +25,28 @@ import {
   Eraser,
   ChevronDown,
   FileImage,
+  UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+interface WhiteboardParticipant {
+  identity: string;
+  name: string;
+  role: string;
+}
 
 interface WhiteboardPanelProps {
   room: Room;
@@ -38,9 +54,10 @@ interface WhiteboardPanelProps {
   participantCount: number;
   onClose: () => void;
   roomId?: string;
+  participants?: WhiteboardParticipant[];
 }
 
-type WritingPermission = 'professor-only' | 'all';
+type WritingPermission = 'professor-only' | 'all' | 'specific-student';
 
 // tldraw store message type
 interface WhiteboardSyncMessage {
@@ -48,17 +65,23 @@ interface WhiteboardSyncMessage {
   records: TLRecord[];
   removed: string[];
   permissions: WritingPermission;
+  allowedStudentIdentity?: string;
+  allowedStudentName?: string;
 }
 
 interface WhiteboardPermissionMessage {
   type: 'whiteboard-permission';
   permissions: WritingPermission;
+  allowedStudentIdentity?: string;
+  allowedStudentName?: string;
 }
 
 interface WhiteboardSnapshotMessage {
   type: 'whiteboard-snapshot';
   snapshot: ReturnType<typeof getSnapshot>;
   permissions: WritingPermission;
+  allowedStudentIdentity?: string;
+  allowedStudentName?: string;
 }
 
 export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
@@ -67,14 +90,18 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   participantCount,
   onClose,
   roomId,
+  participants = [],
 }) => {
   const isMobile = useIsMobile();
+  const { isRTL } = useLanguage();
   const [store] = useState(() =>
     createTLStore({ shapeUtils: defaultShapeUtils })
   );
   const editorRef = useRef<any>(null);
   const [currentTool, setCurrentTool] = useState<string>('select');
   const [permissions, setPermissions] = useState<WritingPermission>('professor-only');
+  const [allowedStudentIdentity, setAllowedStudentIdentity] = useState<string | null>(null);
+  const [allowedStudentName, setAllowedStudentName] = useState<string | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(!isProfessor);
   const [connectedCount, setConnectedCount] = useState(participantCount);
   const [showParticipantMenu, setShowParticipantMenu] = useState(false);
@@ -82,16 +109,24 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   const isSyncingRef = useRef(false);
   const lastSentRef = useRef<number>(0);
 
+  // Filter to only students for the selector
+  const studentParticipants = participants.filter(p => p.role === 'student');
+
   storeRef.current = store;
 
   // Update read-only state based on permissions
   useEffect(() => {
     if (isProfessor) {
       setIsReadOnly(false);
+    } else if (permissions === 'all') {
+      setIsReadOnly(false);
+    } else if (permissions === 'specific-student') {
+      const myIdentity = room.localParticipant.identity;
+      setIsReadOnly(myIdentity !== allowedStudentIdentity);
     } else {
-      setIsReadOnly(permissions === 'professor-only');
+      setIsReadOnly(true);
     }
-  }, [permissions, isProfessor]);
+  }, [permissions, isProfessor, allowedStudentIdentity, room]);
 
   // When write permissions change, update the editor state and default tool
   useEffect(() => {
@@ -122,6 +157,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           isSyncingRef.current = true;
           loadSnapshot(storeRef.current, msg.snapshot);
           setPermissions(msg.permissions);
+          setAllowedStudentIdentity(msg.allowedStudentIdentity || null);
+          setAllowedStudentName(msg.allowedStudentName || null);
           // persist received snapshot locally
           try {
             if (roomId) sessionStorage.setItem(`whiteboard-snapshot:${roomId}`, JSON.stringify(msg.snapshot));
@@ -129,7 +166,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             // ignore
           }
           isSyncingRef.current = false;
-          toast.success('Tableau synchronisé');
+          toast.success(isRTL ? 'تمت مزامنة اللوحة' : 'Tableau synchronisé');
         } else if (data.type === 'whiteboard-sync') {
           const msg = data as WhiteboardSyncMessage;
           if (isSyncingRef.current) return;
@@ -143,15 +180,26 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             }
           });
           setPermissions(msg.permissions);
+          setAllowedStudentIdentity(msg.allowedStudentIdentity || null);
+          setAllowedStudentName(msg.allowedStudentName || null);
           isSyncingRef.current = false;
         } else if (data.type === 'whiteboard-permission') {
           const msg = data as WhiteboardPermissionMessage;
           setPermissions(msg.permissions);
+          setAllowedStudentIdentity(msg.allowedStudentIdentity || null);
+          setAllowedStudentName(msg.allowedStudentName || null);
           if (!isProfessor) {
             if (msg.permissions === 'all') {
-              toast.success('Le professeur vous autorise à écrire sur le tableau');
+              toast.success(isRTL ? 'سمح لك الأستاذ بالكتابة على اللوحة' : 'Le professeur vous autorise à écrire sur le tableau');
+            } else if (msg.permissions === 'specific-student') {
+              const myIdentity = room.localParticipant.identity;
+              if (myIdentity === msg.allowedStudentIdentity) {
+                toast.success(isRTL ? 'منحك الأستاذ صلاحية الكتابة' : 'Le professeur vous a donné la main pour écrire');
+              } else {
+                toast(isRTL ? `${msg.allowedStudentName || 'طالب'} لديه صلاحية الكتابة` : `${msg.allowedStudentName || 'Un élève'} a la main pour écrire`);
+              }
             } else {
-              toast('Mode lecture activé');
+              toast(isRTL ? 'تم تفعيل وضع القراءة' : 'Mode lecture activé');
             }
           }
         }
@@ -164,7 +212,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     return () => {
       room.off('dataReceived', handleDataReceived);
     };
-  }, [room, isProfessor]);
+  }, [room, isProfessor, isRTL]);
 
   // Load persisted snapshot when opening the whiteboard
   useEffect(() => {
@@ -206,6 +254,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           records,
           removed,
           permissions,
+          allowedStudentIdentity: allowedStudentIdentity || undefined,
+          allowedStudentName: allowedStudentName || undefined,
         };
 
         try {
@@ -221,7 +271,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     );
 
     return unsubscribe;
-    }, [store, room, permissions, isReadOnly]);
+    }, [store, room, permissions, isReadOnly, allowedStudentIdentity, allowedStudentName]);
 
     // Persist snapshot locally on store changes (throttled)
     useEffect(() => {
@@ -255,6 +305,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           type: 'whiteboard-snapshot',
           snapshot,
           permissions,
+          allowedStudentIdentity: allowedStudentIdentity || undefined,
+          allowedStudentName: allowedStudentName || undefined,
         };
         room.localParticipant.publishData(
           new TextEncoder().encode(JSON.stringify(msg)),
@@ -265,16 +317,19 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, [isProfessor, store, room, permissions]);
+  }, [isProfessor, store, room, permissions, allowedStudentIdentity, allowedStudentName]);
 
-  const togglePermissions = useCallback(() => {
-    const next: WritingPermission = permissions === 'professor-only' ? 'all' : 'professor-only';
+  const setPermissionMode = useCallback((next: WritingPermission, studentIdentity?: string, studentName?: string) => {
     setPermissions(next);
+    setAllowedStudentIdentity(studentIdentity || null);
+    setAllowedStudentName(studentName || null);
 
     // Broadcast permission change
     const msg: WhiteboardPermissionMessage = {
       type: 'whiteboard-permission',
       permissions: next,
+      allowedStudentIdentity: studentIdentity,
+      allowedStudentName: studentName,
     };
     try {
       room.localParticipant.publishData(
@@ -285,12 +340,14 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       console.error('Error sending permission update', e);
     }
 
-    toast.success(
-      next === 'all'
-        ? 'Tous les élèves peuvent maintenant écrire'
-        : 'Seul le professeur peut écrire'
-    );
-  }, [permissions, room]);
+    if (next === 'specific-student') {
+      toast.success(isRTL ? `${studentName || 'طالب'} يمكنه الكتابة الآن` : `${studentName || 'Élève'} peut maintenant écrire`);
+    } else if (next === 'professor-only') {
+      toast.success(isRTL ? 'الأستاذ فقط يمكنه الكتابة' : 'Seul le professeur peut écrire');
+    } else {
+      toast.success(isRTL ? 'يمكن لجميع الطلاب الكتابة الآن' : 'Tous les élèves peuvent maintenant écrire');
+    }
+  }, [room, isRTL]);
 
   // Export whiteboard pages as a multi‑page PDF (one PDF page per tldraw page)
   const handleExport = useCallback(async () => {
@@ -299,11 +356,11 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       const pages = originalSnapshot?.document?.pages ? Object.keys(originalSnapshot.document.pages) : [];
 
       if (pages.length === 0) {
-        toast.error('Aucune page à exporter');
+        toast.error(isRTL ? 'لا توجد صفحات للتصدير' : 'Aucune page à exporter');
         return;
       }
 
-      toast('Génération du PDF — veuillez patienter...');
+      toast(isRTL ? 'جارٍ إنشاء ملف PDF — يرجى الانتظار...' : 'Génération du PDF — veuillez patienter...');
 
       let doc: any = null;
       // Prevent broadcasting while we temporarily switch pages locally
@@ -410,7 +467,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
       if (doc) {
         doc.save(`tableau-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`);
-        toast.success('Export PDF réussi');
+        toast.success(isRTL ? 'تم تصدير PDF بنجاح' : 'Export PDF réussi');
         return;
       }
 
@@ -426,7 +483,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         a.download = `tableau-${Date.now()}.svg`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Tableau exporté en SVG (fallback)');
+        toast.success(isRTL ? 'تم تصدير اللوحة بصيغة SVG' : 'Tableau exporté en SVG (fallback)');
         return;
       }
 
@@ -438,15 +495,15 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       a.download = `tableau-${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Tableau exporté (JSON fallback)');
+      toast.success(isRTL ? 'تم تصدير اللوحة بصيغة JSON' : 'Tableau exporté (JSON fallback)');
     } catch (e) {
       console.error('Export error', e);
       isSyncingRef.current = false;
-      toast.error('Erreur lors de l\'export');
+      toast.error(isRTL ? 'خطأ أثناء التصدير' : 'Erreur lors de l\'export');
     }
-  }, [store]);
+  }, [store, isRTL]);
 
-  const canWrite = isProfessor || permissions === 'all';
+  const canWrite = isProfessor || permissions === 'all' || (permissions === 'specific-student' && room.localParticipant.identity === allowedStudentIdentity);
 
   return (
     <div className="relative flex flex-col w-full h-full bg-[#f8f9fa] overflow-hidden">
@@ -457,7 +514,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-semibold text-gray-800 text-sm sm:text-base truncate">
-              Tableau Blanc
+              {isRTL ? 'اللوحة البيضاء' : 'Tableau Blanc'}
             </span>
           </div>
           <Badge
@@ -468,7 +525,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             )}
           >
             {canWrite ? <Pencil className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-            {canWrite ? 'Écriture' : 'Lecture'}
+            {canWrite ? (isRTL ? 'كتابة' : 'Écriture') : (isRTL ? 'قراءة' : 'Lecture')}
           </Badge>
           <Badge variant="outline" className="text-xs hidden sm:flex gap-1 items-center border-gray-300 text-gray-600">
             <Users className="w-3 h-3" />
@@ -494,7 +551,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
                   className="h-8 text-xs rounded-full gap-1"
                 >
                   <Pencil className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Stylo</span>
+                  <span className="hidden sm:inline">{isRTL ? 'قلم' : 'Stylo'}</span>
                 </Button>
               </motion.div>
               <motion.div whileTap={{ scale: 0.95 }}>
@@ -510,32 +567,71 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
                   className="h-8 text-xs rounded-full gap-1"
                 >
                   <Eraser className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Gomme</span>
+                  <span className="hidden sm:inline">{isRTL ? 'ممحاة' : 'Gomme'}</span>
                 </Button>
               </motion.div>
             </div>
           )}
-          {/* Professor-only: toggle permissions */}
+          {/* Professor-only: permission selector dropdown */}
           {isProfessor && (
-            <motion.div whileTap={{ scale: 0.95 }}>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={togglePermissions}
-                className={cn(
-                  "gap-1.5 text-xs h-8 rounded-full border transition-all",
-                  permissions === 'all'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
-                    : 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100'
-                )}
-              >
-                {permissions === 'all' ? (
-                  <><Unlock className="w-3.5 h-3.5" /><span className="hidden sm:inline">Collaboratif</span></>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <motion.div whileTap={{ scale: 0.95 }}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={cn(
+                      "gap-1.5 text-xs h-8 rounded-full border transition-all",
+                      permissions === 'all'
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                        : permissions === 'specific-student'
+                          ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                          : 'bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100'
+                    )}
+                  >
+                    {permissions === 'all' ? (
+                      <><Unlock className="w-3.5 h-3.5" /><span className="hidden sm:inline">{isRTL ? 'تعاوني' : 'Collaboratif'}</span></>
+                    ) : permissions === 'specific-student' ? (
+                      <><UserCircle className="w-3.5 h-3.5" /><span className="hidden sm:inline truncate max-w-[100px]">{allowedStudentName || (isRTL ? 'طالب' : 'Élève')}</span></>
+                    ) : (
+                      <><Lock className="w-3.5 h-3.5" /><span className="hidden sm:inline">{isRTL ? 'مقيّد' : 'Restreint'}</span></>
+                    )}
+                    <ChevronDown className="w-3 h-3 opacity-60" />
+                  </Button>
+                </motion.div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs text-gray-500">{isRTL ? 'وضع الكتابة' : "Mode d'écriture"}</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => setPermissionMode('professor-only')}
+                  className={cn("gap-2 text-sm", permissions === 'professor-only' && 'bg-orange-50 font-medium')}
+                >
+                  <Lock className="w-4 h-4 text-orange-600" />
+                  {isRTL ? 'الأستاذ فقط' : 'Professeur seul'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-xs text-gray-500">{isRTL ? 'منح صلاحية الكتابة لطالب' : 'Donner la main à un élève'}</DropdownMenuLabel>
+                {studentParticipants.length === 0 ? (
+                  <DropdownMenuItem disabled className="text-xs text-gray-400 italic">
+                    {isRTL ? 'لا يوجد طلاب متصلين' : 'Aucun élève connecté'}
+                  </DropdownMenuItem>
                 ) : (
-                  <><Lock className="w-3.5 h-3.5" /><span className="hidden sm:inline">Restreint</span></>
+                  studentParticipants.map((student) => (
+                    <DropdownMenuItem
+                      key={student.identity}
+                      onClick={() => setPermissionMode('specific-student', student.identity, student.name)}
+                      className={cn(
+                        "gap-2 text-sm",
+                        permissions === 'specific-student' && allowedStudentIdentity === student.identity && 'bg-blue-50 font-medium'
+                      )}
+                    >
+                      <UserCircle className="w-4 h-4 text-blue-600" />
+                      {student.name}
+                    </DropdownMenuItem>
+                  ))
                 )}
-              </Button>
-            </motion.div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Export */}
@@ -548,7 +644,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
               className="gap-1.5 text-xs h-8 rounded-full"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Exporter</span>
+              <span className="hidden sm:inline">{isRTL ? 'تصدير' : 'Exporter'}</span>
             </Button>
           </motion.div>*/}
 
@@ -576,7 +672,10 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             className="absolute top-14 left-1/2 -translate-x-1/2 z-20 bg-orange-500 text-white text-xs px-4 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 pointer-events-none"
           >
             <Eye className="w-3.5 h-3.5" />
-            Mode visualisation — Le professeur contrôle le tableau
+            {permissions === 'specific-student'
+              ? (isRTL ? `وضع المشاهدة — ${allowedStudentName || 'طالب'} لديه صلاحية الكتابة` : `Mode visualisation — ${allowedStudentName || 'Un élève'} a la main`)
+              : (isRTL ? 'وضع المشاهدة — الأستاذ يتحكم في اللوحة' : 'Mode visualisation — Le professeur contrôle le tableau')
+            }
           </motion.div>
         )}
       </AnimatePresence>
@@ -612,12 +711,17 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       <div className="flex items-center justify-between px-3 py-1.5 bg-white border-t border-gray-200 text-xs text-gray-500 shrink-0">
         <span className="flex items-center gap-1">
           <div className={cn("w-1.5 h-1.5 rounded-full", canWrite ? 'bg-emerald-500' : 'bg-orange-400')} />
-          {canWrite ? 'Vous pouvez dessiner' : 'Visualisation uniquement'}
+          {canWrite ? (isRTL ? 'يمكنك الرسم' : 'Vous pouvez dessiner') : (isRTL ? 'مشاهدة فقط' : 'Visualisation uniquement')}
         </span>
         <span className="flex items-center gap-1">
           <Users className="w-3 h-3" />
-          {participantCount} participant{participantCount > 1 ? 's' : ''}
-          {permissions === 'all' ? ' · Collaboratif' : ' · Professeur seul'}
+          {participantCount} {isRTL ? 'مشارك' : (participantCount > 1 ? 'participants' : 'participant')}
+          {permissions === 'all'
+            ? (isRTL ? ' · تعاوني' : ' · Collaboratif')
+            : permissions === 'specific-student'
+              ? ` · ${allowedStudentName || (isRTL ? 'طالب' : 'Élève')}`
+              : (isRTL ? ' · الأستاذ فقط' : ' · Professeur seul')
+          }
         </span>
       </div>
     </div>

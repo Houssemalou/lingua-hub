@@ -79,26 +79,9 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
       continue: 'متابعة',
       close: 'إغلاق'
     },
-    en: {
-      attempt: 'Attempt',
-      of: 'of',
-      remaining: 'Time remaining',
-      selectAnswer: 'Select your answer',
-      submit: 'Submit',
-      tryAgain: 'Try again',
-      correct: 'Correct!',
-      incorrect: 'Incorrect',
-      pointsEarned: 'Points earned',
-      noPoints: 'No points',
-      firstAttempt: 'Amazing! First attempt!',
-      secondAttempt: 'Good! Second attempt!',
-      thirdAttempt: 'The correct answer was:',
-      continue: 'Continue',
-      close: 'Close'
-    }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   useEffect(() => {
     if (isOpen && challenge) {

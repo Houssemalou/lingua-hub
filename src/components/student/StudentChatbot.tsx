@@ -297,11 +297,11 @@ export function StudentChatbot({
         setIsRecording(true);
       } catch (error) {
         console.error('Failed to enable microphone:', error);
-        addMessage('Erreur d\'activation du microphone. Vérifiez les permissions.', false);
+        addMessage(language === 'ar' ? 'خطأ في تفعيل الميكروفون. تحقق من الأذونات.' : 'Erreur d\'activation du microphone. Vérifiez les permissions.', false);
       }
     } catch (error) {
       console.error('Failed to connect to room:', error);
-      addMessage('Erreur de connexion. Veuillez réessayer.', false);
+      addMessage(language === 'ar' ? 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.' : 'Erreur de connexion. Veuillez réessayer.', false);
     } finally {
       setIsConnecting(false);
     }
@@ -366,7 +366,7 @@ export function StudentChatbot({
         if (prev <= 1) {
           // Time's up - close the session
           closeRoom();
-          addMessage('La session de 10 minutes est terminée. Merci d\'avoir participé !', false);
+          addMessage(language === 'ar' ? 'انتهت جلسة الـ 10 دقائق. شكراً على مشاركتك!' : 'La session de 10 minutes est terminée. Merci d\'avoir participé !', false);
           return 0;
         }
         return prev - 1;
@@ -374,7 +374,7 @@ export function StudentChatbot({
     }, 1000);
     
     setSessionTimer(timer);
-  }, [closeRoom, addMessage, sessionTimer]);
+  }, [closeRoom, addMessage, sessionTimer, language]);
 
   const handleOpenChat = useCallback(() => {
     setIsChatOpen(true);
@@ -394,7 +394,7 @@ export function StudentChatbot({
       switch (data.type) {
         case 'session_summary':
           setSessionSummary(data.summary);
-          addMessage('Résumé de la session disponible pour téléchargement.', false, 'summary');
+          addMessage(language === 'ar' ? 'ملخص الجلسة متاح للتحميل.' : 'Résumé de la session disponible pour téléchargement.', false, 'summary');
           break;
 
         case 'transcription':
@@ -406,7 +406,7 @@ export function StudentChatbot({
     } catch (error) {
       console.error('Failed to parse data track message:', error);
     }
-  }, [addMessage]);
+  }, [addMessage, language]);
 
   const handleParticipantConnected = useCallback((participant: RemoteParticipant) => {
     // Participant joined - no message added
@@ -429,12 +429,12 @@ export function StudentChatbot({
         processMessage(data);
       } else if (data.type === 'session_summary') {
         setSessionSummary(data.summary);
-        addMessage('Résumé de la session disponible pour téléchargement.', false, 'summary');
+        addMessage(language === 'ar' ? 'ملخص الجلسة متاح للتحميل.' : 'Résumé de la session disponible pour téléchargement.', false, 'summary');
       }
     } catch (e) {
       console.error('Received message:', (e as Error)?.message || e);
     }
-  }, [processMessage, addMessage]);
+  }, [processMessage, addMessage, language]);
 
   const handleTranscription = useCallback((transcription: TranscriptionSegment, participant?: Participant) => {
     console.log('Received transcription:', transcription);
@@ -531,19 +531,19 @@ const downloadSummary = useCallback(async () => {
 
       // Template HTML professionnel avec support arabe
       const htmlContent = `
-        <div style="width: 100%; max-width: 800px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: ltr;">
+        <div style="width: 100%; max-width: 800px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: ${language === 'ar' ? 'rtl' : 'ltr'};">
           <!-- En-tête -->
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 0 0 20px 20px;">
             <h1 style="margin: 0; font-size: 32px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Lingua Hub</h1>
-            <p style="margin: 10px 0 0 0; font-size: 18px; opacity: 0.9;">Résumé de Session d'Apprentissage</p>
+            <p style="margin: 10px 0 0 0; font-size: 18px; opacity: 0.9;">${language === 'ar' ? 'ملخص جلسة التعلم' : "Résumé de Session d'Apprentissage"}</p>
           </div>
 
           <!-- Informations générales -->
           <div style="padding: 30px; background: #f8f9fa;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
               <div style="flex: 1;">
-                <h2 style="color: #2c3e50; font-size: 24px; margin: 0 0 10px 0; border-bottom: 3px solid #667eea; padding-bottom: 5px;">Session Details</h2>
-                <p style="margin: 5px 0; color: #666;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+                <h2 style="color: #2c3e50; font-size: 24px; margin: 0 0 10px 0; border-bottom: 3px solid #667eea; padding-bottom: 5px;">${language === 'ar' ? 'تفاصيل الجلسة' : 'Session Details'}</h2>
+                <p style="margin: 5px 0; color: #666;"><strong>${language === 'ar' ? 'التاريخ:' : 'Date:'}</strong> ${new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'fr-FR')}</p>
               </div>
               <div style="text-align: right;">
                 <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">📚</div>
@@ -555,9 +555,9 @@ const downloadSummary = useCallback(async () => {
           <div style="padding: 30px; border-left: 5px solid #667eea; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0; display: flex; align-items: center;">
               <span style="background: #667eea; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">🎯</span>
-              Objectif de la Session
+              ${language === 'ar' ? 'هدف الجلسة' : 'Objectif de la Session'}
             </h3>
-            <p style="margin: 0; color: #555; font-size: 16px; line-height: 1.6;">Apprentissage et pratique de nouveaux mots en arabe et français</p>
+            <p style="margin: 0; color: #555; font-size: 16px; line-height: 1.6;">${language === 'ar' ? 'تعلم وممارسة كلمات جديدة بالعربية والفرنسية' : 'Apprentissage et pratique de nouveaux mots en arabe et français'}</p>
           </div>
 
           <!-- Mots appris (groupés) -->
@@ -565,7 +565,7 @@ const downloadSummary = useCallback(async () => {
           <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
               <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">🗂️</span>
-              Mots Appris (par groupe)
+              ${language === 'ar' ? 'الكلمات المكتسبة (حسب المجموعة)' : 'Mots Appris (par groupe)'}
             </h3>
             <div style="display:flex; flex-direction:column; gap:12px;">
               ${sessionSummary.learnedGroups.map(g => `
@@ -585,8 +585,8 @@ const downloadSummary = useCallback(async () => {
           <!-- Pied de page -->
           <div style="background: #2c3e50; color: white; padding: 30px; text-align: center; margin-top: 40px;">
             <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-              <p style="margin: 0; font-size: 14px; opacity: 0.8;">Document généré automatiquement par Lingua Hub</p>
-              <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.6;">Plateforme d'apprentissage des langues • ${new Date().getFullYear()}</p>
+              <p style="margin: 0; font-size: 14px; opacity: 0.8;">${language === 'ar' ? 'وثيقة تم إنشاؤها تلقائياً بواسطة Lingua Hub' : 'Document généré automatiquement par Lingua Hub'}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.6;">${language === 'ar' ? 'منصة تعلم اللغات' : "Plateforme d'apprentissage des langues"} • ${new Date().getFullYear()}</p>
             </div>
           </div>
         </div>
@@ -642,12 +642,12 @@ const downloadSummary = useCallback(async () => {
       // Fallback vers l'ancienne méthode si html2canvas échoue
       const doc = new jsPDF();
       doc.setFontSize(20);
-      doc.text('Résumé de Session d\'Apprentissage', 20, 30);
+      doc.text(language === 'ar' ? 'ملخص جلسة التعلم' : 'Résumé de Session d\'Apprentissage', 20, 30);
       doc.setFontSize(12);
-      doc.text(`Objectif: ${sessionSummary.sessionObjective || 'Non spécifié'}`, 20, 50);
+      doc.text(`${language === 'ar' ? 'الهدف' : 'Objectif'}: ${sessionSummary.sessionObjective || (language === 'ar' ? 'غير محدد' : 'Non spécifié')}`, 20, 50);
 
       if (sessionSummary.learnedGroups && sessionSummary.learnedGroups.length > 0) {
-        doc.text('Mots appris (par groupe):', 20, 80);
+        doc.text(language === 'ar' ? 'الكلمات المكتسبة (حسب المجموعة):' : 'Mots appris (par groupe):', 20, 80);
         let y = 90;
         sessionSummary.learnedGroups.forEach((g) => {
           doc.setFontSize(11);
@@ -663,7 +663,7 @@ const downloadSummary = useCallback(async () => {
 
       doc.save(`resume-session-simple-${new Date().toISOString().split('T')[0]}.pdf`);
     }
-  }, [sessionSummary]);
+  }, [sessionSummary, language]);
 
   const toggleRecording = useCallback(async () => {
     if (!roomRef.current) return;
@@ -733,8 +733,8 @@ const downloadSummary = useCallback(async () => {
                   <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-sm truncate">Assistant IA</h3>
-                  <p className="text-xs opacity-90">Niveau {level}</p>
+                  <h3 className="font-semibold text-sm truncate">{language === 'ar' ? 'المساعد الذكي' : 'Assistant IA'}</h3>
+                  <p className="text-xs opacity-90">{language === 'ar' ? `المستوى ${level}` : `Niveau ${level}`}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
@@ -760,7 +760,7 @@ const downloadSummary = useCallback(async () => {
                       ? "hover:bg-red-500/20 text-red-400"
                       : "text-gray-400 cursor-not-allowed"
                   )}
-                  title="Clôturer la discussion"
+                  title={language === 'ar' ? 'إنهاء المحادثة' : 'Clôturer la discussion'}
                 >
                   <PhoneOff className="w-4 h-4" />
                 </motion.button>
@@ -790,7 +790,7 @@ const downloadSummary = useCallback(async () => {
                 isConnected ? "bg-green-400" : isConnecting ? "bg-yellow-400 animate-pulse" : "bg-red-400"
               )} />
               <span className="text-xs text-gray-600">
-                {isConnected ? "Connecté" : isConnecting ? "Connexion..." : "Déconnecté"}
+                {isConnected ? (language === 'ar' ? "متصل" : "Connecté") : isConnecting ? (language === 'ar' ? "جارٍ الاتصال..." : "Connexion...") : (language === 'ar' ? "غير متصل" : "Déconnecté")}
               </span>
             </div>
 
@@ -802,8 +802,8 @@ const downloadSummary = useCallback(async () => {
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
                       <Bot className="w-6 h-6 text-blue-500" />
                     </div>
-                    <p className="text-sm text-gray-500 mb-1">Bienvenue !</p>
-                    <p className="text-xs text-gray-400">Posez-moi vos questions sur l'apprentissage du {language}</p>
+                    <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'مرحباً!' : 'Bienvenue !'}</p>
+                    <p className="text-xs text-gray-400">{language === 'ar' ? 'اطرح عليّ أسئلتك حول تعلم اللغة' : `Posez-moi vos questions sur l'apprentissage du ${language}`}</p>
                   </div>
                 ) : (
                   <AnimatePresence>
@@ -822,7 +822,7 @@ const downloadSummary = useCallback(async () => {
                                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                                   <span className="text-white text-xs">📊</span>
                                 </div>
-                                <h4 className="font-semibold text-gray-900 text-sm">Rapport de Session d'Apprentissage</h4>
+                                <h4 className="font-semibold text-gray-900 text-sm">{language === 'ar' ? 'تقرير جلسة التعلم' : "Rapport de Session d'Apprentissage"}</h4>
                               </div>
                               <div className="flex items-center gap-2">
                                 <button
@@ -830,7 +830,7 @@ const downloadSummary = useCallback(async () => {
                                   className="flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition-colors text-xs"
                                 >
                                   <Download className="w-3 h-3" />
-                                  Télécharger PDF
+                                  {language === 'ar' ? 'تحميل PDF' : 'Télécharger PDF'}
                                 </button>
                               </div>
                             </div>
@@ -838,13 +838,13 @@ const downloadSummary = useCallback(async () => {
                             {/* Learned Vocabulary (grouped) */}
                             {sessionSummary.learnedGroups && sessionSummary.learnedGroups.length > 0 && (
                               <div className="mb-4">
-                                <h5 className="text-sm font-medium text-gray-700 mb-3">Mots Appris par groupe</h5>
+                                <h5 className="text-sm font-medium text-gray-700 mb-3">{language === 'ar' ? 'الكلمات المكتسبة حسب المجموعة' : 'Mots Appris par groupe'}</h5>
                                 <div className="space-y-3">
                                   {sessionSummary.learnedGroups.map((g, gi) => (
                                     <div key={gi} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                                       <div className="flex items-center justify-between mb-2">
                                         <div className="font-semibold text-gray-800">{g.group}</div>
-                                        <div className="text-xs text-gray-500">{(g.words || []).length} mots</div>
+                                        <div className="text-xs text-gray-500">{(g.words || []).length} {language === 'ar' ? 'كلمات' : 'mots'}</div>
                                       </div>
                                       <div className="flex flex-wrap gap-2">
                                         {(g.words || []).map((w, wi) => (
@@ -866,7 +866,7 @@ const downloadSummary = useCallback(async () => {
 
                             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                               <p className="text-xs text-gray-600 text-center">
-                                🎯 <strong>Résumé de session généré sur demande</strong>
+                                🎯 <strong>{language === 'ar' ? 'ملخص الجلسة تم إنشاؤه عند الطلب' : 'Résumé de session généré sur demande'}</strong>
                               </p>
                             </div>
                           </motion.div>
@@ -898,7 +898,7 @@ const downloadSummary = useCallback(async () => {
                                 <p className="leading-relaxed break-words italic" style={isUser ? { direction: 'rtl' } : {}}>{message.content}</p>
                               </div>
                               <span className={cn("text-[10px] text-gray-400 mt-1", isUser && "text-right")}>
-                                {message.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                {message.timestamp.toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'fr-FR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                           </motion.div>
@@ -940,7 +940,7 @@ const downloadSummary = useCallback(async () => {
                               "text-[10px] text-gray-400 mt-1",
                               message.isUser && "text-right"
                             )}>
-                              {message.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                              {message.timestamp.toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'fr-FR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                         </motion.div>
@@ -958,22 +958,22 @@ const downloadSummary = useCallback(async () => {
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                   <button
                     className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition"
-                    onClick={() => { setCurrentMessage('Corriger ma prononciation'); setTimeout(sendMessage, 150); }}
+                    onClick={() => { setCurrentMessage(language === 'ar' ? 'صحح نطقي' : 'Corriger ma prononciation'); setTimeout(sendMessage, 150); }}
                   >
-                    Corriger prononciation
+                    {language === 'ar' ? 'تصحيح النطق' : 'Corriger prononciation'}
                   </button>
                   <button
                     className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition"
-                    onClick={() => { setCurrentMessage('Donne-moi un exercice de vocabulaire'); setTimeout(sendMessage, 150); }}
+                    onClick={() => { setCurrentMessage(language === 'ar' ? 'أعطني تمريناً في المفردات' : 'Donne-moi un exercice de vocabulaire'); setTimeout(sendMessage, 150); }}
                   >
-                    Exercice vocabulaire
+                    {language === 'ar' ? 'تمرين مفردات' : 'Exercice vocabulaire'}
                   </button>
                 </div>
 
                 <div className="flex gap-2 items-center min-w-0">
                   <button
                     onClick={toggleRecording}
-                    aria-label="Activer le micro"
+                    aria-label={language === 'ar' ? 'تفعيل الميكروفون' : 'Activer le micro'}
                     className={cn(
                       "w-10 h-10 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
                       isRecording
@@ -988,21 +988,21 @@ const downloadSummary = useCallback(async () => {
                     value={currentMessage}
                     onChange={(e) => setCurrentMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Tapez votre message..."
-                    aria-label="Message"
+                    placeholder={language === 'ar' ? 'اكتب رسالتك...' : 'Tapez votre message...'}
+                    aria-label={language === 'ar' ? 'رسالة' : 'Message'}
                     className="flex-1 min-w-0 border border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-white rounded-full text-black text-sm placeholder:text-gray-400 px-4 py-2.5 sm:py-2 shadow-sm"
                   />
 
                   <button
                     onClick={sendMessage}
                     disabled={!currentMessage.trim()}
-                    aria-label="Envoyer"
+                    aria-label={language === 'ar' ? 'إرسال' : 'Envoyer'}
                     className="w-10 h-10 sm:w-auto sm:h-auto bg-gradient-to-r from-indigo-500 to-blue-500 disabled:from-gray-300 disabled:to-gray-300 text-white p-2.5 sm:p-2 rounded-full transition-shadow disabled:cursor-not-allowed shadow-sm hover:shadow-md flex-shrink-0 flex items-center justify-center"
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2 hidden sm:block">Appuyez sur Entrée pour envoyer • Suggestions rapides disponibles</p>
+                <p className="text-[10px] text-gray-400 mt-2 hidden sm:block">{language === 'ar' ? 'اضغط على Enter للإرسال • اقتراحات سريعة متاحة' : 'Appuyez sur Entrée pour envoyer • Suggestions rapides disponibles'}</p>
               </div>
             )}
           </motion.div>

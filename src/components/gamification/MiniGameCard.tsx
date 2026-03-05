@@ -39,9 +39,9 @@ export function MiniGameCard({ game, onPlay }: MiniGameCardProps) {
   };
 
   const difficultyLabels: Record<string, Record<string, string>> = {
-    easy: { fr: 'Facile', ar: 'سهل', en: 'Easy' },
-    medium: { fr: 'Moyen', ar: 'متوسط', en: 'Medium' },
-    hard: { fr: 'Difficile', ar: 'صعب', en: 'Hard' }
+    easy: { fr: 'Facile', ar: 'سهل' },
+    medium: { fr: 'Moyen', ar: 'متوسط' },
+    hard: { fr: 'Difficile', ar: 'صعب' }
   };
 
   return (
@@ -78,7 +78,7 @@ export function MiniGameCard({ game, onPlay }: MiniGameCardProps) {
               <h3 className="font-bold text-lg mb-1">{getName()}</h3>
               <div className={cn("flex items-center gap-2 flex-wrap", isRTL && "flex-row-reverse")}>
                 <Badge className={difficultyColors[game.difficulty]}>
-                  {difficultyLabels[game.difficulty][language] || difficultyLabels[game.difficulty].en}
+                  {difficultyLabels[game.difficulty][language] || difficultyLabels[game.difficulty].fr}
                 </Badge>
                 <Badge variant="secondary" className="flex items-center gap-1">
                   <Timer className="w-3 h-3" />

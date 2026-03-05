@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ScreenShareLayoutProps {
   screenShareParticipant: LiveKitParticipant;
@@ -21,6 +22,7 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
   participantName,
   isLocalSharing,
 }) => {
+  const { isRTL } = useLanguage();
   const [isPiPMinimized, setIsPiPMinimized] = React.useState(false);
 
   // Get screen share track
@@ -51,7 +53,7 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
         ) : (
           <div className="text-center text-white">
             <MonitorUp className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">En attente du partage d'écran...</p>
+            <p className="text-lg font-medium">{isRTL ? 'في انتظار مشاركة الشاشة...' : "En attente du partage d'écran..."}</p>
           </div>
         )}
       </div>
@@ -60,7 +62,7 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
       <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
         <Badge className="bg-blue-600/95 hover:bg-blue-600 text-white border-0 text-sm py-2 px-4 shadow-lg">
           <MonitorUp className="w-4 h-4 mr-2" />
-          {participantName} partage son écran
+          {isRTL ? `${participantName} يشارك شاشته` : `${participantName} partage son écran`}
         </Badge>
       </div>
 
@@ -108,7 +110,7 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
                 {!isPiPMinimized && (
                   <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
                     <span className="text-white text-xs font-medium bg-black/50 px-2 py-1 rounded">
-                      Vous
+                      {isRTL ? 'أنت' : 'Vous'}
                     </span>
                   </div>
                 )}

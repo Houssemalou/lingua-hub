@@ -37,6 +37,7 @@ import { RoomModel, CreateRoomDTO, StudentModel } from '@/models';
 import { toast } from 'sonner';
 import { StudentService } from '@/services/StudentService';
 import { canStartRoom, canJoinRoom, formatTimeUntilJoinable } from '@/lib/roomUtils';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 const container = {
   hidden: { opacity: 0 },
@@ -52,11 +53,9 @@ const item = {
 };
 
 // same lists as admin so professor can pick (school years)
-const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9'];
+const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13'];
 // languages/subjects kept per requirements
 const languages = ['Français', 'Anglais', 'Arabe', 'Allemand', 'Mathématiques', 'Science', 'Informatique'];
-// enabled values for level dropdown (matching the displayed strings)
-const levelEnabledLanguages = ['Français', 'Anglais', 'Arabe', 'Allemand'];
 
 
 export default function ProfessorSessions() {
@@ -64,6 +63,20 @@ export default function ProfessorSessions() {
   const { t, language, isRTL } = useLanguage();
   const navigate = useNavigate();
   const professor = user?.professor;
+
+  const getLanguageDisplay = (lang: string) => {
+    if (!isRTL) return lang;
+    const map: Record<string, string> = {
+      'Français': 'الفرنسية',
+      'Anglais': 'الإنجليزية',
+      'Arabe': 'العربية',
+      'Allemand': 'الألمانية',
+      'Mathématiques': 'الرياضيات',
+      'Science': 'العلوم',
+      'Informatique': 'المعلوميات',
+    };
+    return map[lang] || lang;
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -107,7 +120,7 @@ export default function ProfessorSessions() {
           if ((response as any).success) {
             setSessions((response as any).data?.data || []);
           } else {
-            toast.error((response as any).message || 'Failed to load sessions');
+            toast.error(getFriendlyErrorMessage((response as any).message, isRTL));
           }
         } else {
           setSessions((response as any)?.data || []);
@@ -159,13 +172,9 @@ export default function ProfessorSessions() {
     );
   };
 
-  const levelEnabled = levelEnabledLanguages.includes(roomLanguage);
-
-  // clear level state when disabled so payload stays empty
+  // Set default level when language changes if none selected
   useEffect(() => {
-    if (!levelEnabled) {
-      setRoomLevel('');
-    } else if (!roomLevel) {
+    if (!roomLevel) {
       setRoomLevel('YEAR1');
     }
   }, [roomLanguage]);
@@ -173,8 +182,8 @@ export default function ProfessorSessions() {
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!roomName || !roomLanguage || (levelEnabled && !roomLevel) || !scheduledAt) {
-      toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Please fill in all required fields');
+    if (!roomName || !roomLanguage || !roomLevel || !scheduledAt) {
+      toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
       return;
     }
 
@@ -189,7 +198,7 @@ export default function ProfessorSessions() {
       const payload: CreateRoomDTO = {
         name: roomName,
         language: roomLanguage,
-        level: levelEnabled ? (normalizeLevelToYear(roomLevel) as any) : ('' as any),
+        level: normalizeLevelToYear(roomLevel) as any,
         objective,
         scheduledAt,
         duration: Number(roomDuration),
@@ -218,10 +227,10 @@ export default function ProfessorSessions() {
         setSelectedStudents([]);
         setIsCreateDialogOpen(false);
       } else {
-        toast.error((res as any).message || (res as any).error || (isRTL ? 'فشل في إنشاء الجلسة' : 'Failed to create session'));
+        toast.error(getFriendlyErrorMessage((res as any).message || (res as any).error, isRTL));
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : (isRTL ? 'فشل في إنشاء الجلسة' : 'Failed to create session'));
+      toast.error(getFriendlyErrorMessage(err, isRTL));
       console.error('Create session error:', err);
     } finally {
       setCreating(false);
@@ -248,7 +257,7 @@ export default function ProfessorSessions() {
   };
 
   const handleStartAndJoinRoom = async (session: RoomModel) => {
-    const startCheck = canStartRoom(session);
+    const startCheck = canStartRoom(session, isRTL);
     if (!startCheck.canStart) {
       toast.error(startCheck.reason);
       return;
@@ -258,20 +267,20 @@ export default function ProfessorSessions() {
       // Start the room
       const response = await RoomService.startSession(session.id);
       if (response && response.success) {
-        toast.success(isRTL ? 'تم بدء الجلسة بنجاح!' : 'Session started successfully!');
+        toast.success(isRTL ? 'تم بدء الجلسة بنجاح!' : 'Session démarrée avec succès !');
         // Navigate to room
         navigate(`/professor/room/${session.id}`);
       } else {
-        toast.error(response.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch (err) {
       console.error('Error starting room:', err);
-      toast.error(isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session');
+      toast.error(getFriendlyErrorMessage(err, isRTL));
     }
   };
 
   const handleJoinRoom = (session: RoomModel) => {
-    const joinCheck = canJoinRoom(session);
+    const joinCheck = canJoinRoom(session, isRTL);
     if (!joinCheck.canJoin) {
       toast.error(joinCheck.reason);
       return;
@@ -282,7 +291,7 @@ export default function ProfessorSessions() {
   const handleViewRecording = async (session: RoomModel) => {
     const roomName = session.livekitRoomName;
     if (!roomName) {
-      toast.error(isRTL ? 'لا يوجد اسم غرفة لايف كيت' : 'No LiveKit room name available');
+      toast.error(isRTL ? 'لا يوجد اسم غرفة لايف كيت' : 'Aucun nom de salle LiveKit disponible');
       return;
     }
     setSelectedSessionName(session.name);
@@ -366,21 +375,21 @@ export default function ProfessorSessions() {
                 <Input id="name" placeholder={isRTL ? 'مثال: نادي المحادثة الإسبانية' : 'ex: Club de conversation espagnol'} required value={roomName} onChange={(e) => setRoomName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="language">{isRTL ? 'اللغة' : 'Langue'}</Label>
+                <Label htmlFor="language">{isRTL ? 'المادة' : 'Matière'}</Label>
                 <Select value={roomLanguage} onValueChange={setRoomLanguage} required>
                   <SelectTrigger>
-                    <SelectValue placeholder={isRTL ? 'اختر لغة' : 'Sélectionner une langue'} />
+                    <SelectValue placeholder={isRTL ? 'اختر مادة' : 'Choisir matière'} />
                   </SelectTrigger>
                   <SelectContent>
                     {languages.map((lang) => (
-                      <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                      <SelectItem key={lang} value={lang}>{getLanguageDisplay(lang)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="level">{isRTL ? 'المستوى' : 'Niveau'}</Label>
-                <Select value={roomLevel} onValueChange={setRoomLevel} required disabled={!levelEnabled}>
+                <Select value={roomLevel} onValueChange={setRoomLevel} required>
                   <SelectTrigger>
                     <SelectValue placeholder={isRTL ? 'اختر مستوى' : 'Sélectionner un niveau'} />
                   </SelectTrigger>
@@ -533,8 +542,8 @@ export default function ProfessorSessions() {
           </>
         ) : (
           filteredSessions.map((session) => {
-            const startCheck = canStartRoom(session);
-            const joinCheck = canJoinRoom(session);
+            const startCheck = canStartRoom(session, isRTL);
+            const joinCheck = canJoinRoom(session, isRTL);
             const statusLower = session.status.toLowerCase();
             
             return (
@@ -614,14 +623,14 @@ export default function ProfessorSessions() {
                         {startCheck.canStart ? (
                           <>
                             <DoorOpen className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
-                            {isRTL ? 'بدء الجلسة' : 'Start Session'}
+                            {isRTL ? 'بدء الجلسة' : 'Démarrer la session'}
                           </>
                         ) : (
                           <>
                             <Clock className="w-4 h-4" />
                             {isRTL
                               ? `متاح بعد ${startCheck.minutesLeft} د`
-                              : formatTimeUntilJoinable(session)}
+                              : formatTimeUntilJoinable(session, isRTL)}
                           </>
                         )}
                       </Button>
@@ -636,7 +645,7 @@ export default function ProfessorSessions() {
                         variant="live"
                       >
                         <Play className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
-                        {isRTL ? 'انضم الآن' : 'Join Now'}
+                        {isRTL ? 'انضم الآن' : 'Rejoindre maintenant'}
                       </Button>
                     )}
                     {statusLower === 'completed' && (
@@ -661,7 +670,7 @@ export default function ProfessorSessions() {
                           variant="secondary"
                         >
                           <Eye className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
-                          {isRTL ? 'عرض الملخص' : 'View Summary'}
+                          {isRTL ? 'عرض الملخص' : 'Voir le résumé'}
                         </Button>
                       </>
                     )}

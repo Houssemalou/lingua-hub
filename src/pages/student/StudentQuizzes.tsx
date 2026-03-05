@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 const container = {
   hidden: { opacity: 0 },
@@ -136,7 +137,7 @@ export default function StudentQuizzes() {
         toast.success(isRTL ? 'تم إرسال الاختبار!' : 'Quiz soumis avec succès !');
         fetchData();
       } else {
-        toast.error(response.error || (isRTL ? 'فشل إرسال الاختبار' : 'Erreur lors de la soumission'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
         setViewMode('list');
       }
     } catch {

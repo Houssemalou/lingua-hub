@@ -5,7 +5,7 @@ export interface Student {
   avatar: string;
   nickname: string;
   bio: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
   joinedAt: string;
   skills: {
     pronunciation: number;
@@ -16,6 +16,7 @@ export interface Student {
   totalSessions: number;
   hoursLearned: number;
   createdBy?: string;
+  premiumExpiresAt?: string;
 }
 
 export interface Professor {
@@ -28,7 +29,6 @@ export interface Professor {
   specialization: string;
   joinedAt: string;
   totalSessions: number;
-  rating: number;
   createdBy?: string;
 }
 
@@ -36,7 +36,7 @@ export interface Room {
   id: string;
   name: string;
   language: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
   objective: string;
   scheduledAt: string;
   duration: number; // in minutes
@@ -54,7 +54,7 @@ export interface Session {
   roomId: string;
   roomName: string;
   language: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
   objective: string;
   scheduledAt: string;
   duration: number;

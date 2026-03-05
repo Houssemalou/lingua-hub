@@ -11,12 +11,12 @@ import { toast } from 'sonner';
 import { AccessTokenGenerator } from '@/components/admin/AccessTokenGenerator';
 
 const colorPresets = [
-  { name: 'Bleu Professionnel', primary: '231 48% 48%', sidebar: '222 47% 11%', accent: '174 72% 46%' },
-  { name: 'Vert Nature', primary: '142 71% 45%', sidebar: '160 30% 15%', accent: '142 71% 45%' },
-  { name: 'Violet Royal', primary: '270 50% 50%', sidebar: '270 30% 15%', accent: '280 60% 60%' },
-  { name: 'Orange Dynamique', primary: '25 95% 53%', sidebar: '20 30% 12%', accent: '38 92% 50%' },
-  { name: 'Rose Moderne', primary: '330 80% 60%', sidebar: '330 25% 15%', accent: '340 75% 55%' },
-  { name: 'Turquoise Frais', primary: '180 60% 45%', sidebar: '180 30% 12%', accent: '170 70% 50%' },
+  { name: 'Bleu Professionnel', nameAr: 'أزرق احترافي', primary: '231 48% 48%', sidebar: '222 47% 11%', accent: '174 72% 46%' },
+  { name: 'Vert Nature', nameAr: 'أخضر طبيعي', primary: '142 71% 45%', sidebar: '160 30% 15%', accent: '142 71% 45%' },
+  { name: 'Violet Royal', nameAr: 'بنفسجي ملكي', primary: '270 50% 50%', sidebar: '270 30% 15%', accent: '280 60% 60%' },
+  { name: 'Orange Dynamique', nameAr: 'برتقالي ديناميكي', primary: '25 95% 53%', sidebar: '20 30% 12%', accent: '38 92% 50%' },
+  { name: 'Rose Moderne', nameAr: 'وردي عصري', primary: '330 80% 60%', sidebar: '330 25% 15%', accent: '340 75% 55%' },
+  { name: 'Turquoise Frais', nameAr: 'تركوازي منعش', primary: '180 60% 45%', sidebar: '180 30% 12%', accent: '170 70% 50%' },
 ];
 
 const AdminPlatformSettings = () => {
@@ -98,7 +98,7 @@ const AdminPlatformSettings = () => {
                       />
                     </div>
                     <p className="text-xs font-medium text-foreground text-center">
-                      {preset.name}
+                      {isRTL ? preset.nameAr : preset.name}
                     </p>
                   </div>
                   {selectedPreset === preset.name && (
@@ -127,28 +127,28 @@ const AdminPlatformSettings = () => {
                 className="h-20 rounded-lg"
                 style={{ backgroundColor: `hsl(${settings.colors.primary})` }}
               />
-              <p className="text-xs text-muted-foreground text-center">Primary</p>
+              <p className="text-xs text-muted-foreground text-center">{isRTL ? 'أساسي' : 'Primaire'}</p>
             </div>
             <div className="space-y-2">
               <div 
                 className="h-20 rounded-lg"
                 style={{ backgroundColor: `hsl(${settings.colors.sidebar})` }}
               />
-              <p className="text-xs text-muted-foreground text-center">Sidebar</p>
+              <p className="text-xs text-muted-foreground text-center">{isRTL ? 'الشريط الجانبي' : 'Barre latérale'}</p>
             </div>
             <div className="space-y-2">
               <div 
                 className="h-20 rounded-lg"
                 style={{ backgroundColor: `hsl(${settings.colors.accent})` }}
               />
-              <p className="text-xs text-muted-foreground text-center">Accent</p>
+              <p className="text-xs text-muted-foreground text-center">{isRTL ? 'تمييز' : 'Accent'}</p>
             </div>
             <div className="space-y-2">
               <div 
                 className="h-20 rounded-lg border"
                 style={{ backgroundColor: `hsl(${settings.colors.sidebarForeground})` }}
               />
-              <p className="text-xs text-muted-foreground text-center">Text</p>
+              <p className="text-xs text-muted-foreground text-center">{isRTL ? 'نص' : 'Texte'}</p>
             </div>
           </div>
         </CardContent>

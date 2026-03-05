@@ -33,10 +33,10 @@ export default function StudentLiveRoom() {
           const roomPayload = (response.data as any).data ? (response.data as any).data : response.data;
           setRoom(roomPayload);
         } else {
-          setError(response.error || 'Failed to load room');
+          setError(response.error || (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load room');
+        setError(err instanceof Error ? err.message : (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
       } finally {
         setLoading(false);
       }
@@ -68,11 +68,11 @@ export default function StudentLiveRoom() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <h2 className="text-xl font-semibold">
-            {isRTL ? 'الغرفة غير موجودة' : 'Room not found'}
+            {isRTL ? 'الغرفة غير موجودة' : 'Salle introuvable'}
           </h2>
           <p className="text-muted-foreground mt-2">{error}</p>
           <Button variant="outline" className="mt-4" onClick={() => navigate('/student/sessions')}>
-            {isRTL ? 'العودة إلى الجلسات' : 'Back to Sessions'}
+            {isRTL ? 'العودة إلى الجلسات' : 'Retour aux sessions'}
           </Button>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function StudentLiveRoom() {
             }
           </p>
           <Button variant="outline" onClick={() => navigate('/student/sessions')}>
-            {isRTL ? 'العودة إلى الجلسات' : 'Back to Sessions'}
+            {isRTL ? 'العودة إلى الجلسات' : 'Retour aux sessions'}
           </Button>
         </div>
       </div>

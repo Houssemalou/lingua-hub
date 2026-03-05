@@ -29,10 +29,23 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9'];
-// allowed language/subject options
-const languages = ['Français', 'Anglais', 'Arabe', 'Allemand', 'Mathématiques', 'Science', 'Informatique'];
-const levelEnabledLanguages = ['Français', 'Anglais', 'Arabe', 'Allemand'];
+const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13'];
+// allowed language/subject options (bilingual fr/ar)
+const languages = [
+  { fr: 'Français', ar: 'الفرنسية' },
+  { fr: 'Anglais', ar: 'الإنجليزية' },
+  { fr: 'Arabe', ar: 'العربية' },
+  { fr: 'Allemand', ar: 'الألمانية' },
+  { fr: 'Mathématiques', ar: 'الرياضيات' },
+  { fr: 'Science', ar: 'العلوم' },
+  { fr: 'Informatique', ar: 'المعلوميات' },
+];
+const levelEnabledLanguages = [
+  { fr: 'Français', ar: 'الفرنسية' },
+  { fr: 'Anglais', ar: 'الإنجليزية' },
+  { fr: 'Arabe', ar: 'العربية' },
+  { fr: 'Allemand', ar: 'الألمانية' },
+];
 
 export default function AdminRooms() {
   const navigate = useNavigate();
@@ -61,7 +74,7 @@ export default function AdminRooms() {
             // Backend returns a PageResponse: { data: T[], total, page, limit, totalPages }
             setRooms((roomsResponse as any).data?.data || []);
           } else {
-            setError((roomsResponse as any).message || (roomsResponse as any).error || 'Failed to load rooms');
+            setError((roomsResponse as any).message || (roomsResponse as any).error || (isRTL ? 'فشل تحميل الغرف' : 'Échec du chargement des salles'));
           }
         } else {
           // Fallback for non-wrapped responses
@@ -74,7 +87,7 @@ export default function AdminRooms() {
           if ((professorsResponse as any).success) {
             setProfessors((professorsResponse as any).data?.data || []);
           } else {
-            setError((professorsResponse as any).message || (professorsResponse as any).error || 'Failed to load professors');
+            setError((professorsResponse as any).message || (professorsResponse as any).error || (isRTL ? 'فشل تحميل الأساتذة' : 'Échec du chargement des professeurs'));
           }
         } else {
           setProfessors((professorsResponse as any)?.data || []);
@@ -83,7 +96,7 @@ export default function AdminRooms() {
         // (students are not loaded in admin rooms; admin cannot invite/create sessions here)
 
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data');
+        setError(err instanceof Error ? err.message : (isRTL ? 'فشل تحميل البيانات' : 'Échec du chargement des données'));
         console.error('Error loading data:', err);
       } finally {
         setLoading(false);
@@ -115,14 +128,23 @@ export default function AdminRooms() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'live': return isRTL ? 'مباشر' : 'En direct';
+      case 'scheduled': return isRTL ? 'مجدول' : 'Planifié';
+      case 'completed': return isRTL ? 'مكتمل' : 'Terminé';
+      default: return status;
+    }
+  };
+
   const getAnimatorInfo = (room: RoomModel) => {
     if (room.animatorType === 'ai') {
-      return { icon: Bot, label: 'Agent AI', color: 'text-primary' };
+      return { icon: Bot, label: isRTL ? 'وكيل ذكاء اصطناعي' : 'Agent IA', color: 'text-primary' };
     }
     const professor = professors.find(p => p.id === room.professorId);
     return { 
       icon: UserCircle, 
-      label: professor?.name || 'Professeur', 
+      label: professor?.name || (isRTL ? 'أستاذ' : 'Professeur'), 
       color: 'text-accent' 
     };
   };
@@ -220,7 +242,7 @@ export default function AdminRooms() {
                   </div>
                   <Badge variant={room.status as any} className="capitalize">
                     {getStatusIcon(room.status)}
-                    <span className={cn(isRTL ? "mr-1" : "ml-1")}>{room.status}</span>
+                    <span className={cn(isRTL ? "mr-1" : "ml-1")}>{getStatusLabel(room.status)}</span>
                   </Badge>
                 </div>
               </CardHeader>

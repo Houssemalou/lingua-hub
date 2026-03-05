@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -28,13 +28,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 import { RoomSessionSummaryEditor } from '@/components/professor/RoomSessionSummaryEditor';
 
 export default function ProfessorLiveRoom() {
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+
+  // Recording mode: egress Chrome passes token & wsUrl as query params
+  const recordingToken = searchParams.get('token');
+  const recordingWsUrl = searchParams.get('wsUrl');
+  const isRecordingMode = !!(recordingToken && recordingWsUrl);
+
   const [room, setRoom] = useState<RoomModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +54,7 @@ export default function ProfessorLiveRoom() {
   
   useEffect(() => {
     const loadRoom = async () => {
-      if (!roomId) return;
+      if (!roomId || isRecordingMode) return;
 
       try {
         setLoading(true);
@@ -56,10 +64,10 @@ export default function ProfessorLiveRoom() {
           const roomPayload = (response.data as any).data ? (response.data as any).data : response.data;
           setRoom(roomPayload);
         } else {
-          setError(response.error || 'Failed to load room');
+          setError(response.error || (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load room');
+        setError(err instanceof Error ? err.message : (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
       } finally {
         setLoading(false);
       }
@@ -84,6 +92,23 @@ export default function ProfessorLiveRoom() {
     }
     navigate('/professor/sessions');
   };
+
+  // ─── Recording Mode: render only the LiveKit room, no auth, no header, no controls ───
+  if (isRecordingMode) {
+    return (
+      <div className="fixed inset-0 flex flex-col bg-gray-900">
+        <div className="flex-1 min-h-0">
+          <LiveKitRoom
+            roomId={roomId || ''}
+            onLeaveRoom={() => {}}
+            externalToken={recordingToken!}
+            externalServerUrl={recordingWsUrl!}
+            isRecordingMode={true}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -115,11 +140,11 @@ export default function ProfessorLiveRoom() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <h2 className="text-xl font-semibold">
-            {isRTL ? 'الغرفة غير موجودة' : 'Room not found'}
+            {isRTL ? 'الغرفة غير موجودة' : 'Salle introuvable'}
           </h2>
           <p className="text-muted-foreground mt-2">{error}</p>
           <Button variant="outline" className="mt-4" onClick={() => navigate('/professor/sessions')}>
-            {isRTL ? 'العودة إلى الجلسات' : 'Back to Sessions'}
+            {isRTL ? 'العودة إلى الجلسات' : 'Retour aux sessions'}
           </Button>
         </div>
       </div>
@@ -148,7 +173,7 @@ export default function ProfessorLiveRoom() {
 
           <div className="flex items-center justify-center gap-3">
             <Button variant="outline" onClick={() => navigate('/professor/sessions')}>
-              {isRTL ? 'العودة إلى الجلسات' : 'Back to Sessions'}
+              {isRTL ? 'العودة إلى الجلسات' : 'Retour aux sessions'}
             </Button>
 
             {isAssignedProfessor && room.status.toLowerCase() === 'scheduled' && (
@@ -163,17 +188,17 @@ export default function ProfessorLiveRoom() {
                       if (started) setRoom(started);
                       toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
                     } else {
-                      toast.error(startRes.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));
+                      toast.error(getFriendlyErrorMessage(startRes.error, isRTL));
                     }
                   } catch (err) {
-                    toast.error(err instanceof Error ? err.message : 'Failed to start session');
+                    toast.error(getFriendlyErrorMessage(err, isRTL));
                   } finally {
                     setStarting(false);
                   }
                 }}
                 disabled={starting}
               >
-                {starting ? (isRTL ? 'جارٍ البدء...' : 'Starting...') : (isRTL ? 'بدء الجلسة' : 'Start Session')}
+                {starting ? (isRTL ? 'جارٍ البدء...' : 'Démarrage...') : (isRTL ? 'بدء الجلسة' : 'Démarrer la session')}
               </Button>
             )}
           </div>
@@ -222,7 +247,6 @@ export default function ProfessorLiveRoom() {
         <LiveKitRoom
           roomId={room.id}
           onLeaveRoom={handleLeaveRoom}
-          isProfessor={true}
         />
       </div>
 

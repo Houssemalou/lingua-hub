@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             totalSessions: p.totalSessions || 0,
             hoursLearned: p.hoursLearned || 0,
             createdBy: p.createdBy || undefined,
+            premiumExpiresAt: p.premiumExpiresAt || undefined,
           };
         }
       } catch (error) {
@@ -100,7 +101,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             specialization: p.specialization || '',
             joinedAt: p.joinedAt || new Date().toISOString(),
             totalSessions: p.totalSessions || 0,
-            rating: p.rating || 0,
             createdBy: p.createdBy || undefined,
           };
         }
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: response.data.user.email,
             avatar: localStorage.getItem('temp_student_avatar') || '',
             nickname: localStorage.getItem('temp_student_nickname') || '', // Will be fetched s
-            level: (localStorage.getItem('temp_student_level') as 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6') || 'YEAR1',
+            level: (localStorage.getItem('temp_student_level') as 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13') || 'YEAR1',
             joinedAt: new Date().toISOString(),
             skills: { pronunciation: 0, grammar: 0, vocabulary: 0, fluency: 0 },
             totalSessions: 0,
@@ -139,6 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: response.data.user.role,
             student: studentProfile,
           };
+
+          // fetch the full profile immediately so that we have premiumExpiresAt and correct data
+          try {
+            const updated = await fetchProfile('student', authUser);
+            authUser.student = updated.student;
+          } catch (err) {
+            console.warn('Could not refresh student profile after login:', err);
+          }
         } else if (response.data.user.role === 'professor') {
           const professorProfile: Professor = {
             // initially use the user id; we'll fetch the real professor record right after
@@ -151,7 +159,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             specialization: localStorage.getItem('temp_professor_specialization') || '',
             joinedAt: new Date().toISOString(),
             totalSessions: 0,
-            rating: 0,
           };
           authUser = {
             id: response.data.user.id,

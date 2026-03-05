@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext } from '@livekit/components-react';
-import { Room, RoomEvent, RemoteParticipant } from 'livekit-client';
+import { Room, RoomEvent, RemoteParticipant, RoomOptions } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
 import { useAuth } from '@/contexts/AuthContext';
 import { VideoGrid } from './VideoGrid';
@@ -17,10 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import RoomService from '@/services/RoomService';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface LiveKitRoomProps {
   roomId: string;
   onLeaveRoom: () => void;
+  /** When provided, skip auth-based token fetch and use these directly (recording mode) */
+  externalToken?: string;
+  externalServerUrl?: string;
+  /** Hide controls in recording mode */
+  isRecordingMode?: boolean;
 }
 
 // Bottom sheet component for mobile
@@ -68,10 +74,11 @@ const BottomSheet: React.FC<{
 );
 
 // Inner component that has access to LiveKit context
-const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ roomId, onLeaveRoom }) => {
+const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordingMode?: boolean }> = ({ roomId, onLeaveRoom, isRecordingMode }) => {
   const participants = useParticipants();
   const room = useRoomContext();
   const isMobile = useIsMobile();
+  const { isRTL } = useLanguage();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
@@ -81,20 +88,30 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   // Convert LiveKit participants to our format
   const { user } = useAuth();
 
-  const formattedParticipants = participants.map((p) => ({
+  const formattedParticipants = participants
+    // In recording mode, filter out the recorder itself (local participant)
+    .filter(p => isRecordingMode ? !p.isLocal : true)
+    .map((p) => ({
     formatted: {
       id: p.identity,
-      name: p.name || (p.isLocal ? 'You' : 'Anonymous'),
+      name: p.name || (p.isLocal ? (isRTL ? 'أنت' : 'Vous') : (isRTL ? 'مجهول' : 'Anonyme')),
       avatar: undefined,
       isMuted: !p.isMicrophoneEnabled,
       isCameraOn: p.isCameraEnabled,
       isScreenSharing: p.isScreenShareEnabled,
       isHost: p.isLocal,
       isCurrentUser: p.isLocal,
-      // derive role for the local participant from authenticated user
-      role: (p.isLocal
-        ? ((user?.role === 'professor' || user?.role === 'admin') ? 'professor' : 'student')
-        : 'student') as LiveKitParticipant['role'],
+      // derive role: for local participant use auth context, for remote parse metadata
+      role: (() => {
+        if (p.isLocal) {
+          return (user?.role === 'professor' || user?.role === 'admin') ? 'professor' : 'student';
+        }
+        try {
+          const meta = p.metadata ? JSON.parse(p.metadata) : {};
+          if (meta.role === 'professor' || meta.role === 'admin') return 'professor';
+        } catch { /* ignore bad metadata */ }
+        return 'student';
+      })() as LiveKitParticipant['role'],
       isPicked: false,
       isLocal: p.isLocal,
       handRaised: false,
@@ -119,6 +136,15 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
     }
   }, [isProfessor, room]);
 
+  // In recording mode, disable all media tracks (pure viewer)
+  useEffect(() => {
+    if (isRecordingMode && room.localParticipant) {
+      room.localParticipant.setCameraEnabled(false).catch(() => {});
+      room.localParticipant.setMicrophoneEnabled(false).catch(() => {});
+      room.localParticipant.setScreenShareEnabled(false).catch(() => {});
+    }
+  }, [isRecordingMode, room]);
+
   // Handle incoming chat messages
   useEffect(() => {
     const handleDataReceived = (payload: Uint8Array, participant: RemoteParticipant) => {
@@ -131,10 +157,14 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
             type: 'chat',
             message: data.message,
             timestamp: data.timestamp || Date.now(),
-            sender: { id: participant.identity, name: participant.name || 'Anonymous' },
+            sender: { id: participant.identity, name: participant.name || (isRTL ? 'مجهول' : 'Anonyme') },
           };
           setMessages(prev => [...prev, newMessage]);
           if (!showChat) setUnreadCount(prev => prev + 1);
+        }
+        // Listen for whiteboard toggle events (so recorder can show/hide whiteboard)
+        if (data?.type === 'whiteboard_toggle') {
+          setShowWhiteboard(data.visible);
         }
       } catch (error) {
         console.error('Error parsing chat message:', error);
@@ -143,7 +173,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
 
     room.on('dataReceived', handleDataReceived);
     return () => { room.off('dataReceived', handleDataReceived); };
-  }, [room, showChat]);
+  }, [room, showChat, isRTL]);
 
   // make sure we notify backend even if component unmounts unexpectedly
   useEffect(() => {
@@ -182,7 +212,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
         type: 'chat',
         message: message.trim(),
         timestamp: Date.now(),
-        sender: { id: room.localParticipant.identity, name: room.localParticipant.name || 'You' },
+        sender: { id: room.localParticipant.identity, name: room.localParticipant.name || (isRTL ? 'أنت' : 'Vous') },
       };
       setMessages(prev => [...prev, newMessage]);
     }
@@ -253,7 +283,19 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
             <Button
               variant="ghost"
               size={isMobile ? "sm" : "sm"}
-              onClick={() => setShowWhiteboard(w => !w)}
+              onClick={() => {
+                const newState = !showWhiteboard;
+                setShowWhiteboard(newState);
+                // Broadcast whiteboard toggle to all participants (including recorder)
+                try {
+                  room.localParticipant.publishData(
+                    new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: newState })),
+                    { reliable: true }
+                  );
+                } catch (e) {
+                  console.error('Error broadcasting whiteboard toggle:', e);
+                }
+              }}
               className={cn(
                 "rounded-full font-semibold transition-all border-0 relative",
                 isMobile ? "px-2 h-9" : "px-4",
@@ -263,7 +305,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
               )}
             >
               <Pencil className={cn(isMobile ? "w-4 h-4" : "w-4 h-4")} />
-              {!isMobile && <span className="ml-1">Tableau</span>}
+              {!isMobile && <span className={isRTL ? 'mr-1' : 'ml-1'}>{isRTL ? 'اللوحة' : 'Tableau'}</span>}
             </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -298,7 +340,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
               )}
             >
               <MessageSquare className={cn(isMobile ? "w-4 h-4" : "w-4 h-4")} />
-              {!isMobile && <span className="ml-1">Chat</span>}
+              {!isMobile && <span className={isRTL ? 'mr-1' : 'ml-1'}>{isRTL ? 'دردشة' : 'Chat'}</span>}
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -332,7 +374,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
             )}
           >
             <PhoneOff className="w-4 h-4" />
-            {!isMobile && <span>Quitter</span>}
+            {!isMobile && <span>{isRTL ? 'مغادرة' : 'Quitter'}</span>}
           </Button>
         </motion.div>
       </div>
@@ -352,18 +394,17 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
               isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
             />
           </div>
-          {!isMobile && <DesktopFloatingChat />}
-          {!isMobile && <DesktopFloatingParticipants />}
+          {/* Recording mode: always-visible chat sidebar */}
+          {!isMobile && !isRecordingMode && <DesktopFloatingChat />}
+          {!isMobile && !isRecordingMode && <DesktopFloatingParticipants />}
         </div>
-        <ControlsBar />
-        {/* Mobile bottom sheets */}
-        {/* also allow opening whiteboard on mobile via bottom sheet toggle? currently handled by button above */}
-        {isMobile && (
+        {!isRecordingMode && <ControlsBar />}
+        {isMobile && !isRecordingMode && (
           <>
-            <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
+            <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title={isRTL ? 'دردشة' : 'Chat'}>
               <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
             </BottomSheet>
-            <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
+            <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={isRTL ? `المشاركون (${participants.length})` : `Participants (${participants.length})`}>
               <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
             </BottomSheet>
           </>
@@ -393,13 +434,18 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
       <div className="flex-1 relative flex z-10 min-h-0">
         {/* whiteboard overlay */}
         {showWhiteboard && (
-          <div className="absolute inset-0 z-50">
+          <div className={cn("absolute z-50", "inset-0")}>
             <WhiteboardPanel
               room={room}
               isProfessor={isProfessor}
               participantCount={participants.length}
               onClose={() => setShowWhiteboard(false)}
               roomId={roomId}
+              participants={formattedParticipants.map(p => ({
+                identity: p.formatted.id,
+                name: p.formatted.name,
+                role: p.formatted.role,
+              }))}
             />
           </div>
         )}
@@ -413,21 +459,30 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
           />
         </div>
 
+        {/* Recording mode: always-visible chat sidebar — removed per user request */}
+
         {/* Desktop floating panels */}
-        {!isMobile && <DesktopFloatingChat />}
-        {!isMobile && <DesktopFloatingParticipants />}
+        {!isMobile && !isRecordingMode && <DesktopFloatingChat />}
+        {!isMobile && !isRecordingMode && <DesktopFloatingParticipants />}
       </div>
 
-      {/* Controls Bar */}
-      <ControlsBar />
+      {/* Recording mode: bottom info bar */}
+      {isRecordingMode && (
+        <div className="h-10 bg-black/60 backdrop-blur-xl flex items-center px-4 text-white/70 text-sm z-10">
+          <span>{'\ud83d\udd34'} {isRTL ? `تسجيل — ${formattedParticipants.length} مشارك${formattedParticipants.length !== 1 ? 'ين' : ''}` : `Enregistrement — ${formattedParticipants.length} participant${formattedParticipants.length !== 1 ? 's' : ''}`}</span>
+        </div>
+      )}
+
+      {/* Controls Bar (hidden in recording mode) */}
+      {!isRecordingMode && <ControlsBar />}
 
       {/* Mobile bottom sheets */}
-      {isMobile && (
+      {isMobile && !isRecordingMode && (
         <>
-          <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title="Chat">
+          <BottomSheet isOpen={showChat} onClose={() => setShowChat(false)} title={isRTL ? 'دردشة' : 'Chat'}>
             <ChatPanel messages={messages} onSendMessage={handleSendMessage} currentUserId={room.localParticipant.identity} visible={showChat} roomId={roomId} />
           </BottomSheet>
-          <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={`Participants (${participants.length})`}>
+          <BottomSheet isOpen={showParticipants} onClose={() => setShowParticipants(false)} title={isRTL ? `المشاركون (${participants.length})` : `Participants (${participants.length})`}>
             <ParticipantList participants={formattedParticipants.map(p => p.formatted)} />
           </BottomSheet>
         </>
@@ -436,12 +491,19 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void }> = ({ ro
   );
 };
 
-export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom }) => {
-  const { error, serverUrl, token } = useLiveKitRoom(roomId);
+export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom, externalToken, externalServerUrl, isRecordingMode }) => {
+  const { isRTL } = useLanguage();
+  // In recording mode, use provided token/serverUrl directly (no auth needed)
+  const hookResult = useLiveKitRoom(externalToken ? '' : roomId);
+  const error = externalToken ? null : hookResult.error;
+  const serverUrl = externalServerUrl || hookResult.serverUrl;
+  const token = externalToken || hookResult.token;
 
   // notify backend when underlying connection drops at top level
   const handleDisconnected = async () => {
-    try { await RoomService.leave(roomId); } catch (e) { console.error('Error notifying leave on disconnect (outer):', e); }
+    if (!isRecordingMode) {
+      try { await RoomService.leave(roomId); } catch (e) { console.error('Error notifying leave on disconnect (outer):', e); }
+    }
     onLeaveRoom();
   };
 
@@ -449,7 +511,7 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center p-6">
-          <p className="text-red-500 mb-4">Failed to connect: {error}</p>
+          <p className="text-red-500 mb-4">{isRTL ? `خطأ في الاتصال: ${error}` : `Erreur de connexion : ${error}`}</p>
         </div>
       </div>
     );
@@ -460,11 +522,23 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white/80">Connexion en cours...</p>
+          <p className="text-white/80">{isRTL ? 'جارٍ الاتصال...' : 'Connexion en cours...'}</p>
         </div>
       </div>
     );
   }
+
+  // Room options: ensure audio tracks are properly subscribed and played
+  const roomOptions: RoomOptions = {
+    audioCaptureDefaults: {
+      autoGainControl: true,
+      noiseSuppression: true,
+      echoCancellation: true,
+    },
+    audioOutput: {
+      deviceId: 'default',
+    },
+  };
 
   return (
     <LiveKitRoomComponent
@@ -472,8 +546,9 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom })
       token={token}
       connect={true}
       onDisconnected={handleDisconnected}
+      options={roomOptions}
     >
-      <RoomContent roomId={roomId} onLeaveRoom={onLeaveRoom} />
+      <RoomContent roomId={roomId} onLeaveRoom={onLeaveRoom} isRecordingMode={isRecordingMode} />
     </LiveKitRoomComponent>
   );
 };

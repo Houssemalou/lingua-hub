@@ -79,7 +79,7 @@ export interface ProfessorStats {
   totalStudents: number;
   upcomingSessions: number;
   completedSessions: number;
-  rating: number;
+  totalSessions: number;
   totalEvaluations: number;
   averageEvaluationScore: number;
   liveRooms: ProfessorRoomSummary[];

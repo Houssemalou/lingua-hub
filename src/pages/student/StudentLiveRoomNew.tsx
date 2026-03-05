@@ -7,10 +7,13 @@ import { getRoomById } from '@/data/mockData';
 import { QuizModal } from '@/components/quiz/QuizModal';
 import { getQuizForSession } from '@/data/quizzes';
 import { LiveKitRoom } from '@/components/session/LiveKitRoom';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { cn } from '@/lib/utils';
 
 export default function StudentLiveRoom() {
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const { isRTL } = useLanguage();
   const room = getRoomById(roomId || '');
 
   const [showQuiz, setShowQuiz] = useState(false);
@@ -29,9 +32,9 @@ export default function StudentLiveRoom() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <h2 className="text-xl font-semibold">Room not found</h2>
+          <h2 className="text-xl font-semibold">{isRTL ? 'الغرفة غير موجودة' : 'Salle introuvable'}</h2>
           <Button variant="outline" className="mt-4" onClick={() => navigate('/student/sessions')}>
-            Back to Sessions
+            {isRTL ? 'العودة إلى الجلسات' : 'Retour aux sessions'}
           </Button>
         </div>
       </div>
@@ -53,10 +56,10 @@ export default function StudentLiveRoom() {
               variant="ghost"
               size="sm"
               onClick={() => navigate('/student/sessions')}
-              className="gap-2"
+              className={cn("gap-2", isRTL && "flex-row-reverse")}
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Sessions
+              <ArrowLeft className={cn("w-4 h-4", isRTL && "rotate-180")} />
+              {isRTL ? 'العودة إلى الجلسات' : 'Retour aux sessions'}
             </Button>
             <div>
               <h1 className="text-xl font-semibold">{room.name}</h1>

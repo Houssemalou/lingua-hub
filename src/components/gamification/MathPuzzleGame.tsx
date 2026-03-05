@@ -60,21 +60,9 @@ export function MathPuzzleGame({ isOpen, onClose, onComplete, difficulty }: Math
       tryAgain: 'واصل!',
       finalScore: 'النتيجة النهائية'
     },
-    en: { 
-      title: 'Math Puzzle', 
-      score: 'Score', 
-      streak: 'Streak',
-      combo: 'Combo',
-      next: 'Next',
-      finish: 'Finish',
-      excellent: 'Excellent!',
-      good: 'Well done!',
-      tryAgain: 'Keep going!',
-      finalScore: 'Final Score'
-    }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   // Generate math questions based on difficulty
   const generateQuestions = useCallback(() => {

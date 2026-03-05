@@ -14,7 +14,8 @@ import {
   Trash2, 
   Copy, 
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  Crown
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -35,9 +36,11 @@ export const AccessTokenGenerator: React.FC = () => {
   const [studentTokens, setStudentTokens] = useState<GeneratedToken[]>([]);
   const [professorTokens, setProfessorTokens] = useState<GeneratedToken[]>([]);
   const [adminTokens, setAdminTokens] = useState<GeneratedToken[]>([]);
+  const [premiumTokens, setPremiumTokens] = useState<GeneratedToken[]>([]);
   const [loading, setLoading] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
+  const [tokenCount, setTokenCount] = useState<number>(1);
 
   // Load tokens on component mount
   useEffect(() => {
@@ -47,15 +50,17 @@ export const AccessTokenGenerator: React.FC = () => {
   const loadTokens = async () => {
     setLoading(true);
     try {
-      const [studentRes, professorRes, adminRes] = await Promise.all([
+      const [studentRes, professorRes, adminRes, premiumRes] = await Promise.all([
         AuthService.getAvailableAccessTokens('STUDENT'),
         AuthService.getAvailableAccessTokens('PROFESSOR'),
         AuthService.getAvailableAccessTokens('ADMIN'),
+        AuthService.getAvailablePremiumTokens(),
       ]);
 
       if (studentRes.success) setStudentTokens(studentRes.data.map(token => ({ ...token, role: token.role as 'STUDENT' })));
       if (professorRes.success) setProfessorTokens(professorRes.data.map(token => ({ ...token, role: token.role as 'PROFESSOR' })));
       if (adminRes.success) setAdminTokens(adminRes.data.map(token => ({ ...token, role: token.role as 'ADMIN' })));
+      if (premiumRes.success) setPremiumTokens(premiumRes.data.map(token => ({ ...token, role: 'PREMIUM' as any })));
     } catch (error) {
       toast.error(isRTL ? 'فشل في تحميل الرموز' : 'Failed to load tokens');
     } finally {
@@ -64,28 +69,28 @@ export const AccessTokenGenerator: React.FC = () => {
   };
 
   const generateToken = async (role: 'STUDENT' | 'PROFESSOR' | 'ADMIN') => {
+    const count = Math.max(1, Math.min(100, tokenCount));
     setLoading(true);
     try {
-      const response = await AuthService.generateAccessToken(role);
+      const response = await AuthService.generateAccessToken(role, count);
       if (response.success) {
-        const newToken = response.data;
-        const typedToken: GeneratedToken = {
-          ...newToken,
-          role: newToken.role as 'STUDENT' | 'PROFESSOR' | 'ADMIN'
-        };
+        const newTokens: GeneratedToken[] = response.data.map(t => ({
+          ...t,
+          role: t.role as 'STUDENT' | 'PROFESSOR' | 'ADMIN'
+        }));
         if (role === 'STUDENT') {
-          setStudentTokens(prev => [...prev, typedToken]);
+          setStudentTokens(prev => [...prev, ...newTokens]);
         } else if (role === 'PROFESSOR') {
-          setProfessorTokens(prev => [...prev, typedToken]);
+          setProfessorTokens(prev => [...prev, ...newTokens]);
         } else {
-          setAdminTokens(prev => [...prev, typedToken]);
+          setAdminTokens(prev => [...prev, ...newTokens]);
         }
-        toast.success(isRTL ? 'تم إنشاء الرمز بنجاح' : 'Token generated successfully');
+        toast.success(isRTL ? `تم إنشاء ${count} رمز بنجاح` : `${count} token(s) généré(s) avec succès`);
       } else {
-        toast.error(response.error || 'Failed to generate token');
+        toast.error(response.error || (isRTL ? 'فشل في إنشاء الرموز' : 'Échec de génération des tokens'));
       }
     } catch (error) {
-      toast.error(isRTL ? 'فشل في إنشاء الرمز' : 'Failed to generate token');
+      toast.error(isRTL ? 'فشل في إنشاء الرموز' : 'Failed to generate tokens');
     } finally {
       setLoading(false);
     }
@@ -96,6 +101,25 @@ export const AccessTokenGenerator: React.FC = () => {
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);
     toast.success(isRTL ? 'تم نسخ الرمز' : 'Token copié');
+  };
+
+  const generatePremiumToken = async () => {
+    const count = Math.max(1, Math.min(100, tokenCount));
+    setLoading(true);
+    try {
+      const response = await AuthService.generatePremiumToken(count);
+      if (response.success) {
+        const newTokens = response.data.map(t => ({ ...t, role: 'PREMIUM' as any }));
+        setPremiumTokens(prev => [...prev, ...newTokens]);
+        toast.success(isRTL ? `تم إنشاء ${count} رمز بريميوم بنجاح` : `${count} token(s) premium généré(s) avec succès`);
+      } else {
+        toast.error(response.error || (isRTL ? 'فشل في إنشاء رموز بريميوم' : 'Échec de génération des tokens premium'));
+      }
+    } catch (error) {
+      toast.error(isRTL ? 'فشل في إنشاء الرموز' : 'Failed to generate premium tokens');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleSelectToken = (token: string) => {
@@ -167,7 +191,7 @@ export const AccessTokenGenerator: React.FC = () => {
     doc.rect(20, y - 6, 170, 10, 'F');
     doc.setFont('helvetica', 'bold');
     doc.text('#', 25, y);
-    doc.text('Token', 40, y);
+    doc.text(isRTL ? 'الرمز' : 'Token', 40, y);
     doc.text(isRTL ? 'تاريخ الإنشاء' : 'Date de création', 120, y);
     
     y += lineHeight;
@@ -241,9 +265,9 @@ export const AccessTokenGenerator: React.FC = () => {
     doc.setFontSize(12);
     doc.setTextColor(0);
     doc.text('#', 25, y);
-    doc.text('Token', 40, y);
-    doc.text('Rôle', 100, y);
-    doc.text('Date', 140, y);
+    doc.text(isRTL ? 'الرمز' : 'Token', 40, y);
+    doc.text(isRTL ? 'الدور' : 'Rôle', 100, y);
+    doc.text(isRTL ? 'التاريخ' : 'Date', 140, y);
     
     y += lineHeight;
     doc.setFont('helvetica', 'normal');
@@ -263,7 +287,11 @@ export const AccessTokenGenerator: React.FC = () => {
       doc.setFont('courier', 'normal');
       doc.text(token.token, 40, y);
       doc.setFont('helvetica', 'normal');
-      const roleText = token.role === 'STUDENT' ? 'Étudiant' : token.role === 'PROFESSOR' ? 'Professeur' : 'Administrateur';
+      const roleText = token.role === 'STUDENT' 
+        ? (isRTL ? 'طالب' : 'Étudiant') 
+        : token.role === 'PROFESSOR' 
+        ? (isRTL ? 'أستاذ' : 'Professeur') 
+        : (isRTL ? 'إداري' : 'Administrateur');
       doc.text(roleText, 100, y);
       doc.text(new Date(token.createdAt).toLocaleDateString(), 140, y);
       
@@ -311,13 +339,13 @@ export const AccessTokenGenerator: React.FC = () => {
             {token.token}
           </code>
           <p className="text-xs text-muted-foreground">
-            {new Date(token.createdAt).toLocaleDateString()} • Expires: {new Date(token.expiresAt).toLocaleDateString()}
+            {new Date(token.createdAt).toLocaleDateString()} • {isRTL ? 'ينتهي:' : 'Expire le:'} {new Date(token.expiresAt).toLocaleDateString()}
           </p>
         </div>
       </div>
       <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
         <Badge variant="outline" className="text-xs">
-          {role}
+          {role === 'STUDENT' ? (isRTL ? 'طالب' : 'Étudiant') : role === 'PROFESSOR' ? (isRTL ? 'أستاذ' : 'Professeur') : (isRTL ? 'إداري' : 'Admin')}
         </Badge>
         <Button
           variant="ghost"
@@ -350,7 +378,7 @@ export const AccessTokenGenerator: React.FC = () => {
       </CardHeader>
       <CardContent>
         {/* Stats Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
           <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-center">
             <Users className="w-6 h-6 mx-auto text-blue-600 dark:text-blue-400 mb-2" />
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{studentTokens.length}</p>
@@ -365,6 +393,11 @@ export const AccessTokenGenerator: React.FC = () => {
             <Key className="w-6 h-6 mx-auto text-orange-600 dark:text-orange-400 mb-2" />
             <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{adminTokens.length}</p>
             <p className="text-xs text-muted-foreground">{isRTL ? 'رموز الإداريين' : 'Tokens admins'}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-center">
+            <Crown className="w-6 h-6 mx-auto text-amber-600 dark:text-amber-400 mb-2" />
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{premiumTokens.length}</p>
+            <p className="text-xs text-muted-foreground">{isRTL ? 'رموز بريميوم' : 'Tokens premium'}</p>
           </div>
         </div>
 
@@ -389,7 +422,7 @@ export const AccessTokenGenerator: React.FC = () => {
         </AnimatePresence>
 
         <Tabs defaultValue="students" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="students" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
               <Users className="w-4 h-4" />
               {isRTL ? 'الطلاب' : 'Étudiants'}
@@ -402,6 +435,10 @@ export const AccessTokenGenerator: React.FC = () => {
               <Key className="w-4 h-4" />
               {isRTL ? 'الإداريون' : 'Admins'}
             </TabsTrigger>
+            <TabsTrigger value="premium" className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              <Crown className="w-4 h-4" />
+              {isRTL ? 'بريميوم' : 'Premium'}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="students" className="space-y-4">
@@ -412,7 +449,18 @@ export const AccessTokenGenerator: React.FC = () => {
                   {isRTL ? 'انقر على الزر لإنشاء رمز وصول جديد للطلاب' : 'Cliquez sur le bouton pour générer un nouveau token d\'accès pour les étudiants'}
                 </p>
               </div>
-              <div className={cn("flex gap-2 items-end", isRTL && "flex-row-reverse")}>
+              <div className={cn("flex gap-2 items-end flex-wrap", isRTL && "flex-row-reverse")}>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'العدد' : 'Nombre'}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={tokenCount}
+                    onChange={(e) => setTokenCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                    className="w-20 h-9 text-center"
+                  />
+                </div>
                 <Button 
                   onClick={() => generateToken('STUDENT')} 
                   disabled={loading}
@@ -423,7 +471,7 @@ export const AccessTokenGenerator: React.FC = () => {
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  {isRTL ? 'إنشاء رمز طالب' : 'Générer token étudiant'}
+                  {isRTL ? 'إنشاء رمز طالب' : 'Générer tokens étudiant'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -468,7 +516,18 @@ export const AccessTokenGenerator: React.FC = () => {
                   {isRTL ? 'انقر على الزر لإنشاء رمز وصول جديد للأساتذة' : 'Cliquez sur le bouton pour générer un nouveau token d\'accès pour les professeurs'}
                 </p>
               </div>
-              <div className={cn("flex gap-2 items-end", isRTL && "flex-row-reverse")}>
+              <div className={cn("flex gap-2 items-end flex-wrap", isRTL && "flex-row-reverse")}>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'العدد' : 'Nombre'}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={tokenCount}
+                    onChange={(e) => setTokenCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                    className="w-20 h-9 text-center"
+                  />
+                </div>
                 <Button 
                   onClick={() => generateToken('PROFESSOR')} 
                   disabled={loading}
@@ -479,7 +538,7 @@ export const AccessTokenGenerator: React.FC = () => {
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  {isRTL ? 'إنشاء رمز أستاذ' : 'Générer token professeur'}
+                  {isRTL ? 'إنشاء رمز أستاذ' : 'Générer tokens professeur'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -524,7 +583,18 @@ export const AccessTokenGenerator: React.FC = () => {
                   {isRTL ? 'انقر على الزر لإنشاء رمز وصول جديد للإداريين' : 'Cliquez sur le bouton pour générer un nouveau token d\'accès pour les administrateurs'}
                 </p>
               </div>
-              <div className={cn("flex gap-2 items-end", isRTL && "flex-row-reverse")}>
+              <div className={cn("flex gap-2 items-end flex-wrap", isRTL && "flex-row-reverse")}>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'العدد' : 'Nombre'}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={tokenCount}
+                    onChange={(e) => setTokenCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                    className="w-20 h-9 text-center"
+                  />
+                </div>
                 <Button 
                   onClick={() => generateToken('ADMIN')} 
                   disabled={loading}
@@ -535,7 +605,7 @@ export const AccessTokenGenerator: React.FC = () => {
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  {isRTL ? 'إنشاء رمز إداري' : 'Générer token admin'}
+                  {isRTL ? 'إنشاء رمز إداري' : 'Générer tokens admin'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -567,6 +637,89 @@ export const AccessTokenGenerator: React.FC = () => {
                 <div className="text-center py-8 text-muted-foreground">
                   <Key className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>{isRTL ? 'لا توجد رموز للإداريين' : 'Aucun token admin'}</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="premium" className="space-y-4">
+            {/* Generate Section */}
+            <div className={cn("flex flex-col sm:flex-row gap-3 p-4 bg-muted/50 rounded-lg", isRTL && "sm:flex-row-reverse")}>
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">
+                  {isRTL ? 'إنشاء رمز بريميوم للوصول للدردشة الذكية (صالح لمدة 30 يومًا بعد التفعيل)' : 'Générez un token premium pour l\'accès au chatbot IA (valide 30 jours après activation)'}
+                </p>
+              </div>
+              <div className={cn("flex gap-2 items-end flex-wrap", isRTL && "flex-row-reverse")}>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'العدد' : 'Nombre'}</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={tokenCount}
+                    onChange={(e) => setTokenCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                    className="w-20 h-9 text-center"
+                  />
+                </div>
+                <Button 
+                  onClick={generatePremiumToken} 
+                  disabled={loading}
+                  className={cn("flex items-center gap-2 bg-amber-600 hover:bg-amber-700", isRTL && "flex-row-reverse")}
+                >
+                  {loading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  {isRTL ? 'إنشاء رمز بريميوم' : 'Générer tokens premium'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Token List */}
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              <AnimatePresence>
+                {premiumTokens.map(token => (
+                  <motion.div
+                    key={token.token}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex items-center justify-between p-3 rounded-lg border transition-all bg-card hover:border-amber-500/50"
+                  >
+                    <div className={isRTL ? "text-right" : ""}>
+                      <code className="font-mono text-sm font-semibold text-foreground">
+                        {token.token}
+                      </code>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(token.createdAt).toLocaleDateString()} • {isRTL ? 'صالح 30 يومًا بعد التفعيل' : 'Valide 30 jours après activation'}
+                      </p>
+                    </div>
+                    <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+                      <Badge variant="outline" className="text-xs border-amber-400 text-amber-600">
+                        PREMIUM
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => copyToken(token.token)}
+                      >
+                        {copiedToken === token.token ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {premiumTokens.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Crown className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>{isRTL ? 'لا توجد رموز بريميوم' : 'Aucun token premium'}</p>
                 </div>
               )}
             </div>

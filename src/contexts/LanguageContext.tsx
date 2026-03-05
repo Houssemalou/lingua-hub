@@ -105,6 +105,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.totalProfessors': 'Total professeurs',
     'dashboard.levelDistribution': 'Répartition par niveau',
     'dashboard.noUpcomingSessions': 'Aucune session à venir',
+    'dashboard.loadError': 'Échec du chargement des statistiques',
+    'dashboard.noData': 'Aucune donnée disponible',
     
     // Student Dashboard
     'student.welcome': 'Bon retour',
@@ -393,6 +395,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.totalProfessors': 'إجمالي الأساتذة',
     'dashboard.levelDistribution': 'توزيع المستويات',
     'dashboard.noUpcomingSessions': 'لا توجد جلسات قادمة',
+    'dashboard.loadError': 'فشل في تحميل إحصائيات لوحة التحكم',
+    'dashboard.noData': 'لا توجد بيانات متاحة',
     
     // Student Dashboard
     'student.welcome': 'مرحباً بعودتك',

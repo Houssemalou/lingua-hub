@@ -31,16 +31,9 @@ export function ChallengeLeaderboard({ entries, currentStudentId }: ChallengeLea
       perfect: 'مثالي',
       you: 'أنت'
     },
-    en: {
-      title: 'Challenge Leaderboard',
-      points: 'Points',
-      challenges: 'Challenges',
-      perfect: 'Perfect',
-      you: 'You'
-    }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

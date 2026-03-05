@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { getLevelLabel } from '@/lib/levelLabels';
 import { StudentService } from '@/services/StudentService';
 
 interface StudentData {
@@ -138,12 +139,19 @@ export default function AdminStudents() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('students.allLevels')}</SelectItem>
-            <SelectItem value="A1">A1</SelectItem>
-            <SelectItem value="A2">A2</SelectItem>
-            <SelectItem value="B1">B1</SelectItem>
-            <SelectItem value="B2">B2</SelectItem>
-            <SelectItem value="C1">C1</SelectItem>
-            <SelectItem value="C2">C2</SelectItem>
+            <SelectItem value="YEAR1">{getLevelLabel('YEAR1')}</SelectItem>
+            <SelectItem value="YEAR2">{getLevelLabel('YEAR2')}</SelectItem>
+            <SelectItem value="YEAR3">{getLevelLabel('YEAR3')}</SelectItem>
+            <SelectItem value="YEAR4">{getLevelLabel('YEAR4')}</SelectItem>
+            <SelectItem value="YEAR5">{getLevelLabel('YEAR5')}</SelectItem>
+            <SelectItem value="YEAR6">{getLevelLabel('YEAR6')}</SelectItem>
+            <SelectItem value="YEAR7">{getLevelLabel('YEAR7')}</SelectItem>
+            <SelectItem value="YEAR8">{getLevelLabel('YEAR8')}</SelectItem>
+            <SelectItem value="YEAR9">{getLevelLabel('YEAR9')}</SelectItem>
+            <SelectItem value="YEAR10">{getLevelLabel('YEAR10')}</SelectItem>
+            <SelectItem value="YEAR11">{getLevelLabel('YEAR11')}</SelectItem>
+            <SelectItem value="YEAR12">{getLevelLabel('YEAR12')}</SelectItem>
+            <SelectItem value="YEAR13">{getLevelLabel('YEAR13')}</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>

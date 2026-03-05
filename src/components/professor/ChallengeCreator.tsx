@@ -31,8 +31,10 @@ import { cn } from '@/lib/utils';
 import { 
   ChallengeSubject, 
   ChallengeDifficulty, 
+  ChallengeTargetLevel,
   challengeSubjects, 
   difficultyConfig,
+  targetLevelOptions,
   calculateChallengePoints
 } from '@/data/professorChallenges';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +48,7 @@ interface ChallengeCreatorProps {
 export interface ChallengeFormData {
   subject: ChallengeSubject;
   difficulty: ChallengeDifficulty;
+  targetLevel: ChallengeTargetLevel;
   title: string;
   question: string;
   options: string[];
@@ -63,6 +66,7 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
   const [formData, setFormData] = useState<ChallengeFormData>({
     subject: 'Mathematics',
     difficulty: 'medium',
+    targetLevel: null,
     title: '',
     question: '',
     options: ['', '', '', ''],
@@ -83,6 +87,8 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
       subject: 'Matière',
       difficulty: 'Difficulté',
       basePoints: 'Points de base',
+      targetLevel: 'Niveau ciblé',
+      allLevels: 'Tous les niveaux',
       title: 'Titre du défi',
       question: 'Question',
       addImage: 'Ajouter une image',
@@ -113,6 +119,8 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
       subject: 'المادة',
       difficulty: 'الصعوبة',
       basePoints: 'النقاط الأساسية',
+      targetLevel: 'المستوى المستهدف',
+      allLevels: 'جميع المستويات',
       title: 'عنوان التحدي',
       question: 'السؤال',
       addImage: 'إضافة صورة',
@@ -134,40 +142,10 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
       cancel: 'إلغاء',
       titlePlaceholder: 'مثال: تحدي الجبر',
       questionPlaceholder: 'اكتب سؤالك هنا...'
-    },
-    en: {
-      createChallenge: 'Create Challenge',
-      step1: 'Setup',
-      step2: 'Question',
-      step3: 'Answers',
-      subject: 'Subject',
-      difficulty: 'Difficulty',
-      basePoints: 'Base Points',
-      title: 'Challenge Title',
-      question: 'Question',
-      addImage: 'Add Image',
-      removeImage: 'Remove Image',
-      options: 'Answer Options',
-      option: 'Option',
-      correctAnswer: 'Correct Answer',
-      expiresIn: 'Expires in (hours)',
-      preview: 'Points Preview',
-      firstAttempt: '1st attempt',
-      secondAttempt: '2nd attempt',
-      thirdAttempt: '3rd+ attempt',
-      fullPoints: 'Full points',
-      halfPoints: 'Half points',
-      noPoints: 'No points',
-      next: 'Next',
-      back: 'Back',
-      create: 'Create Challenge',
-      cancel: 'Cancel',
-      titlePlaceholder: 'E.g., Algebra Challenge',
-      questionPlaceholder: 'Write your question here...'
     }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -209,6 +187,7 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
     setFormData({
       subject: 'Mathematics',
       difficulty: 'medium',
+      targetLevel: null,
       title: '',
       question: '',
       options: ['', '', '', ''],
@@ -329,6 +308,35 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Target Level */}
+              <div className="space-y-2">
+                <Label className={cn(isRTL && "text-right block")}>{t.targetLevel}</Label>
+                <Select
+                  value={formData.targetLevel || '__all__'}
+                  onValueChange={(v) => setFormData({ ...formData, targetLevel: v === '__all__' ? null : v as ChallengeTargetLevel })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">
+                      <span className="flex items-center gap-2">
+                        <span>🎓</span>
+                        <span>{t.allLevels}</span>
+                      </span>
+                    </SelectItem>
+                    {targetLevelOptions.map((level) => (
+                      <SelectItem key={level.id} value={level.id}>
+                        <span className="flex items-center gap-2">
+                          <span>📚</span>
+                          <span>{language === 'fr' ? level.nameFr : language === 'ar' ? level.nameAr : level.nameEn}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

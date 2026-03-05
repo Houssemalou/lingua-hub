@@ -48,7 +48,7 @@ export function MediaControls({
         whileHover={{ scale: 1.1, y: -2 }}
         whileTap={{ scale: 0.9 }}
         onClick={onToggleMute}
-        aria-label={isMuted ? 'Activer le micro' : 'Couper le micro'}
+        aria-label={isMuted ? (isRTL ? 'تفعيل الميكروفون' : 'Activer le micro') : (isRTL ? 'كتم الميكروفون' : 'Couper le micro')}
         className={cn(
           "rounded-full flex items-center justify-center transition-all duration-300",
           compact ? "w-10 h-10" : "w-11 h-11 sm:w-14 sm:h-14",
@@ -70,7 +70,7 @@ export function MediaControls({
           whileHover={{ scale: 1.1, y: -2 }}
           whileTap={{ scale: 0.9 }}
           onClick={onToggleCamera}
-          aria-label={isCameraOn ? 'Désactiver la caméra' : 'Activer la caméra'}
+          aria-label={isCameraOn ? (isRTL ? 'تعطيل الكاميرا' : 'Désactiver la caméra') : (isRTL ? 'تفعيل الكاميرا' : 'Activer la caméra')}
           className={cn(
             "rounded-full flex items-center justify-center transition-all duration-300",
             compact ? "w-10 h-10" : "w-11 h-11 sm:w-14 sm:h-14",
@@ -93,7 +93,7 @@ export function MediaControls({
           whileHover={{ scale: 1.1, y: -2 }}
           whileTap={{ scale: 0.9 }}
           onClick={onToggleScreenShare}
-          aria-label={isScreenSharing ? 'Arrêter le partage' : "Partager l'écran"}
+          aria-label={isScreenSharing ? (isRTL ? 'إيقاف المشاركة' : 'Arrêter le partage') : (isRTL ? 'مشاركة الشاشة' : "Partager l'écran")}
           className={cn(
             "rounded-full flex items-center justify-center transition-all duration-300 w-11 h-11 sm:w-14 sm:h-14",
             isScreenSharing 
@@ -131,15 +131,17 @@ export function MediaControlsLabeled({
   onToggleCamera,
   onToggleScreenShare,
   isRTL = false,
-  labels = {
-    mute: 'Couper le micro',
-    unmute: 'Activer le micro',
-    cameraOn: 'Caméra activée',
-    cameraOff: 'Activer la caméra',
-    shareScreen: 'Partager l\'écran',
-    stopShare: 'Arrêter le partage',
-  },
+  labels: labelsOverride,
 }: MediaControlsLabeledProps) {
+  const labels = labelsOverride ?? {
+    mute: isRTL ? 'كتم الميكروفون' : 'Couper le micro',
+    unmute: isRTL ? 'تفعيل الميكروفون' : 'Activer le micro',
+    cameraOn: isRTL ? 'الكاميرا مفعّلة' : 'Caméra activée',
+    cameraOff: isRTL ? 'تفعيل الكاميرا' : 'Activer la caméra',
+    shareScreen: isRTL ? 'مشاركة الشاشة' : 'Partager l\'écran',
+    stopShare: isRTL ? 'إيقاف المشاركة' : 'Arrêter le partage',
+  };
+
   return (
     <div className={cn(
       "flex flex-wrap items-center justify-center gap-4",

@@ -27,14 +27,12 @@ import { ChallengeLeaderboard } from '@/components/gamification/ChallengeLeaderb
 import {
   mockAchievements,
   mockMiniGames,
-  getStudentStats,
-  getPointsForNextLevel,
 } from '@/data/gamification';
 import {
   ProfessorChallenge,
   ChallengeLeaderboardEntry
 } from '@/data/professorChallenges';
-import { ChallengeService, SubmitAnswerResponseData } from '@/services/ChallengeService';
+import { ChallengeService, SubmitAnswerResponseData, StudentGameStatsData } from '@/services/ChallengeService';
 
 const container = {
   hidden: { opacity: 0 },
@@ -62,18 +60,16 @@ export default function StudentGames() {
   const [completedChallengeIds, setCompletedChallengeIds] = useState<Set<string>>(new Set());
   const [leaderboard, setLeaderboard] = useState<ChallengeLeaderboardEntry[]>([]);
   const [loadingChallenges, setLoadingChallenges] = useState(true);
-
-  const studentStats = getStudentStats(user?.id || '1');
-  const pointsForNext = getPointsForNextLevel(studentStats.level);
-  const currentProgress = (studentStats.points % 200) / 200 * 100;
+  const [gameStats, setGameStats] = useState<StudentGameStatsData | null>(null);
 
   const fetchChallengeData = async () => {
     setLoadingChallenges(true);
     try {
-      const [challengesRes, attemptsRes, leaderboardRes] = await Promise.all([
+      const [challengesRes, attemptsRes, leaderboardRes, statsRes] = await Promise.all([
         ChallengeService.getActiveChallenges(),
         ChallengeService.getMyAttempts(),
-        ChallengeService.getLeaderboard(),
+        ChallengeService.getLeaderboardByLevel(),
+        ChallengeService.getMyGameStats(),
       ]);
 
       if (challengesRes.success && challengesRes.data) {
@@ -89,6 +85,9 @@ export default function StudentGames() {
       }
       if (leaderboardRes.success && leaderboardRes.data) {
         setLeaderboard(leaderboardRes.data);
+      }
+      if (statsRes.success && statsRes.data) {
+        setGameStats(statsRes.data);
       }
     } catch (error) {
       console.error('Failed to fetch challenge data:', error);
@@ -139,29 +138,10 @@ export default function StudentGames() {
       professorChallenges: 'تحديات الأساتذة',
       noChallenges: 'لا توجد تحديات متاحة',
       checkBack: 'عد لاحقاً للتحديات الجديدة!'
-    },
-    en: {
-      title: 'Game Center',
-      subtitle: 'Learn while having fun with games and challenges',
-      games: 'Games',
-      achievements: 'Achievements',
-      leaderboard: 'Leaderboard',
-      challenges: 'Prof Challenges',
-      dailyChallenges: 'Daily Challenges',
-      level: 'Level',
-      points: 'Points',
-      streak: 'Streak',
-      days: 'days',
-      unlockedAchievements: 'Unlocked achievements',
-      inProgress: 'In progress',
-      pointsToNext: 'points to next level',
-      professorChallenges: 'Professor Challenges',
-      noChallenges: 'No challenges available',
-      checkBack: 'Check back later for new challenges!'
     }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   const handlePlayGame = (gameId: string) => {
     const game = mockMiniGames.find(g => g.id === gameId);
@@ -234,12 +214,12 @@ export default function StudentGames() {
             </div>
             <div className={cn(isRTL && "text-right")}>
               <p className="text-sm text-muted-foreground">{t.level}</p>
-              <p className="text-2xl font-bold">{studentStats.level}</p>
+              <p className="text-2xl font-bold">{gameStats?.level ?? 1}</p>
             </div>
           </div>
-          <Progress value={currentProgress} className="h-1.5 mt-3" />
+          <Progress value={gameStats ? (gameStats.totalPoints % 200) / 200 * 100 : 0} className="h-1.5 mt-3" />
           <p className="text-xs text-muted-foreground mt-1">
-            {200 - (studentStats.points % 200)} {t.pointsToNext}
+            {gameStats?.pointsToNextLevel ?? 200} {t.pointsToNext}
           </p>
         </Card>
 
@@ -250,7 +230,7 @@ export default function StudentGames() {
             </div>
             <div className={cn(isRTL && "text-right")}>
               <p className="text-sm text-muted-foreground">{t.points}</p>
-              <p className="text-2xl font-bold">{studentStats.points.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{(gameStats?.totalPoints ?? 0).toLocaleString()}</p>
             </div>
           </div>
         </Card>
@@ -262,7 +242,7 @@ export default function StudentGames() {
             </div>
             <div className={cn(isRTL && "text-right")}>
               <p className="text-sm text-muted-foreground">{t.streak}</p>
-              <p className="text-2xl font-bold">{studentStats.streak} {t.days}</p>
+              <p className="text-2xl font-bold">{gameStats?.streak ?? 0} {t.days}</p>
             </div>
           </div>
         </Card>
@@ -274,7 +254,7 @@ export default function StudentGames() {
             </div>
             <div className={cn(isRTL && "text-right")}>
               <p className="text-sm text-muted-foreground">{t.achievements}</p>
-              <p className="text-2xl font-bold">{unlockedCount}/{mockAchievements.length}</p>
+              <p className="text-2xl font-bold">{gameStats?.challengesCompleted ?? 0}/{gameStats?.totalActiveChallenges ?? 0}</p>
             </div>
           </div>
         </Card>

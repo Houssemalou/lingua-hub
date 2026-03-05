@@ -27,7 +27,7 @@ export default function AdminDashboard() {
   const { t, isRTL } = useLanguage();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
         setStats(data);
       } catch (err) {
         console.error('Failed to fetch admin stats:', err);
-        setError('Failed to load dashboard statistics');
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -56,7 +56,7 @@ export default function AdminDashboard() {
   if (error || !stats) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">{error || 'No data available'}</p>
+        <p className="text-muted-foreground">{error ? t('dashboard.loadError') : t('dashboard.noData')}</p>
       </div>
     );
   }
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
             <CardContent className="space-y-4">
               {stats.upcomingSessions.length === 0 ? (
                 <p className={cn("text-muted-foreground text-center py-8", isRTL && "text-right")}>
-                  {t('dashboard.noUpcomingSessions') || 'No upcoming sessions'}
+                  {t('dashboard.noUpcomingSessions')}
                 </p>
               ) : (
               stats.upcomingSessions.map((session) => (
@@ -234,28 +234,28 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className={cn("flex items-center gap-2 text-base sm:text-lg", isRTL && "flex-row-reverse")}>
               <BarChart3 className="w-5 h-5 text-accent" />
-              {t('dashboard.evaluationOverview') || 'Evaluation Overview'}
+              {t('dashboard.evaluationOverview')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
-                <p className="text-sm text-muted-foreground">{t('dashboard.totalEvaluations') || 'Total Evaluations'}</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalEvaluations')}</p>
                 <p className="text-3xl font-bold text-foreground mt-2">{stats.totalEvaluations}</p>
               </div>
               <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
-                <p className="text-sm text-muted-foreground">{t('dashboard.averageScore') || 'Average Score'}</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.averageScore')}</p>
                 <p className="text-3xl font-bold text-foreground mt-2">{Math.round(stats.averageEvaluationScore)}%</p>
               </div>
               <div className="p-4 rounded-lg bg-muted/50 border border-border text-center">
-                <p className="text-sm text-muted-foreground">{t('dashboard.totalProfessors') || 'Total Professors'}</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalProfessors')}</p>
                 <p className="text-3xl font-bold text-foreground mt-2">{stats.totalProfessors}</p>
               </div>
             </div>
             {stats.levelDistribution.length > 0 && (
               <div className="mt-6">
                 <h4 className={cn("text-sm font-medium text-muted-foreground mb-3", isRTL && "text-right")}>
-                  {t('dashboard.levelDistribution') || 'Student Level Distribution'}
+                  {t('dashboard.levelDistribution')}
                 </h4>
                 <div className="space-y-2">
                   {stats.levelDistribution.map((ld) => (

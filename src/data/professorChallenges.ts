@@ -14,6 +14,24 @@ export type ChallengeSubject =
 
 export type ChallengeDifficulty = 'easy' | 'medium' | 'hard';
 
+export type ChallengeTargetLevel = 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | null;
+
+export const targetLevelOptions: { id: string; nameFr: string; nameAr: string; nameEn: string }[] = [
+  { id: 'YEAR1', nameFr: '1ère année primaire', nameAr: 'السنة 1 ابتدائي', nameEn: 'Year 1' },
+  { id: 'YEAR2', nameFr: '2ème année primaire', nameAr: 'السنة 2 ابتدائي', nameEn: 'Year 2' },
+  { id: 'YEAR3', nameFr: '3ème année primaire', nameAr: 'السنة 3 ابتدائي', nameEn: 'Year 3' },
+  { id: 'YEAR4', nameFr: '4ème année primaire', nameAr: 'السنة 4 ابتدائي', nameEn: 'Year 4' },
+  { id: 'YEAR5', nameFr: '5ème année primaire', nameAr: 'السنة 5 ابتدائي', nameEn: 'Year 5' },
+  { id: 'YEAR6', nameFr: '6ème année primaire', nameAr: 'السنة 6 ابتدائي', nameEn: 'Year 6' },
+  { id: 'YEAR7', nameFr: '7ème année de base', nameAr: 'السنة 7 أساسي', nameEn: 'Year 7' },
+  { id: 'YEAR8', nameFr: '8ème année de base', nameAr: 'السنة 8 أساسي', nameEn: 'Year 8' },
+  { id: 'YEAR9', nameFr: '9ème année de base', nameAr: 'السنة 9 أساسي', nameEn: 'Year 9' },
+  { id: 'YEAR10', nameFr: '1ère année secondaire', nameAr: 'السنة 1 ثانوي', nameEn: 'Year 10' },
+  { id: 'YEAR11', nameFr: '2ème année secondaire', nameAr: 'السنة 2 ثانوي', nameEn: 'Year 11' },
+  { id: 'YEAR12', nameFr: '3ème année secondaire', nameAr: 'السنة 3 ثانوي', nameEn: 'Year 12' },
+  { id: 'YEAR13', nameFr: 'Baccalauréat (4ème année)', nameAr: 'البكالوريا', nameEn: 'Baccalaureate' },
+];
+
 export interface ProfessorChallenge {
   id: string;
   professorId: string;
@@ -36,6 +54,7 @@ export interface ProfessorChallenge {
   expiresAt: string;
   isActive: boolean;
   participantCount?: number;
+  targetLevel?: string | null;
 }
 
 export interface StudentChallengeAttempt {

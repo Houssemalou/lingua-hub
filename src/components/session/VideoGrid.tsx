@@ -80,7 +80,7 @@ export function VideoGrid({
         <div className="flex items-center justify-between px-2">
           <Badge variant="outline" className="gap-1.5 bg-white/10 text-white border-white/20">
             <Users className="w-3 h-3" />
-            {participants.length} participant{participants.length > 1 ? 's' : ''}
+            {participants.length} {isRTL ? 'مشارك(ون)' : `participant${participants.length > 1 ? 's' : ''}`}
           </Badge>
         </div>
       )}
@@ -89,11 +89,11 @@ export function VideoGrid({
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mb-2">
           <Button size="sm" variant="secondary" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
-            Précédent
+            {isRTL ? 'السابق' : 'Précédent'}
           </Button>
-          <span className="text-xs text-white/80">Page {page + 1} / {totalPages}</span>
+          <span className="text-xs text-white/80">{isRTL ? 'صفحة' : 'Page'} {page + 1} / {totalPages}</span>
           <Button size="sm" variant="secondary" onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}>
-            Suivant
+            {isRTL ? 'التالي' : 'Suivant'}
           </Button>
         </div>
       )}

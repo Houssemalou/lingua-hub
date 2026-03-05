@@ -31,8 +31,8 @@ export interface StudentRegisterData {
   nickname: string;
   bio?: string;
   avatar?: string;
-  // primary school years 1..9
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9';
+  // Système éducatif tunisien : primaire (1-6), collège (7-9), secondaire (10-13/Bac)
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
   accessToken: string;
 }
 
@@ -486,25 +486,25 @@ export const AuthService = {
     }
   },
 
-  // Generate Access Token
-  async generateAccessToken(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<{ token: string; role: string; expiresAt: string; createdAt: string }>> {
+  // Generate Access Tokens (bulk)
+  async generateAccessToken(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN', count: number = 1): Promise<ApiResponse<Array<{ token: string; role: string; expiresAt: string; createdAt: string }>>> {
     try {
       const response = await apiClient.post<{
         success: boolean;
         message: string;
-        data: {
+        data: Array<{
           token: string;
           role: string;
           expiresAt: string;
           createdAt: string;
-        };
+        }>;
         error: string | null;
-      }>('/auth/generate-access-token', { role });
+      }>('/auth/generate-access-token', { role, count });
 
       if (!response.success) {
         return {
           success: false,
-          error: response.message || response.error || 'Failed to generate access token',
+          error: response.message || response.error || 'Failed to generate access tokens',
         };
       }
 
@@ -516,7 +516,7 @@ export const AuthService = {
       console.error('Generate access token error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate access token',
+        error: error instanceof Error ? error.message : 'Failed to generate access tokens',
       };
     }
   },
@@ -603,6 +603,92 @@ export const AuthService = {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch access tokens',
       };
+    }
+  },
+
+  // ===== Premium Token Methods =====
+
+  // Generate Premium Tokens (admin, bulk)
+  async generatePremiumToken(count: number = 1): Promise<ApiResponse<Array<{ token: string; role: string; expiresAt: string; createdAt: string }>>> {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: Array<{ token: string; role: string; expiresAt: string; createdAt: string }>;
+        error: string | null;
+      }>('/auth/generate-premium-token', { count });
+
+      if (!response.success) {
+        return { success: false, error: response.message || response.error || 'Failed to generate premium tokens' };
+      }
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Generate premium token error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to generate premium tokens' };
+    }
+  },
+
+  // Get Available Premium Tokens (admin)
+  async getAvailablePremiumTokens(): Promise<ApiResponse<Array<{ token: string; role: string; expiresAt: string; createdAt: string }>>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: Array<{ token: string; role: string; expiresAt: string; createdAt: string }>;
+        error: string | null;
+      }>('/auth/premium-tokens');
+
+      if (!response.success) {
+        return { success: false, error: response.message || response.error || 'Failed to fetch premium tokens' };
+      }
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Get premium tokens error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch premium tokens' };
+    }
+  },
+
+  // Activate Premium Token (student)
+  async activatePremiumToken(token: string): Promise<ApiResponse<{ premiumExpiresAt: string }>> {
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        message: string;
+        data: { premiumExpiresAt: string };
+        error: string | null;
+      }>('/auth/activate-premium', { token });
+
+      if (!response.success) {
+        return { success: false, error: response.message || response.error || 'Failed to activate premium token' };
+      }
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Activate premium token error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to activate premium token' };
+    }
+  },
+
+  // Get Premium Status (student)
+  async getPremiumStatus(): Promise<ApiResponse<{ isPremium: boolean }>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        message: string;
+        data: { isPremium: boolean };
+        error: string | null;
+      }>('/auth/premium-status');
+
+      if (!response.success) {
+        return { success: false, error: response.message || response.error || 'Failed to check premium status' };
+      }
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Get premium status error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to check premium status' };
     }
   },
 };

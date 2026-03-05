@@ -14,19 +14,19 @@ const ALLOW_EARLY_JOIN = import.meta.env.VITE_ALLOW_EARLY_JOIN !== 'false'; // t
  * Allows joining 15 minutes before scheduled time
  * Always enforces the 15-min rule regardless of dev mode
  */
-export function canJoinRoom(room: RoomModel): { canJoin: boolean; reason?: string; minutesLeft?: number } {
+export function canJoinRoom(room: RoomModel, isRTL = false): { canJoin: boolean; reason?: string; minutesLeft?: number } {
   // Always check status first
   if (room.status === 'completed') {
     return {
       canJoin: false,
-      reason: 'This session has already ended.'
+      reason: isRTL ? 'هذه الجلسة انتهت بالفعل.' : 'Cette session est déjà terminée.'
     };
   }
 
   if (room.status === 'cancelled') {
     return {
       canJoin: false,
-      reason: 'This session has been cancelled.'
+      reason: isRTL ? 'تم إلغاء هذه الجلسة.' : 'Cette session a été annulée.'
     };
   }
 
@@ -45,7 +45,9 @@ export function canJoinRoom(room: RoomModel): { canJoin: boolean; reason?: strin
     return {
       canJoin: false,
       minutesLeft,
-      reason: `Session starts in ${minutesLeft} minutes. You can join 15 minutes before the scheduled time.`
+      reason: isRTL
+        ? `تبدأ الجلسة بعد ${minutesLeft} دقيقة. يمكنك الانضمام قبل 15 دقيقة من الموعد المحدد.`
+        : `La session commence dans ${minutesLeft} minutes. Vous pouvez rejoindre 15 minutes avant l'heure prévue.`
     };
   }
 
@@ -56,20 +58,23 @@ export function canJoinRoom(room: RoomModel): { canJoin: boolean; reason?: strin
  * Check if a professor can start a room
  * Always enforces the 15-min rule
  */
-export function canStartRoom(room: RoomModel): { canStart: boolean; reason?: string; minutesLeft?: number } {
+export function canStartRoom(room: RoomModel, isRTL = false): { canStart: boolean; reason?: string; minutesLeft?: number } {
   // Check if already started
   if (room.status === 'live') {
     return {
       canStart: false,
-      reason: 'Session is already live.'
+      reason: isRTL ? 'الجلسة قيد التنفيذ بالفعل.' : 'La session est déjà en cours.'
     };
   }
 
   // Check if completed or cancelled
   if (room.status === 'completed' || room.status === 'cancelled') {
+    const statusLabel = room.status === 'completed'
+      ? (isRTL ? 'مكتملة' : 'terminée')
+      : (isRTL ? 'ملغاة' : 'annulée');
     return {
       canStart: false,
-      reason: `Session has been ${room.status}.`
+      reason: isRTL ? `الجلسة ${statusLabel}.` : `La session est ${statusLabel}.`
     };
   }
 
@@ -83,7 +88,9 @@ export function canStartRoom(room: RoomModel): { canStart: boolean; reason?: str
     return {
       canStart: false,
       minutesLeft,
-      reason: `You can start the session in ${minutesLeft} minutes (15 minutes before scheduled time).`
+      reason: isRTL
+        ? `يمكنك بدء الجلسة بعد ${minutesLeft} دقيقة (15 دقيقة قبل الموعد المحدد).`
+        : `Vous pourrez démarrer la session dans ${minutesLeft} minutes (15 minutes avant l'heure prévue).`
     };
   }
 
@@ -105,23 +112,29 @@ export function getMinutesUntilJoinable(room: RoomModel): number {
 /**
  * Format time until joinable as a human-readable string
  */
-export function formatTimeUntilJoinable(room: RoomModel): string {
+export function formatTimeUntilJoinable(room: RoomModel, isRTL = false): string {
   const minutes = getMinutesUntilJoinable(room);
   
   if (minutes <= 0) {
-    return 'Available now';
+    return isRTL ? 'متاح الآن' : 'Disponible maintenant';
   }
   
   if (minutes < 60) {
-    return `Available in ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    return isRTL
+      ? `متاح بعد ${minutes} دقيقة`
+      : `Disponible dans ${minutes} minute${minutes !== 1 ? 's' : ''}`;
   }
   
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   
   if (remainingMinutes === 0) {
-    return `Available in ${hours} hour${hours !== 1 ? 's' : ''}`;
+    return isRTL
+      ? `متاح بعد ${hours} ساعة`
+      : `Disponible dans ${hours} heure${hours !== 1 ? 's' : ''}`;
   }
   
-  return `Available in ${hours}h ${remainingMinutes}m`;
+  return isRTL
+    ? `متاح بعد ${hours} سا ${remainingMinutes} د`
+    : `Disponible dans ${hours}h ${remainingMinutes}m`;
 }

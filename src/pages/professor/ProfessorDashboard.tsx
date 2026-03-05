@@ -6,7 +6,6 @@ import {
   Clock,
   TrendingUp,
   Play,
-  Star,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,7 +51,7 @@ export default function ProfessorDashboard() {
         setStatsData(data);
       } catch (err) {
         console.error('Failed to fetch professor stats:', err);
-        setError('Failed to load dashboard statistics');
+        setError(isRTL ? 'فشل في تحميل إحصائيات لوحة التحكم' : 'Échec du chargement des statistiques');
       } finally {
         setLoading(false);
       }
@@ -132,7 +131,7 @@ export default function ProfessorDashboard() {
   if (error || !statsData) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">{error || 'No data available'}</p>
+        <p className="text-muted-foreground">{error || (isRTL ? 'لا توجد بيانات متاحة' : 'Aucune donnée disponible')}</p>
       </div>
     );
   }
@@ -160,12 +159,11 @@ export default function ProfessorDashboard() {
       bgColor: 'bg-secondary/10',
     },
     {
-      title: isRTL ? 'التقييم' : 'Note',
-      value: statsData.rating || 0,
-      icon: Star,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
-      suffix: '/5',
+      title: isRTL ? 'إجمالي الجلسات' : 'Total Sessions',
+      value: statsData.totalSessions,
+      icon: TrendingUp,
+      color: 'text-emerald-500',
+      bgColor: 'bg-emerald-500/10',
     },
   ];
 
@@ -179,7 +177,7 @@ export default function ProfessorDashboard() {
       {/* Header */}
       <motion.div variants={item}>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-          {isRTL ? 'مرحباً' : 'Bienvenue'}, {professor?.name || 'Professeur'} 👋
+          {isRTL ? 'مرحباً' : 'Bienvenue'}, {professor?.name || (isRTL ? 'أستاذ' : 'Professeur')} 👋
         </h1>
         <p className="text-muted-foreground mt-1">
           {isRTL ? 'إليك ملخص نشاطك التعليمي' : 'Voici un résumé de votre activité pédagogique'}

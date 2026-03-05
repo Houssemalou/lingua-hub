@@ -17,6 +17,7 @@ import { RoomModel } from '@/models';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 export default function AdminLiveSession() {
   const { roomId } = useParams();
@@ -66,10 +67,10 @@ export default function AdminLiveSession() {
           }
 
         } else {
-          setError(response.error || 'Failed to load room');
+          setError(response.error || (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load room');
+        setError(err instanceof Error ? err.message : (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
       } finally {
         setLoading(false);
       }
@@ -165,17 +166,17 @@ export default function AdminLiveSession() {
                       }
                       toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
                     } else {
-                      toast.error(startRes.error || (isRTL ? 'فشل في بدء الجلسة' : 'Failed to start session'));
+                      toast.error(getFriendlyErrorMessage(startRes.error, isRTL));
                     }
                   } catch (err) {
-                    toast.error(err instanceof Error ? err.message : 'Failed to start session');
+                    toast.error(getFriendlyErrorMessage(err, isRTL));
                   } finally {
                     setStarting(false);
                   }
                 }}
                 disabled={starting}
               >
-                {starting ? (isRTL ? 'جارٍ البدء...' : 'Starting...') : (isRTL ? 'بدء الجلسة' : 'Start Session')}
+                {starting ? (isRTL ? 'جارٍ البدء...' : 'Démarrage...') : (isRTL ? 'بدء الجلسة' : 'Démarrer la session')}
               </Button>
             )}
           </div>

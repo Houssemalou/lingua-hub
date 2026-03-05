@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface ChatMessage {
   id: string;
@@ -25,6 +26,7 @@ interface ChatPanelProps {
 }
 
 const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMessage, currentUserId = '', visible = false, roomId }) => {
+  const { isRTL } = useLanguage();
   // restore draft from sessionStorage when available
   const initialDraft = React.useMemo(() => {
     try {
@@ -83,7 +85,7 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString(isRTL ? 'ar-SA' : 'fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   const isCurrentUser = (senderId: string) => {
@@ -91,16 +93,16 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
   };
 
   return (
-    <div className="chat-panel-root h-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
+    <div className="chat-panel-root h-full flex flex-col bg-gradient-to-b from-slate-50 to-white" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="p-4 border-b bg-white shadow-sm">
-        <div className="flex items-center gap-3">
+        <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-base text-gray-900">Chat</h3>
-            <p className="text-xs text-gray-500">Discutez avec les participants</p>
+            <h3 className="font-semibold text-base text-gray-900">{isRTL ? 'دردشة' : 'Chat'}</h3>
+            <p className="text-xs text-gray-500">{isRTL ? 'تحدث مع المشاركين' : 'Discutez avec les participants'}</p>
           </div>
         </div>
       </div>
@@ -116,8 +118,8 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
               <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                 <MessageCircle className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-sm text-gray-500">Aucun message pour le moment</p>
-              <p className="text-xs text-gray-400 mt-1">Commencez la conversation !</p>
+              <p className="text-sm text-gray-500">{isRTL ? 'لا توجد رسائل حاليًا' : 'Aucun message pour le moment'}</p>
+              <p className="text-xs text-gray-400 mt-1">{isRTL ? 'ابدأ المحادثة!' : 'Commencez la conversation !'}</p>
             </div>
           ) : (
             msgs.map((msg) => {
@@ -184,7 +186,7 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
             onChange={(e) => setMessage((e.currentTarget as HTMLInputElement).value)}
             onKeyPress={handleKeyPress}
           
-            placeholder="Tapez votre message..."
+            placeholder={isRTL ? 'اكتب رسالتك...' : 'Tapez votre message...'}
             className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white rounded-xl text-black placeholder:text-gray-400 caret-black"
           />
           <Button 
@@ -196,7 +198,7 @@ const ChatPanelComponent: React.FC<ChatPanelProps> = ({ messages = [], onSendMes
             <Send className="w-4 h-4" />
           </Button>
         </div>
-        <p className="text-[10px] text-gray-400 mt-1 px-1">Appuyez sur Entrée pour envoyer</p>
+        <p className="text-[10px] text-gray-400 mt-1 px-1">{isRTL ? 'اضغط على Enter للإرسال' : 'Appuyez sur Entrée pour envoyer'}</p>
       </div>
     </div>
   );

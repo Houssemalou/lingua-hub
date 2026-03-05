@@ -31,7 +31,8 @@ import {
   difficultyConfig,
   calculateChallengePoints,
   ProfessorChallenge,
-  ChallengeLeaderboardEntry
+  ChallengeLeaderboardEntry,
+  targetLevelOptions
 } from '@/data/professorChallenges';
 import { ChallengeLeaderboard } from '@/components/gamification/ChallengeLeaderboard';
 import { ChallengeService, ChallengeStatsData } from '@/services/ChallengeService';
@@ -129,43 +130,10 @@ export default function ProfessorChallenges() {
       deleteConfirmMessage: 'هل أنت متأكد من حذف هذا التحدي؟ لا يمكن التراجع عن هذا الإجراء.',
       cancel: 'إلغاء',
       confirmDelete: 'حذف',
-    },
-    en: {
-      title: 'Challenge Management',
-      subtitle: 'Create engaging challenges for your students',
-      createChallenge: 'Create Challenge',
-      activeChallenges: 'Active Challenges',
-      statistics: 'Statistics',
-      leaderboard: 'Leaderboard',
-      noChallenges: 'No challenges created',
-      createFirst: 'Create your first challenge to engage your students!',
-      totalChallenges: 'Total challenges',
-      totalParticipants: 'Participants',
-      averageScore: 'Average score',
-      successRate: 'Success rate',
-      expires: 'Expires',
-      participants: 'participants',
-      by: 'By',
-      points: 'points',
-      delete: 'Delete',
-      view: 'View',
-      challengeCreated: 'Challenge created successfully!',
-      challengeDeleted: 'Challenge deleted successfully!',
-      loading: 'Loading...',
-      question: 'Question',
-      options: 'Answer Options',
-      correctAnswer: 'Correct Answer',
-      createdAt: 'Created at',
-      expiresAt: 'Expires at',
-      challengeDetails: 'Challenge Details',
-      deleteConfirmTitle: 'Delete Challenge',
-      deleteConfirmMessage: 'Are you sure you want to delete this challenge? This action cannot be undone.',
-      cancel: 'Cancel',
-      confirmDelete: 'Delete',
     }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   const fetchData = async () => {
     setLoading(true);
@@ -206,6 +174,7 @@ export default function ProfessorChallenges() {
       correctAnswer: formData.correctAnswer,
       basePoints: formData.basePoints,
       imageUrl: formData.imageUrl,
+      targetLevel: formData.targetLevel,
       expiresIn: formData.expiresIn,
     });
 
@@ -217,8 +186,8 @@ export default function ProfessorChallenges() {
       fetchData();
     } else {
       toast({
-        title: 'Error',
-        description: result.error || 'Failed to create challenge',
+        title: isRTL ? 'خطأ' : 'Erreur',
+        description: result.error || (isRTL ? 'فشل في إنشاء التحدي' : 'Échec de création du défi'),
         variant: 'destructive'
       });
     }
@@ -236,8 +205,8 @@ export default function ProfessorChallenges() {
         fetchData();
       } else {
         toast({
-          title: 'Error',
-          description: result.error || 'Failed to delete challenge',
+          title: isRTL ? 'خطأ' : 'Erreur',
+          description: result.error || (isRTL ? 'فشل في حذف التحدي' : 'Échec de suppression du défi'),
           variant: 'destructive'
         });
       }
@@ -470,13 +439,21 @@ export default function ProfessorChallenges() {
                           </div>
                         )}
                         <div className="p-4">
-                          <div className={cn("flex items-center gap-2 mb-2", isRTL && "flex-row-reverse")}>
+                          <div className={cn("flex items-center gap-2 mb-2 flex-wrap", isRTL && "flex-row-reverse")}>
                             <Badge style={{ backgroundColor: `${subject?.color}20`, color: subject?.color }}>
                               {subject?.icon} {language === 'fr' ? subject?.nameFr : language === 'ar' ? subject?.nameAr : subject?.name}
                             </Badge>
                             <Badge variant="outline" style={{ borderColor: difficulty?.color, color: difficulty?.color }}>
                               {language === 'fr' ? difficulty?.nameFr : language === 'ar' ? difficulty?.nameAr : difficulty?.name}
                             </Badge>
+                            {challenge.targetLevel && (() => {
+                              const lvl = targetLevelOptions.find(l => l.id === challenge.targetLevel);
+                              return lvl ? (
+                                <Badge variant="secondary" className="gap-1">
+                                  📚 {language === 'fr' ? lvl.nameFr : language === 'ar' ? lvl.nameAr : lvl.nameEn}
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
 
                           <h3 className={cn("font-semibold text-lg mb-2", isRTL && "text-right")}>
@@ -585,6 +562,14 @@ export default function ProfessorChallenges() {
                         <Users className="w-3 h-3" />
                         {viewChallenge.participantCount ?? 0}
                       </Badge>
+                      {viewChallenge.targetLevel && (() => {
+                        const lvl = targetLevelOptions.find(l => l.id === viewChallenge.targetLevel);
+                        return lvl ? (
+                          <Badge variant="secondary" className="gap-1">
+                            📚 {language === 'fr' ? lvl.nameFr : language === 'ar' ? lvl.nameAr : lvl.nameEn}
+                          </Badge>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 

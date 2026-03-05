@@ -10,7 +10,8 @@ import {
   ChallengeLeaderboardEntry,
   StudentChallengeAttempt,
   ChallengeSubject,
-  ChallengeDifficulty
+  ChallengeDifficulty,
+  ChallengeTargetLevel
 } from '@/data/professorChallenges';
 
 // ============================================
@@ -26,6 +27,7 @@ export interface CreateChallengeData {
   correctAnswer: number;
   basePoints: number;
   imageUrl?: string;
+  targetLevel?: ChallengeTargetLevel;
   expiresIn: number; // hours
 }
 
@@ -44,6 +46,7 @@ export interface BackendChallengeDTO {
   expiresAt: string;
   isActive: boolean;
   participantCount?: number;
+  targetLevel?: string | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -92,6 +95,15 @@ export interface ChallengeStatsData {
   successRate: number;
 }
 
+export interface StudentGameStatsData {
+  totalPoints: number;
+  level: number;
+  pointsToNextLevel: number;
+  streak: number;
+  challengesCompleted: number;
+  totalActiveChallenges: number;
+}
+
 // ============================================
 // Mappers
 // ============================================
@@ -119,6 +131,7 @@ function mapBackendToFrontend(dto: BackendChallengeDTO): ProfessorChallenge {
     expiresAt: dto.expiresAt,
     isActive: dto.isActive,
     participantCount: dto.participantCount,
+    targetLevel: dto.targetLevel || null,
   };
 }
 
@@ -245,6 +258,21 @@ export const ChallengeService = {
     }
   },
 
+  // Student: Get game stats (points, level, streak, challenges completed)
+  async getMyGameStats(): Promise<ApiResponse<StudentGameStatsData>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: StudentGameStatsData;
+      }>('/challenges/my-game-stats');
+
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Fetch game stats error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch game stats' };
+    }
+  },
+
   // Student: Submit an answer
   async submitAnswer(data: SubmitAnswerData): Promise<ApiResponse<SubmitAnswerResponseData>> {
     try {
@@ -287,6 +315,21 @@ export const ChallengeService = {
       return { success: true, data: response.data.map(mapBackendLeaderboard) };
     } catch (error) {
       console.error('Fetch leaderboard error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' };
+    }
+  },
+
+  // Student: Get leaderboard filtered by student's level
+  async getLeaderboardByLevel(): Promise<ApiResponse<ChallengeLeaderboardEntry[]>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: BackendLeaderboardEntry[];
+      }>('/challenges/leaderboard/my-level');
+
+      return { success: true, data: response.data.map(mapBackendLeaderboard) };
+    } catch (error) {
+      console.error('Fetch leaderboard by level error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' };
     }
   },

@@ -41,11 +41,10 @@ export function DailyChallenges({ challenges, onStartChallenge }: DailyChallenge
 
   const labels = {
     fr: { daily: 'Défis du jour', remaining: 'Temps restant', start: 'Commencer', completed: 'Terminé' },
-    ar: { daily: 'تحديات اليوم', remaining: 'الوقت المتبقي', start: 'ابدأ', completed: 'مكتمل' },
-    en: { daily: 'Daily Challenges', remaining: 'Time remaining', start: 'Start', completed: 'Completed' }
+    ar: { daily: 'تحديات اليوم', remaining: 'الوقت المتبقي', start: 'ابدأ', completed: 'مكتمل' }
   };
 
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   return (
     <Card className="overflow-hidden">

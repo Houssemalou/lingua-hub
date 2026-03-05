@@ -16,7 +16,6 @@ export interface ProfessorModel {
   specialization: string;
   joinedAt: string;
   totalSessions: number;
-  rating: number;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -45,8 +44,7 @@ export interface ProfessorFilters {
   language?: string;
   specialization?: string;
   search?: string;
-  minRating?: number;
-  sortBy?: 'name' | 'rating' | 'totalSessions' | 'joinedAt';
+  sortBy?: 'name' | 'totalSessions' | 'joinedAt';
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;

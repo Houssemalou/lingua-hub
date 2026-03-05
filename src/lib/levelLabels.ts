@@ -1,13 +1,20 @@
 export const LEVEL_LABELS: Record<string, string> = {
-  YEAR1: '1re année',
-  YEAR2: '2ème année',
-  YEAR3: '3ème année',
-  YEAR4: '4ème année',
-  YEAR5: '5ème année',
-  YEAR6: '6ème année',
-  YEAR7: '7ème année',
-  YEAR8: '8ème année',
-  YEAR9: '9ème année',
+  // Primaire (enseignement de base – 1er cycle)
+  YEAR1: '1ère année primaire',
+  YEAR2: '2ème année primaire',
+  YEAR3: '3ème année primaire',
+  YEAR4: '4ème année primaire',
+  YEAR5: '5ème année primaire',
+  YEAR6: '6ème année primaire',
+  // Collège (enseignement de base – 2ème cycle)
+  YEAR7: '7ème année de base',
+  YEAR8: '8ème année de base',
+  YEAR9: '9ème année de base',
+  // Lycée (enseignement secondaire)
+  YEAR10: '1ère année secondaire',
+  YEAR11: '2ème année secondaire',
+  YEAR12: '3ème année secondaire',
+  YEAR13: 'Baccalauréat (4ème année)',
 };
 
 export function getLevelLabel(level?: string) {

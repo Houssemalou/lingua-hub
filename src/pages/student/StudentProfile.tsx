@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { StudentService } from '@/services/StudentService';
 import { toast } from 'sonner';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -88,7 +89,7 @@ export default function StudentProfile() {
         toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح!' : 'Profil mis à jour avec succès !');
         setIsEditing(false);
       } else {
-        toast.error(response.error || (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil'));
+        toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -276,9 +277,9 @@ export default function StudentProfile() {
         </Card>
         <Card>
           <CardContent className="p-4 sm:p-6 text-center">
-            <p className="text-2xl sm:text-4xl font-bold text-success">7</p>
+            <p className="text-2xl sm:text-4xl font-bold text-success">{studentData.totalSessions + Number(studentData.hoursLearned)}</p>
             <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-              {isRTL ? 'تتابع' : 'Série'}
+              {isRTL ? 'التقدم' : 'Progrès'}
             </p>
           </CardContent>
         </Card>

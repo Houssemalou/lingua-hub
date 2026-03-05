@@ -67,10 +67,9 @@ export function ChallengeCard({ challenge, studentId, onPlay, completedChallenge
 
   const labels = {
     fr: { by: 'Par', play: 'Jouer', completed: 'Complété', points: 'points' },
-    ar: { by: 'من', play: 'العب', completed: 'مكتمل', points: 'نقاط' },
-    en: { by: 'By', play: 'Play', completed: 'Completed', points: 'points' }
+    ar: { by: 'من', play: 'العب', completed: 'مكتمل', points: 'نقاط' }
   };
-  const t = labels[language as keyof typeof labels] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.fr;
 
   return (
     <motion.div

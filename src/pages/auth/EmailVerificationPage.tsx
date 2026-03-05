@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, Loader2, GraduationCap } from 'lucide-react';
 import { AuthService } from '@/services/AuthService';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Sun, Moon } from 'lucide-react';
 
 type VerificationStatus = 'loading' | 'success' | 'error';
@@ -14,6 +15,7 @@ export default function EmailVerificationPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const { theme, toggleTheme } = useTheme();
+  const { isRTL } = useLanguage();
 
   const [status, setStatus] = useState<VerificationStatus>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -21,7 +23,7 @@ export default function EmailVerificationPage() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setErrorMessage('Token de vérification manquant');
+      setErrorMessage(isRTL ? 'رمز التحقق مفقود' : 'Token de vérification manquant');
       return;
     }
 
@@ -31,7 +33,7 @@ export default function EmailVerificationPage() {
         setStatus('success');
       } else {
         setStatus('error');
-        setErrorMessage(result.error || 'La vérification a échoué');
+        setErrorMessage(result.error || (isRTL ? 'فشل التحقق' : 'La vérification a échoué'));
       }
     };
 
@@ -39,7 +41,7 @@ export default function EmailVerificationPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
@@ -64,8 +66,12 @@ export default function EmailVerificationPage() {
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
                     <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
                   </div>
-                  <CardTitle className="text-2xl">Vérification en cours...</CardTitle>
-                  <CardDescription>Veuillez patienter</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {isRTL ? 'جارٍ التحقق...' : 'Vérification en cours...'}
+                  </CardTitle>
+                  <CardDescription>
+                    {isRTL ? 'يرجى الانتظار' : 'Veuillez patienter'}
+                  </CardDescription>
                 </>
               )}
 
@@ -75,10 +81,12 @@ export default function EmailVerificationPage() {
                     <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
                   </div>
                   <CardTitle className="text-2xl text-green-600 dark:text-green-400">
-                    Email vérifié !
+                    {isRTL ? 'تم التحقق من البريد الإلكتروني!' : 'Email vérifié !'}
                   </CardTitle>
                   <CardDescription className="text-base mt-2">
-                    Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter.
+                    {isRTL
+                      ? 'تم تفعيل حسابك بنجاح. يمكنك الآن تسجيل الدخول.'
+                      : 'Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter.'}
                   </CardDescription>
                 </>
               )}
@@ -89,7 +97,7 @@ export default function EmailVerificationPage() {
                     <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
                   </div>
                   <CardTitle className="text-2xl text-red-600 dark:text-red-400">
-                    Erreur de vérification
+                    {isRTL ? 'خطأ في التحقق' : 'Erreur de vérification'}
                   </CardTitle>
                   <CardDescription className="text-base mt-2">
                     {errorMessage}
@@ -100,13 +108,15 @@ export default function EmailVerificationPage() {
             <CardContent>
               {status === 'success' && (
                 <Link to="/auth">
-                  <Button className="w-full">Se connecter</Button>
+                  <Button className="w-full">
+                    {isRTL ? 'تسجيل الدخول' : 'Se connecter'}
+                  </Button>
                 </Link>
               )}
               {status === 'error' && (
                 <Link to="/auth">
                   <Button variant="outline" className="w-full">
-                    Retour à la connexion
+                    {isRTL ? 'العودة إلى تسجيل الدخول' : 'Retour à la connexion'}
                   </Button>
                 </Link>
               )}
@@ -116,7 +126,7 @@ export default function EmailVerificationPage() {
       </main>
 
       <footer className="p-4 text-center text-sm text-muted-foreground">
-        &copy; 2024 LangSchool AI. Tous droits réservés
+        &copy; 2024 LangSchool AI. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
       </footer>
     </div>
   );

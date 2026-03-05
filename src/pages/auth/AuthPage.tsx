@@ -14,13 +14,14 @@ import { AuthService } from '@/services/AuthService';
 import { avatarOptions } from '@/data/avatars';
 import { cn } from '@/lib/utils';
 import { getLevelLabel } from '@/lib/levelLabels';
+import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 
 type AuthMode = 'login' | 'signup';
 type SignupRole = 'admin' | 'student' | 'professor' | null;
 type StudentStep = 'role' | 'avatar' | 'info' | 'token';
 type ProfessorStep = 'role' | 'avatar' | 'info' | 'token' | 'email-verification';
 
-const levelOptions: Array<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9'> = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9'];
+const levelOptions: Array<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13'> = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13'];
 
 export default function AuthPage() {
   const { isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, user } = useAuth();
@@ -45,7 +46,7 @@ export default function AuthPage() {
   const [bio, setBio] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(avatarOptions[0].url);
   const [accessToken, setAccessToken] = useState('');
-  const [level, setLevel] = useState<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9'>('YEAR1');
+  const [level, setLevel] = useState<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13'>('YEAR1');
   const [uniqueCode, setUniqueCode] = useState('');
   // Email verification state
   const [registeredEmail, setRegisteredEmail] = useState('');
@@ -86,7 +87,7 @@ export default function AuthPage() {
     
     const result = await login(username, password);
     if (!result.success) {
-      setError(result.error || 'Erreur de connexion');
+      setError(getFriendlyErrorMessage(result.error, isRTL) || (isRTL ? 'خطأ في تسجيل الدخول' : 'Erreur de connexion'));
     } else {
       setJustLoggedIn(true);
     }
@@ -109,7 +110,7 @@ export default function AuthPage() {
       setRegisteredEmail(email);
       setShowEmailVerification(true);
     } else {
-      setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
+      setError(getFriendlyErrorMessage(result.error, isRTL) || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
     setLoading(false);
   };
@@ -134,7 +135,7 @@ export default function AuthPage() {
       resetForm();
       setMode('login');
     } else {
-      setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
+      setError(getFriendlyErrorMessage(result.error, isRTL) || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
     setLoading(false);
   };
@@ -158,7 +159,7 @@ export default function AuthPage() {
       setRegisteredEmail(email);
       setProfessorStep('email-verification');
     } else {
-      setError(result.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
+      setError(getFriendlyErrorMessage(result.error, isRTL) || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'));
     }
     setLoading(false);
   };
@@ -238,7 +239,7 @@ export default function AuthPage() {
               <Button
                 variant="link"
                 className="px-2"
-                onClick={() => setMode('signup')}
+                onClick={() => { setError(''); setMode('signup'); }}
               >
                 {isRTL ? 'إنشاء حساب' : 'S\'inscrire'}
               </Button>
