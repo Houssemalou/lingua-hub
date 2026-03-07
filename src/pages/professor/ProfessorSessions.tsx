@@ -57,7 +57,7 @@ const item = {
 // same lists as admin so professor can pick (school years)
 const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13','PREPA1','PREPA2'];
 // languages/subjects kept per requirements
-const languages = ['Français', 'Anglais', 'Arabe', 'Allemand', 'Mathématiques', 'Science', 'Informatique'];
+const languages = ['Français', 'Anglais', 'Arabe', 'Allemand', 'Espagnol', 'Mathématiques', 'Physique', 'Science', 'Informatique', 'Mécanique', 'Électrique'];
 
 
 export default function ProfessorSessions() {
@@ -76,6 +76,10 @@ export default function ProfessorSessions() {
       'Mathématiques': 'الرياضيات',
       'Science': 'العلوم',
       'Informatique': 'المعلوميات',
+      'Physique': 'الفيزياء',
+      'Mécanique': 'الميكانيك',
+      'Électrique': 'الكهرباء',
+      'Espagnol': 'الإسبانية',
     };
     return map[lang] || lang;
   };
@@ -494,7 +498,16 @@ export default function ProfessorSessions() {
               <div className="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto p-1">
                 {students.length > 0 ? (
                   students
-                    .filter(s => !inviteFilterLevel || inviteFilterLevel === '__all__' || s.level === inviteFilterLevel)
+                    .filter(s => {
+                      // Filter by professor type: FORMATEUR sees only FORMATION students, PROF_PREPA sees only PREPA, others see SCOLAIRE
+                      const profType = professor?.professorType;
+                      if (profType === 'FORMATEUR' && s.studentType !== 'FORMATION') return false;
+                      if (profType === 'PROF_PREPA' && s.studentType !== 'PREPA') return false;
+                      if (profType && profType !== 'FORMATEUR' && profType !== 'PROF_PREPA' && s.studentType && s.studentType !== 'SCOLAIRE') return false;
+                      // Filter by level
+                      if (inviteFilterLevel && inviteFilterLevel !== '__all__' && s.level !== inviteFilterLevel) return false;
+                      return true;
+                    })
                     .map((student) => (
                       <label
                         key={student.id}

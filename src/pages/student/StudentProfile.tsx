@@ -13,6 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { StudentService } from '@/services/StudentService';
 import { toast } from 'sonner';
 import { getFriendlyErrorMessage } from '@/lib/errorMessages';
+import { getLevelLabel } from '@/lib/levelLabels';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -154,7 +155,7 @@ export default function StudentProfile() {
                   </button>
                 </div>
                 <Badge variant={studentData.level.toLowerCase() as any} className="text-sm sm:text-base px-3 sm:px-4 py-1">
-                  {isRTL ? 'المستوى' : 'Niveau'} {studentData.level}
+                  {isRTL ? 'المستوى' : 'Niveau'} {getLevelLabel(studentData.level)}
                 </Badge>
               </div>
 
@@ -308,7 +309,7 @@ export default function StudentProfile() {
                 <p className="text-sm text-muted-foreground">
                   {isRTL ? 'المستوى الحالي' : 'Niveau actuel'}
                 </p>
-                <p className="text-foreground font-medium">{studentData.level}</p>
+                <p className="text-foreground font-medium">{getLevelLabel(studentData.level)}</p>
               </div>
               <div className={isRTL ? "text-right" : ""}>
                 <p className="text-sm text-muted-foreground">Email</p>

@@ -837,9 +837,9 @@ export default function AuthPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>{isRTL ? 'اللغات التي تدرسها' : 'Langues enseignées'}</Label>
+            <Label>{isRTL ? 'المواد التي تدرسها' : 'Matières enseignées'}</Label>
             <div className="flex flex-wrap gap-2">
-              {['Français', 'Anglais', 'Espagnol', 'Arabe', 'Allemand'].map((lang) => (
+              {['Français', 'Anglais', 'Espagnol', 'Arabe', 'Allemand', 'Mathématiques', 'Physique', 'Science', 'Informatique', 'Mécanique', 'Électrique'].map((lang) => (
                 <Button
                   key={lang}
                   type="button"
