@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
       // Proxy API calls to backend during development
       // This ensures cookies are sent on the same origin (avoiding CORS cookie issues)
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://91.134.137.202',
         changeOrigin: true,
         secure: false,
       },
