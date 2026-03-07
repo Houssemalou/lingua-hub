@@ -1,3 +1,6 @@
+export type ProfessorType = 'PROF_PRIMAIRE' | 'PROF_BASE' | 'PROF_SECONDAIRE' | 'FORMATEUR' | 'PROF_PREPA';
+export type StudentType = 'SCOLAIRE' | 'FORMATION' | 'PREPA';
+
 export interface Student {
   id: string;
   name: string;
@@ -5,7 +8,8 @@ export interface Student {
   avatar: string;
   nickname: string;
   bio: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  studentType?: StudentType;
   joinedAt: string;
   skills: {
     pronunciation: number;
@@ -27,6 +31,7 @@ export interface Professor {
   bio: string;
   languages: string[];
   specialization: string;
+  professorType?: ProfessorType;
   joinedAt: string;
   totalSessions: number;
   createdBy?: string;
@@ -36,7 +41,7 @@ export interface Room {
   id: string;
   name: string;
   language: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
   objective: string;
   scheduledAt: string;
   duration: number; // in minutes
@@ -54,7 +59,7 @@ export interface Session {
   roomId: string;
   roomName: string;
   language: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
   objective: string;
   scheduledAt: string;
   duration: number;

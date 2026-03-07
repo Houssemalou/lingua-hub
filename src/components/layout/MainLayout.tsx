@@ -79,18 +79,25 @@ export function MainLayout() {
     }
   };
 
+  // Determine if gamification should be hidden
+  const professorType = user?.professor?.professorType;
+  const studentType = user?.student?.studentType;
+  const hideGamification =
+    (role === 'professor' && (professorType === 'FORMATEUR' || professorType === 'PROF_PREPA')) ||
+    (role === 'student' && (studentType === 'FORMATION' || studentType === 'PREPA'));
+
   // Bottom nav items per role
   const studentBottomNav = [
     { to: '/student/dashboard', icon: LayoutDashboard, label: isRTL ? 'الرئيسية' : 'Accueil' },
     { to: '/student/sessions', icon: CalendarCheck, label: isRTL ? 'الجلسات' : 'Sessions' },
-    { to: '/student/games', icon: Gamepad2, label: isRTL ? 'ألعاب' : 'Jeux' },
+    ...(!hideGamification ? [{ to: '/student/games', icon: Gamepad2, label: isRTL ? 'ألعاب' : 'Jeux' }] : []),
     { to: '/student/evaluations', icon: GraduationCap, label: isRTL ? 'تقييمات' : 'Évals' },
     { to: '/student/profile', icon: User, label: isRTL ? 'الملف' : 'Profil' },
   ];
   const professorBottomNav = [
     { to: '/professor/dashboard', icon: LayoutDashboard, label: isRTL ? 'الرئيسية' : 'Accueil' },
     { to: '/professor/sessions', icon: CalendarCheck, label: isRTL ? 'الجلسات' : 'Sessions' },
-    { to: '/professor/challenges', icon: Swords, label: isRTL ? 'تحديات' : 'Défis' },
+    ...(!hideGamification ? [{ to: '/professor/challenges', icon: Swords, label: isRTL ? 'تحديات' : 'Défis' }] : []),
     { to: '/professor/evaluations', icon: GraduationCap, label: isRTL ? 'تقييمات' : 'Évals' },
     { to: '/professor/profile', icon: User, label: isRTL ? 'الملف' : 'Profil' },
   ];

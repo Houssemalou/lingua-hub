@@ -2,6 +2,8 @@
 // Professor Model
 // ============================================
 
+export type ProfessorType = 'PROF_PRIMAIRE' | 'PROF_BASE' | 'PROF_SECONDAIRE' | 'FORMATEUR' | 'PROF_PREPA';
+
 export interface ProfessorModel {
   id: string;
   // some backends return the underlying users table foreign key as `userId`
@@ -14,6 +16,7 @@ export interface ProfessorModel {
   bio: string;
   languages: string[];
   specialization: string;
+  professorType?: ProfessorType;
   joinedAt: string;
   totalSessions: number;
   isActive?: boolean;
@@ -29,6 +32,7 @@ export interface CreateProfessorDTO {
   bio?: string;
   languages: string[];
   specialization: string;
+  professorType: ProfessorType;
   createdBy?: string;
 }
 

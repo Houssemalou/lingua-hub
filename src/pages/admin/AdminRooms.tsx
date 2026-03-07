@@ -29,7 +29,7 @@ const item = {
   show: { opacity: 1, y: 0 }
 };
 
-const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13'];
+const levels = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13','PREPA1','PREPA2'];
 // allowed language/subject options (bilingual fr/ar)
 const languages = [
   { fr: 'Français', ar: 'الفرنسية' },

@@ -31,8 +31,9 @@ export interface StudentRegisterData {
   nickname: string;
   bio?: string;
   avatar?: string;
-  // Système éducatif tunisien : primaire (1-6), collège (7-9), secondaire (10-13/Bac)
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  // Système éducatif tunisien : primaire (1-6), collège (7-9), secondaire (10-13/Bac), prépa (PREPA1-2), formation
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  studentType?: 'SCOLAIRE' | 'FORMATION' | 'PREPA';
   accessToken: string;
 }
 
@@ -44,6 +45,7 @@ export interface ProfessorRegisterData {
   avatar?: string;
   languages: string[];
   specialization: string;
+  professorType: 'PROF_PRIMAIRE' | 'PROF_BASE' | 'PROF_SECONDAIRE' | 'FORMATEUR' | 'PROF_PREPA';
   accessToken: string;
 }
 

@@ -121,7 +121,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
   }));
 
   const localParticipant = formattedParticipants.find(p => p.formatted.isLocal);
-  const isProfessor = (user?.role === 'professor' || user?.role === 'admin') || localParticipant?.formatted.role === 'professor';
+  const isProfessor = isRecordingMode || (user?.role === 'professor' || user?.role === 'admin') || localParticipant?.formatted.role === 'professor';
   const screenSharingParticipant = formattedParticipants.find(p => p.formatted.isScreenSharing);
   const isScreenSharing = !!screenSharingParticipant;
   // students should not see camera or screen-share buttons
@@ -394,6 +394,24 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
             />
           </div>
+          {/* Whiteboard overlay in screen share mode */}
+          {showWhiteboard && (
+            <div className={cn("absolute z-50", "inset-0")}>
+              <WhiteboardPanel
+                room={room}
+                isProfessor={isProfessor}
+                participantCount={participants.length}
+                onClose={() => setShowWhiteboard(false)}
+                roomId={roomId}
+                isRecordingMode={isRecordingMode}
+                participants={formattedParticipants.map(p => ({
+                  identity: p.formatted.id,
+                  name: p.formatted.name,
+                  role: p.formatted.role,
+                }))}
+              />
+            </div>
+          )}
           {/* Recording mode: always-visible chat sidebar */}
           {!isMobile && !isRecordingMode && <DesktopFloatingChat />}
           {!isMobile && !isRecordingMode && <DesktopFloatingParticipants />}
@@ -441,11 +459,22 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               participantCount={participants.length}
               onClose={() => setShowWhiteboard(false)}
               roomId={roomId}
+              isRecordingMode={isRecordingMode}
               participants={formattedParticipants.map(p => ({
                 identity: p.formatted.id,
                 name: p.formatted.name,
                 role: p.formatted.role,
               }))}
+              mediaControls={{
+                isMuted: localParticipant?.formatted.isMuted || false,
+                isCameraOn: localParticipant?.formatted.isCameraOn || false,
+                isScreenSharing: localParticipant?.formatted.isScreenSharing || false,
+                onToggleMute: toggleMicrophone,
+                onToggleCamera: toggleCamera,
+                onToggleScreenShare: toggleScreenShare,
+                allowCamera,
+                allowScreenShare,
+              }}
             />
           </div>
         )}

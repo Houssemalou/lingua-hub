@@ -46,6 +46,13 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const { language, setLanguage, t, isRTL } = useLanguage();
   const { settings } = usePlatform();
 
+  // Determine if gamification should be hidden
+  const professorType = user?.professor?.professorType;
+  const studentType = user?.student?.studentType;
+  const hideGamification =
+    (role === 'professor' && (professorType === 'FORMATEUR' || professorType === 'PROF_PREPA')) ||
+    (role === 'student' && (studentType === 'FORMATION' || studentType === 'PREPA'));
+
   const adminNavItems = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/admin/students', icon: Users, label: t('nav.students') },
@@ -57,7 +64,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/student/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
     { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
-    { to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' },
+    ...(!hideGamification ? [{ to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' }] : []),
     { to: '/student/quizzes', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/student/evaluations', icon: GraduationCap, label: t('nav.evaluations') || 'Évaluations' },
     { to: '/student/profile', icon: User, label: t('nav.profile') },
@@ -67,7 +74,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
     { to: '/professor/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/professor/sessions', icon: CalendarCheck, label: t('nav.sessions') },
     { to: '/professor/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
-    { to: '/professor/challenges', icon: Swords, label: t('nav.challenges') || 'Défis' },
+    ...(!hideGamification ? [{ to: '/professor/challenges', icon: Swords, label: t('nav.challenges') || 'Défis' }] : []),
     { to: '/professor/evaluations', icon: GraduationCap, label: t('nav.evaluations') || 'Évaluations' },
     { to: '/professor/quizzes', icon: ClipboardList, label: t('nav.quiz') },
     { to: '/professor/profile', icon: User, label: t('nav.profile') },

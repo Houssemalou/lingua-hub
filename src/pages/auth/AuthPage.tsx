@@ -21,7 +21,14 @@ type SignupRole = 'admin' | 'student' | 'professor' | null;
 type StudentStep = 'role' | 'avatar' | 'info' | 'token';
 type ProfessorStep = 'role' | 'avatar' | 'info' | 'token' | 'email-verification';
 
-const levelOptions: Array<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13'> = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13'];
+const levelOptions: Array<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2'> = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13','PREPA1','PREPA2'];
+
+const scolaireLevelOptions: Array<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13'> = ['YEAR1','YEAR2','YEAR3','YEAR4','YEAR5','YEAR6','YEAR7','YEAR8','YEAR9','YEAR10','YEAR11','YEAR12','YEAR13'];
+
+const prepaLevelOptions: Array<'PREPA1' | 'PREPA2'> = ['PREPA1','PREPA2'];
+
+type ProfessorType = 'PROF_PRIMAIRE' | 'PROF_BASE' | 'PROF_SECONDAIRE' | 'FORMATEUR' | 'PROF_PREPA';
+type StudentType = 'SCOLAIRE' | 'FORMATION' | 'PREPA';
 
 export default function AuthPage() {
   const { isAuthenticated, login, signupAdmin, signupStudent, signupProfessor, user } = useAuth();
@@ -46,8 +53,9 @@ export default function AuthPage() {
   const [bio, setBio] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(avatarOptions[0].url);
   const [accessToken, setAccessToken] = useState('');
-  const [level, setLevel] = useState<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13'>('YEAR1');
+  const [level, setLevel] = useState<'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2'>('YEAR1');
   const [uniqueCode, setUniqueCode] = useState('');
+  const [studentType, setStudentType] = useState<StudentType>('SCOLAIRE');
   // Email verification state
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
@@ -57,6 +65,7 @@ export default function AuthPage() {
   // Professor-specific fields
   const [languages, setLanguages] = useState<string[]>(['Français']);
   const [specialization, setSpecialization] = useState('');
+  const [professorType, setProfessorType] = useState<ProfessorType>('PROF_BASE');
 
   // Redirection après login réussi uniquement
   useEffect(() => {
@@ -128,6 +137,7 @@ export default function AuthPage() {
       avatar: selectedAvatar,
       accessToken,
       level,
+      studentType,
     });
     
     if (result.success) {
@@ -152,6 +162,7 @@ export default function AuthPage() {
       avatar: selectedAvatar,
       languages,
       specialization,
+      professorType,
       accessToken,
     });
 
@@ -181,6 +192,8 @@ export default function AuthPage() {
     setUniqueCode('');
     setLanguages(['Français']);
     setSpecialization('');
+    setProfessorType('PROF_BASE');
+    setStudentType('SCOLAIRE');
     setError('');
   };
 
@@ -547,9 +560,34 @@ export default function AuthPage() {
             />
           </div>
           <div className="space-y-2">
+            <Label>{isRTL ? 'نوع الطالب' : 'Type d\'étudiant'}</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: 'SCOLAIRE' as StudentType, label: isRTL ? 'مدرسي' : 'Scolaire' },
+                { value: 'FORMATION' as StudentType, label: isRTL ? 'تكوين' : 'Formation' },
+                { value: 'PREPA' as StudentType, label: isRTL ? 'تحضيري' : 'Prépa' },
+              ]).map((opt) => (
+                <Button
+                  key={opt.value}
+                  type="button"
+                  variant={studentType === opt.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setStudentType(opt.value);
+                    if (opt.value === 'PREPA') setLevel('PREPA1');
+                    else if (opt.value === 'FORMATION') setLevel('YEAR1');
+                    else setLevel('YEAR1');
+                  }}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
             <Label>{isRTL ? 'مستواك الحالي' : 'Votre niveau actuel'}</Label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {levelOptions.map((l) => (
+              {(studentType === 'PREPA' ? prepaLevelOptions : scolaireLevelOptions).map((l) => (
                 <Button
                   key={l}
                   type="button"
@@ -775,6 +813,28 @@ export default function AuthPage() {
               placeholder={isRTL ? 'مثال: المحادثة، القواعد...' : 'Ex: Conversation, Grammaire...'}
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label>{isRTL ? 'نوع الأستاذ' : 'Type de professeur'}</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {([
+                { value: 'PROF_PRIMAIRE' as ProfessorType, label: isRTL ? 'أستاذ ابتدائي' : 'Prof. Primaire' },
+                { value: 'PROF_BASE' as ProfessorType, label: isRTL ? 'أستاذ أساسي' : 'Prof. de Base' },
+                { value: 'PROF_SECONDAIRE' as ProfessorType, label: isRTL ? 'أستاذ ثانوي' : 'Prof. Secondaire' },
+                { value: 'FORMATEUR' as ProfessorType, label: isRTL ? 'مكوّن' : 'Formateur' },
+                { value: 'PROF_PREPA' as ProfessorType, label: isRTL ? 'أستاذ تحضيري' : 'Prof. Prépa' },
+              ]).map((opt) => (
+                <Button
+                  key={opt.value}
+                  type="button"
+                  variant={professorType === opt.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setProfessorType(opt.value)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
           </div>
           <div className="space-y-2">
             <Label>{isRTL ? 'اللغات التي تدرسها' : 'Langues enseignées'}</Label>

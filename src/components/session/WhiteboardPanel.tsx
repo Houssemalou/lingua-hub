@@ -11,7 +11,6 @@ import {
 } from 'tldraw';
 import 'tldraw/tldraw.css';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { Room } from 'livekit-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -22,11 +21,13 @@ import {
   Unlock,
   Eye,
   Pencil,
-  Eraser,
   ChevronDown,
   FileImage,
   UserCircle,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
+import { MediaControls } from './MediaControls';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -48,6 +49,17 @@ interface WhiteboardParticipant {
   role: string;
 }
 
+interface MediaControlProps {
+  isMuted: boolean;
+  isCameraOn: boolean;
+  isScreenSharing: boolean;
+  onToggleMute: () => void;
+  onToggleCamera: () => void;
+  onToggleScreenShare: () => void;
+  allowCamera?: boolean;
+  allowScreenShare?: boolean;
+}
+
 interface WhiteboardPanelProps {
   room: Room;
   isProfessor: boolean;
@@ -55,6 +67,8 @@ interface WhiteboardPanelProps {
   onClose: () => void;
   roomId?: string;
   participants?: WhiteboardParticipant[];
+  mediaControls?: MediaControlProps;
+  isRecordingMode?: boolean;
 }
 
 type WritingPermission = 'professor-only' | 'all' | 'specific-student';
@@ -76,6 +90,13 @@ interface WhiteboardPermissionMessage {
   allowedStudentName?: string;
 }
 
+interface WhiteboardCameraMessage {
+  type: 'whiteboard-camera';
+  x: number;
+  y: number;
+  z: number;
+}
+
 interface WhiteboardSnapshotMessage {
   type: 'whiteboard-snapshot';
   snapshot: ReturnType<typeof getSnapshot>;
@@ -91,6 +112,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   onClose,
   roomId,
   participants = [],
+  mediaControls,
+  isRecordingMode,
 }) => {
   const isMobile = useIsMobile();
   const { isRTL } = useLanguage();
@@ -108,6 +131,79 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   const storeRef = useRef(store);
   const isSyncingRef = useRef(false);
   const lastSentRef = useRef<number>(0);
+  const lastCameraSentRef = useRef<number>(0);
+  const isCameraSyncingRef = useRef(false);
+  const [editorReady, setEditorReady] = useState(false);
+  const snapshotChunksRef = useRef<{ chunks: string[]; total: number }>({ chunks: [], total: 0 });
+
+  // Fullscreen + overlay media controls state
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showMediaOverlay, setShowMediaOverlay] = useState(false);
+  const mediaOverlayTimerRef = useRef<number | null>(null);
+
+  // Request fullscreen on mount (skip in recording mode — headless Chrome doesn't support it)
+  useEffect(() => {
+    if (isRecordingMode) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const requestFs = el.requestFullscreen?.bind(el)
+      || (el as any).webkitRequestFullscreen?.bind(el)
+      || (el as any).msRequestFullscreen?.bind(el);
+    if (requestFs) {
+      requestFs().catch(() => {/* browser may block if no user gesture */});
+    }
+  }, [isRecordingMode]);
+
+  // Track fullscreen changes
+  useEffect(() => {
+    const onFsChange = () => {
+      const fsEl = document.fullscreenElement || (document as any).webkitFullscreenElement;
+      setIsFullscreen(!!fsEl && fsEl === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, []);
+
+  // Exit fullscreen on close
+  const handleClose = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    onClose();
+  }, [onClose]);
+
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      el.requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+  // Double-click on canvas: show media controls overlay temporarily
+  const handleCanvasDoubleClick = useCallback(() => {
+    if (!mediaControls) return;
+    setShowMediaOverlay(true);
+    if (mediaOverlayTimerRef.current) window.clearTimeout(mediaOverlayTimerRef.current);
+    mediaOverlayTimerRef.current = window.setTimeout(() => {
+      setShowMediaOverlay(false);
+    }, 4000);
+  }, [mediaControls]);
+
+  // Cleanup overlay timer
+  useEffect(() => {
+    return () => {
+      if (mediaOverlayTimerRef.current) window.clearTimeout(mediaOverlayTimerRef.current);
+    };
+  }, []);
 
   // Filter to only students for the selector
   const studentParticipants = participants.filter(p => p.role === 'student');
@@ -159,7 +255,6 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           setPermissions(msg.permissions);
           setAllowedStudentIdentity(msg.allowedStudentIdentity || null);
           setAllowedStudentName(msg.allowedStudentName || null);
-          // persist received snapshot locally
           try {
             if (roomId) sessionStorage.setItem(`whiteboard-snapshot:${roomId}`, JSON.stringify(msg.snapshot));
           } catch (e) {
@@ -167,6 +262,36 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           }
           isSyncingRef.current = false;
           toast.success(isRTL ? 'تمت مزامنة اللوحة' : 'Tableau synchronisé');
+        } else if (data.type === 'whiteboard-snapshot-chunk') {
+          // Reassemble chunked snapshot
+          const { chunk, index, total } = data as { chunk: string; index: number; total: number };
+          const ref = snapshotChunksRef.current;
+          if (ref.total !== total) {
+            ref.chunks = new Array(total).fill('');
+            ref.total = total;
+          }
+          ref.chunks[index] = chunk;
+          // Check if all chunks received
+          if (ref.chunks.every((c) => c.length > 0)) {
+            try {
+              const fullJson = ref.chunks.join('');
+              const msg = JSON.parse(fullJson) as WhiteboardSnapshotMessage;
+              isSyncingRef.current = true;
+              loadSnapshot(storeRef.current, msg.snapshot);
+              setPermissions(msg.permissions);
+              setAllowedStudentIdentity(msg.allowedStudentIdentity || null);
+              setAllowedStudentName(msg.allowedStudentName || null);
+              try {
+                if (roomId) sessionStorage.setItem(`whiteboard-snapshot:${roomId}`, JSON.stringify(msg.snapshot));
+              } catch (e) { /* ignore */ }
+              isSyncingRef.current = false;
+              toast.success(isRTL ? 'تمت مزامنة اللوحة' : 'Tableau synchronisé');
+            } catch (e) {
+              console.warn('Failed to reassemble snapshot chunks:', e);
+            }
+            ref.chunks = [];
+            ref.total = 0;
+          }
         } else if (data.type === 'whiteboard-sync') {
           const msg = data as WhiteboardSyncMessage;
           if (isSyncingRef.current) return;
@@ -183,6 +308,19 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           setAllowedStudentIdentity(msg.allowedStudentIdentity || null);
           setAllowedStudentName(msg.allowedStudentName || null);
           isSyncingRef.current = false;
+        } else if (data.type === 'whiteboard-camera') {
+          // Students (and recorder) apply the professor's camera position
+          if (!isProfessor || isRecordingMode) {
+            const camMsg = data as WhiteboardCameraMessage;
+            const editor = editorRef.current;
+            if (editor) {
+              isCameraSyncingRef.current = true;
+              try {
+                editor.setCamera({ x: camMsg.x, y: camMsg.y, z: camMsg.z });
+              } catch (e) { /* ignore */ }
+              isCameraSyncingRef.current = false;
+            }
+          }
         } else if (data.type === 'whiteboard-permission') {
           const msg = data as WhiteboardPermissionMessage;
           setPermissions(msg.permissions);
@@ -212,7 +350,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     return () => {
       room.off('dataReceived', handleDataReceived);
     };
-  }, [room, isProfessor, isRTL]);
+  }, [room, isProfessor, isRecordingMode, isRTL]);
 
   // Load persisted snapshot when opening the whiteboard
   useEffect(() => {
@@ -233,7 +371,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
   // Subscribe to store changes and broadcast via LiveKit (throttled)
   useEffect(() => {
-    if (isReadOnly) return;
+    if (isReadOnly || isRecordingMode) return;
 
     const unsubscribe = store.listen(
       ({ changes }) => {
@@ -249,20 +387,44 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         const records = [...added, ...updated];
         if (records.length === 0 && removed.length === 0) return;
 
-        const msg: WhiteboardSyncMessage = {
-          type: 'whiteboard-sync',
-          records,
-          removed,
-          permissions,
-          allowedStudentIdentity: allowedStudentIdentity || undefined,
-          allowedStudentName: allowedStudentName || undefined,
+        // Split records into chunks that stay under WebRTC's 64KB limit
+        const MAX_CHUNK = 50000; // leave headroom below 65535
+        const sendChunk = (recs: TLRecord[], rem: string[]) => {
+          const msg: WhiteboardSyncMessage = {
+            type: 'whiteboard-sync',
+            records: recs,
+            removed: rem,
+            permissions,
+            allowedStudentIdentity: allowedStudentIdentity || undefined,
+            allowedStudentName: allowedStudentName || undefined,
+          };
+          const encoded = new TextEncoder().encode(JSON.stringify(msg));
+          room.localParticipant.publishData(encoded, { reliable: encoded.byteLength > MAX_CHUNK });
         };
 
         try {
-          room.localParticipant.publishData(
-            new TextEncoder().encode(JSON.stringify(msg)),
-            { reliable: false }
-          );
+          // Try sending all at once first
+          const fullMsg = JSON.stringify({
+            type: 'whiteboard-sync', records, removed,
+            permissions,
+            allowedStudentIdentity: allowedStudentIdentity || undefined,
+            allowedStudentName: allowedStudentName || undefined,
+          });
+          if (new TextEncoder().encode(fullMsg).byteLength <= MAX_CHUNK) {
+            room.localParticipant.publishData(
+              new TextEncoder().encode(fullMsg),
+              { reliable: false }
+            );
+          } else {
+            // Split records into smaller batches
+            const batchSize = Math.max(1, Math.floor(records.length / Math.ceil(new TextEncoder().encode(fullMsg).byteLength / MAX_CHUNK)));
+            for (let b = 0; b < records.length; b += batchSize) {
+              sendChunk(records.slice(b, b + batchSize), b === 0 ? removed : []);
+            }
+            if (records.length === 0 && removed.length > 0) {
+              sendChunk([], removed);
+            }
+          }
         } catch (e) {
           console.error('Error sending whiteboard data', e);
         }
@@ -271,7 +433,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     );
 
     return unsubscribe;
-    }, [store, room, permissions, isReadOnly, allowedStudentIdentity, allowedStudentName]);
+    }, [store, room, permissions, isReadOnly, isRecordingMode, allowedStudentIdentity, allowedStudentName]);
 
     // Persist snapshot locally on store changes (throttled)
     useEffect(() => {
@@ -297,7 +459,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
   // Send full snapshot when professor opens whiteboard (to sync late-joiners)
   useEffect(() => {
-    if (!isProfessor) return;
+    if (!isProfessor || isRecordingMode) return;
     const timer = setTimeout(() => {
       try {
         const snapshot = getSnapshot(store);
@@ -308,16 +470,130 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           allowedStudentIdentity: allowedStudentIdentity || undefined,
           allowedStudentName: allowedStudentName || undefined,
         };
-        room.localParticipant.publishData(
-          new TextEncoder().encode(JSON.stringify(msg)),
-          { reliable: true }
-        );
+        const encoded = new TextEncoder().encode(JSON.stringify(msg));
+        // If snapshot fits in one message, send directly; otherwise chunk it
+        const SNAP_MAX = 50000;
+        if (encoded.byteLength <= SNAP_MAX) {
+          room.localParticipant.publishData(encoded, { reliable: true });
+        } else {
+          // Split the serialized snapshot JSON into chunks
+          const jsonStr = JSON.stringify(msg);
+          const numChunks = Math.ceil(encoded.byteLength / SNAP_MAX);
+          const chunkLen = Math.ceil(jsonStr.length / numChunks);
+          for (let ci = 0; ci < jsonStr.length; ci += chunkLen) {
+            const chunk = jsonStr.slice(ci, ci + chunkLen);
+            const chunkMsg = JSON.stringify({
+              type: 'whiteboard-snapshot-chunk',
+              chunk,
+              index: Math.floor(ci / chunkLen),
+              total: numChunks,
+            });
+            room.localParticipant.publishData(
+              new TextEncoder().encode(chunkMsg),
+              { reliable: true }
+            );
+          }
+        }
+        // Also sync the current camera position
+        const editor = editorRef.current;
+        if (editor) {
+          const cam = editor.getCamera();
+          const camMsg: WhiteboardCameraMessage = {
+            type: 'whiteboard-camera',
+            x: cam.x,
+            y: cam.y,
+            z: cam.z,
+          };
+          room.localParticipant.publishData(
+            new TextEncoder().encode(JSON.stringify(camMsg)),
+            { reliable: true }
+          );
+        }
       } catch (e) {
         console.error('Error sending whiteboard snapshot', e);
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, [isProfessor, store, room, permissions, allowedStudentIdentity, allowedStudentName]);
+  }, [isProfessor, isRecordingMode, store, room, permissions, allowedStudentIdentity, allowedStudentName]);
+
+  // Professor broadcasts camera (pan/zoom) changes so students follow the same view
+  useEffect(() => {
+    if (!isProfessor || isRecordingMode) return;
+    if (!editorReady) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    // Use a store listener on session scope (camera lives in session records)
+    const unsub = store.listen(() => {
+      if (isCameraSyncingRef.current) return;
+      const now = Date.now();
+      if (now - lastCameraSentRef.current < 100) return; // throttle ~10fps
+      lastCameraSentRef.current = now;
+
+      try {
+        const cam = editor.getCamera();
+        const camMsg: WhiteboardCameraMessage = {
+          type: 'whiteboard-camera',
+          x: cam.x,
+          y: cam.y,
+          z: cam.z,
+        };
+        room.localParticipant.publishData(
+          new TextEncoder().encode(JSON.stringify(camMsg)),
+          { reliable: false }
+        );
+      } catch (e) {
+        // ignore
+      }
+    }, { source: 'user', scope: 'session' });
+
+    // Periodic reliable camera sync so late joiners or dropped messages are caught up
+    const interval = setInterval(() => {
+      try {
+        const cam = editor.getCamera();
+        const camMsg: WhiteboardCameraMessage = {
+          type: 'whiteboard-camera',
+          x: cam.x,
+          y: cam.y,
+          z: cam.z,
+        };
+        room.localParticipant.publishData(
+          new TextEncoder().encode(JSON.stringify(camMsg)),
+          { reliable: true }
+        );
+      } catch (e) {
+        // ignore
+      }
+    }, 3000);
+
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
+  }, [isProfessor, isRecordingMode, store, room, editorReady]);
+
+  // Lock zoom to 13% across all pages — prevent any zoom changes
+  useEffect(() => {
+    if (!editorReady) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const FIXED_ZOOM = 0.13;
+    let isResettingZoom = false;
+    const unsub = store.listen(() => {
+      if (isResettingZoom) return;
+      try {
+        const cam = editor.getCamera();
+        if (Math.abs(cam.z - FIXED_ZOOM) > 0.001) {
+          isResettingZoom = true;
+          editor.setCamera({ x: cam.x, y: cam.y, z: FIXED_ZOOM });
+          isResettingZoom = false;
+        }
+      } catch (e) { /* ignore */ }
+    }, { source: 'all', scope: 'session' });
+
+    return unsub;
+  }, [editorReady, store]);
 
   const setPermissionMode = useCallback((next: WritingPermission, studentIdentity?: string, studentName?: string) => {
     setPermissions(next);
@@ -349,165 +625,179 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     }
   }, [room, isRTL]);
 
-  // Export whiteboard pages as a multi‑page PDF (one PDF page per tldraw page)
+  // Export current whiteboard page as a single-page PDF
   const handleExport = useCallback(async () => {
     try {
-      const originalSnapshot = getSnapshot(store) as any;
-      const pages = originalSnapshot?.document?.pages ? Object.keys(originalSnapshot.document.pages) : [];
-
-      if (pages.length === 0) {
-        toast.error(isRTL ? 'لا توجد صفحات للتصدير' : 'Aucune page à exporter');
+      const editor = editorRef.current;
+      if (!editor) {
+        toast.error(isRTL ? 'المحرر غير جاهز' : 'Éditeur non prêt');
         return;
       }
 
-      toast(isRTL ? 'جارٍ إنشاء ملف PDF — يرجى الانتظار...' : 'Génération du PDF — veuillez patienter...');
+      toast(isRTL ? 'جارٍ إنشاء ملف PDF — يرجى الانتظار...' : 'Génération du PDF en cours — veuillez patienter…');
 
-      let doc: any = null;
-      // Prevent broadcasting while we temporarily switch pages locally
-      isSyncingRef.current = true;
+      // PDF layout constants (landscape A4)
+      const A4_W = 297;
+      const A4_H = 210;
+      const MARGIN = 12;
+      const HEADER_H = 12;
+      const FOOTER_H = 8;
+      const CONTENT_W = A4_W - MARGIN * 2;
+      const CONTENT_H = A4_H - MARGIN - HEADER_H - FOOTER_H - MARGIN;
+      const PX_TO_MM = 25.4 / 96;
 
-      for (let i = 0; i < pages.length; i++) {
-        const pageId = pages[i];
-        // Load the same snapshot but with the selected page set to pageId
-        const snapForPage = {
-          ...originalSnapshot,
-          document: { ...originalSnapshot.document, selectedPageId: pageId },
-        };
+      const currentPage = editor.getCurrentPage();
+      const shapeIds = [...editor.getCurrentPageShapeIds()];
 
-        loadSnapshot(store, snapForPage);
-        // Wait a short time for tldraw to re-render the requested page
-        await new Promise((r) => setTimeout(r, 220));
+      let imgDataUrl: string | null = null;
+      let imgW = 0;
+      let imgH = 0;
 
-        // Prefer the SVG export when available
-        const svgEl = document.querySelector('.tl-svg-context svg') as SVGSVGElement | null;
-        const canvasEl = document.querySelector('.tl-canvas') as HTMLCanvasElement | null;
-
-        let imgDataUrl: string | null = null;
-        let imgW = 800;
-        let imgH = 600;
-
-        if (svgEl) {
-          const serializer = new XMLSerializer();
-          const svgStr = serializer.serializeToString(svgEl);
-          const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-          const url = URL.createObjectURL(svgBlob);
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-
-          await new Promise<void>((resolve) => {
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-            img.src = url;
+      // --- tldraw SVG export ---
+      if (shapeIds.length > 0) {
+        try {
+          const result = await (editor as Record<string, any>).getSvgString(shapeIds, {
+            background: true,
+            padding: 40,
           });
+          if (result?.svg) {
+            imgW = result.width;
+            imgH = result.height;
 
-          const rect = svgEl.getBoundingClientRect();
-          imgW = Math.round(rect.width || img.naturalWidth || 800);
-          imgH = Math.round(rect.height || img.naturalHeight || 600);
+            // Sanitize SVG: replace unsupported color() CSS functions with fallback
+            let svgStr: string = result.svg;
+            svgStr = svgStr.replace(/color\([^)]*\)/g, '#000000');
 
-          const scale = 2; // increase quality
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.round(imgW * scale);
-          canvas.height = Math.round(imgH * scale);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            imgDataUrl = canvas.toDataURL('image/png');
+            const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+            await new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+              img.src = url;
+            });
+            if (img.naturalWidth > 0) {
+              const MAX_DIM = 2000;
+              const scale = Math.min(2, MAX_DIM / imgW, MAX_DIM / imgH);
+              const c = document.createElement('canvas');
+              c.width = Math.round(imgW * scale);
+              c.height = Math.round(imgH * scale);
+              const ctx = c.getContext('2d')!;
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, c.width, c.height);
+              ctx.drawImage(img, 0, 0, c.width, c.height);
+              imgDataUrl = c.toDataURL('image/jpeg', 0.92);
+            }
+            URL.revokeObjectURL(url);
           }
-
-          URL.revokeObjectURL(url);
-        } else if (canvasEl) {
-          // Use the rendered canvas directly
-          imgDataUrl = canvasEl.toDataURL('image/png');
-          imgW = canvasEl.width || imgW;
-          imgH = canvasEl.height || imgH;
-        } else {
-          // Last resort: capture the container with html2canvas
-          const container = document.querySelector('.tl-wrapper') || document.querySelector('.tl-root');
-          if (container) {
-            const captured = await html2canvas(container as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-            imgDataUrl = captured.toDataURL('image/png');
-            imgW = captured.width;
-            imgH = captured.height;
-          }
-        }
-
-        if (!imgDataUrl) continue; // skip page on failure
-
-        // Create or append to the PDF using A4 pages and scale the image to fit while preserving aspect ratio
-        const A4_WIDTH_MM = 210;
-        const A4_HEIGHT_MM = 297;
-        const MARGIN_MM = 8; // small page margin
-        const PAGE_WIDTH_MM = A4_WIDTH_MM - MARGIN_MM * 2;
-        const PAGE_HEIGHT_MM = A4_HEIGHT_MM - MARGIN_MM * 2;
-        const PX_TO_MM = 25.4 / 96; // convert CSS pixels -> mm (approx)
-
-        const imgWidthMm = imgW * PX_TO_MM;
-        const imgHeightMm = imgH * PX_TO_MM;
-        const scale = Math.min(PAGE_WIDTH_MM / imgWidthMm, PAGE_HEIGHT_MM / imgHeightMm, 1);
-        const finalWmm = imgWidthMm * scale;
-        const finalHmm = imgHeightMm * scale;
-        const left = (A4_WIDTH_MM - finalWmm) / 2;
-        const top = (A4_HEIGHT_MM - finalHmm) / 2;
-        const orientation = finalWmm > finalHmm ? 'landscape' : 'portrait';
-
-        if (!doc) {
-          doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: orientation as any });
-          doc.addImage(imgDataUrl, 'PNG', left, top, finalWmm, finalHmm);
-        } else {
-          doc.addPage('a4', orientation as any);
-          doc.addImage(imgDataUrl, 'PNG', left, top, finalWmm, finalHmm);
+        } catch (svgErr) {
+          console.warn('SVG export failed:', svgErr);
         }
       }
 
-      // Restore original snapshot and re-enable syncing
-      loadSnapshot(store, originalSnapshot);
-      isSyncingRef.current = false;
+      // --- Fallback: capture tldraw canvas directly from DOM ---
+      if (!imgDataUrl) {
+        try {
+          const svgEl = document.querySelector('.tl-container svg.tl-svg-context') as SVGSVGElement
+            || document.querySelector('.tl-canvas svg') as SVGSVGElement;
+          if (svgEl) {
+            const serializer = new XMLSerializer();
+            let svgStr = serializer.serializeToString(svgEl);
+            svgStr = svgStr.replace(/color\([^)]*\)/g, '#000000');
+            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            await new Promise<void>((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+              img.src = url;
+            });
+            if (img.naturalWidth > 0) {
+              const c = document.createElement('canvas');
+              c.width = Math.min(img.naturalWidth, 2000);
+              c.height = Math.min(img.naturalHeight, 2000);
+              const ctx = c.getContext('2d')!;
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, c.width, c.height);
+              ctx.drawImage(img, 0, 0, c.width, c.height);
+              imgDataUrl = c.toDataURL('image/jpeg', 0.92);
+              imgW = c.width;
+              imgH = c.height;
+            }
+            URL.revokeObjectURL(url);
+          }
+        } catch (domErr) {
+          console.warn('DOM SVG fallback failed:', domErr);
+        }
+      }
 
-      if (doc) {
-        doc.save(`tableau-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`);
-        toast.success(isRTL ? 'تم تصدير PDF بنجاح' : 'Export PDF réussi');
+      if (!imgDataUrl) {
+        toast.error(isRTL ? 'لا يوجد محتوى للتصدير' : 'Aucun contenu à exporter');
         return;
       }
 
-      // If we reach here, fallback to previous behavior (SVG or JSON)
-      const fallbackSvg = document.querySelector('.tl-svg-context svg') as SVGSVGElement | null;
-      if (fallbackSvg) {
-        const serializer = new XMLSerializer();
-        const svgStr = serializer.serializeToString(fallbackSvg);
-        const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `tableau-${Date.now()}.svg`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success(isRTL ? 'تم تصدير اللوحة بصيغة SVG' : 'Tableau exporté en SVG (fallback)');
-        return;
-      }
+      // Scale image to fit the content area while preserving aspect ratio
+      const wMm = (imgW * PX_TO_MM) || CONTENT_W;
+      const hMm = (imgH * PX_TO_MM) || CONTENT_H;
+      const scaleFactor = Math.min(CONTENT_W / wMm, CONTENT_H / hMm, 1);
+      const finalW = wMm * scaleFactor;
+      const finalH = hMm * scaleFactor;
+      const imgLeft = MARGIN + (CONTENT_W - finalW) / 2;
+      const imgTop = MARGIN + HEADER_H + (CONTENT_H - finalH) / 2;
 
-      const snapshot = getSnapshot(store);
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tableau-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(isRTL ? 'تم تصدير اللوحة بصيغة JSON' : 'Tableau exporté (JSON fallback)');
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+
+      // White background
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, A4_W, A4_H, 'F');
+
+      // --- Header ---
+      const pageTitle = currentPage.name || 'Page 1';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(40, 40, 40);
+      doc.text(pageTitle, MARGIN, MARGIN + 7);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(140, 140, 140);
+      doc.text('Tableau Blanc — Lingua Hub', A4_W - MARGIN, MARGIN + 7, { align: 'right' });
+      doc.setDrawColor(210, 210, 210);
+      doc.setLineWidth(0.3);
+      doc.line(MARGIN, MARGIN + HEADER_H - 1, A4_W - MARGIN, MARGIN + HEADER_H - 1);
+
+      // --- Content image ---
+      doc.addImage(imgDataUrl, 'JPEG', imgLeft, imgTop, finalW, finalH);
+
+      // --- Footer ---
+      const footerY = A4_H - MARGIN + 2;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(160, 160, 160);
+      doc.text(pageTitle, MARGIN, footerY);
+      doc.text(
+        new Date().toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        A4_W - MARGIN,
+        footerY,
+        { align: 'right' },
+      );
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.2);
+      doc.line(MARGIN, footerY - 4, A4_W - MARGIN, footerY - 4);
+
+      doc.save(`tableau-blanc-${pageTitle}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast.success(isRTL ? 'تم تصدير الصفحة في PDF بنجاح' : 'Export PDF réussi');
     } catch (e) {
-      console.error('Export error', e);
-      isSyncingRef.current = false;
-      toast.error(isRTL ? 'خطأ أثناء التصدير' : 'Erreur lors de l\'export');
+      console.error('Export PDF error:', e);
+      toast.error(isRTL ? 'خطأ أثناء التصدير' : "Erreur lors de l'export");
     }
-  }, [store, isRTL]);
+  }, [isRTL]);
 
   const canWrite = isProfessor || permissions === 'all' || (permissions === 'specific-student' && room.localParticipant.identity === allowedStudentIdentity);
 
   return (
-    <div className="relative flex flex-col w-full h-full bg-[#f8f9fa] overflow-hidden">
-      {/* Header Bar */}
+    <div ref={containerRef} className="relative flex flex-col w-full h-full bg-[#f8f9fa] overflow-hidden">
+      {/* Header Bar — hidden in recording mode to maximize canvas */}
+      {!isRecordingMode && (
       <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200 shadow-sm z-10 shrink-0">
         {/* Left: title + status */}
         <div className="flex items-center gap-2 min-w-0">
@@ -535,43 +825,6 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
         {/* Right: actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Pen / Eraser tools for users who can write */}
-          {canWrite && (
-            <div className="flex items-center gap-1">
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Button
-                  size="sm"
-                  variant={currentTool === 'draw' ? 'default' : 'outline'}
-                  onClick={() => {
-                    try {
-                      editorRef.current?.selectTool?.('draw');
-                      setCurrentTool('draw');
-                    } catch (e) {}
-                  }}
-                  className="h-8 text-xs rounded-full gap-1"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{isRTL ? 'قلم' : 'Stylo'}</span>
-                </Button>
-              </motion.div>
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Button
-                  size="sm"
-                  variant={currentTool === 'eraser' ? 'default' : 'outline'}
-                  onClick={() => {
-                    try {
-                      editorRef.current?.selectTool?.('eraser');
-                      setCurrentTool('eraser');
-                    } catch (e) {}
-                  }}
-                  className="h-8 text-xs rounded-full gap-1"
-                >
-                  <Eraser className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{isRTL ? 'ممحاة' : 'Gomme'}</span>
-                </Button>
-              </motion.div>
-            </div>
-          )}
           {/* Professor-only: permission selector dropdown */}
           {isProfessor && (
             <DropdownMenu>
@@ -634,9 +887,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             </DropdownMenu>
           )}
 
-          {/* Export */}
-          
-          {/*<motion.div whileTap={{ scale: 0.95 }}>
+          {/* Export PDF */}
+          <motion.div whileTap={{ scale: 0.95 }}>
             <Button
               size="sm"
               variant="outline"
@@ -644,16 +896,28 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
               className="gap-1.5 text-xs h-8 rounded-full"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{isRTL ? 'تصدير' : 'Exporter'}</span>
+              <span className="hidden sm:inline">{isRTL ? 'تصدير PDF' : 'Exporter PDF'}</span>
             </Button>
-          </motion.div>*/}
+          </motion.div>
+
+          {/* Fullscreen toggle */}
+          <motion.div whileTap={{ scale: 0.95 }}>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={toggleFullscreen}
+              className="h-8 w-8 rounded-full hover:bg-gray-100"
+            >
+              {isFullscreen ? <Minimize className="w-4 h-4 text-gray-600" /> : <Maximize className="w-4 h-4 text-gray-600" />}
+            </Button>
+          </motion.div>
 
           {/* Close */}
           <motion.div whileTap={{ scale: 0.95 }}>
             <Button
               size="icon"
               variant="ghost"
-              onClick={onClose}
+              onClick={handleClose}
               className="h-8 w-8 rounded-full hover:bg-gray-100"
             >
               <X className="w-4 h-4 text-gray-600" />
@@ -661,8 +925,10 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           </motion.div>
         </div>
       </div>
+      )}
 
-      {/* Read-only overlay notification for students */}
+      {/* Read-only overlay notification for students — hidden in recording mode */}
+      {!isRecordingMode && (
       <AnimatePresence>
         {!canWrite && (
           <motion.div
@@ -679,11 +945,13 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+      )}
 
       {/* Tldraw canvas */}
       <div
         className="flex-1 min-h-0 relative"
         style={{ touchAction: 'none' }}
+        onDoubleClick={handleCanvasDoubleClick}
       >
         <Tldraw
           store={store}
@@ -693,6 +961,13 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             // Store editor reference and enable touch/stylus input
             editorRef.current = editor;
             editor.updateInstanceState({ isReadonly: isReadOnly });
+            // Set fixed zoom to 13% and center at origin
+            try {
+              editor.setCamera({ x: 0, y: 0, z: 0.13 });
+            } catch (e) {
+              // fallback if API differs
+            }
+            setEditorReady(true);
           }}
         />
 
@@ -707,7 +982,35 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         )}
       </div>
 
-      {/* Bottom status bar */}
+      {/* Transparent media controls overlay on double-click */}
+      <AnimatePresence>
+        {showMediaOverlay && mediaControls && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 bg-black/40 backdrop-blur-md rounded-2xl px-6 py-3 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MediaControls
+              isMuted={mediaControls.isMuted}
+              isCameraOn={mediaControls.isCameraOn}
+              isScreenSharing={mediaControls.isScreenSharing}
+              onToggleMute={mediaControls.onToggleMute}
+              onToggleCamera={mediaControls.onToggleCamera}
+              onToggleScreenShare={mediaControls.onToggleScreenShare}
+              allowCamera={mediaControls.allowCamera}
+              allowScreenShare={mediaControls.allowScreenShare}
+              isRTL={isRTL}
+              compact
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bottom status bar — hidden in recording mode */}
+      {!isRecordingMode && (
       <div className="flex items-center justify-between px-3 py-1.5 bg-white border-t border-gray-200 text-xs text-gray-500 shrink-0">
         <span className="flex items-center gap-1">
           <div className={cn("w-1.5 h-1.5 rounded-full", canWrite ? 'bg-emerald-500' : 'bg-orange-400')} />
@@ -724,6 +1027,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           }
         </span>
       </div>
+      )}
     </div>
   );
 };

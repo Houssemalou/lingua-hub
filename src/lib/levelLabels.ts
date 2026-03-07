@@ -15,6 +15,9 @@ export const LEVEL_LABELS: Record<string, string> = {
   YEAR11: '2ème année secondaire',
   YEAR12: '3ème année secondaire',
   YEAR13: 'Baccalauréat (4ème année)',
+  // Classes préparatoires
+  PREPA1: '1ère année prépa',
+  PREPA2: '2ème année prépa',
 };
 
 export function getLevelLabel(level?: string) {

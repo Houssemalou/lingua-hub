@@ -9,6 +9,8 @@ export interface StudentSkills {
   fluency: number;
 }
 
+export type StudentType = 'SCOLAIRE' | 'FORMATION' | 'PREPA';
+
 export interface StudentModel {
   id: string;
   name: string;
@@ -16,7 +18,8 @@ export interface StudentModel {
   avatar: string;
   nickname: string;
   bio: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  studentType?: StudentType;
   joinedAt: string;
   skills: StudentSkills;
   totalSessions: number;
@@ -33,7 +36,8 @@ export interface CreateStudentDTO {
   password: string;
   nickname: string;
   bio?: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  studentType?: StudentType;
 }
 
 export interface UpdateStudentDTO {
@@ -41,11 +45,11 @@ export interface UpdateStudentDTO {
   nickname?: string;
   bio?: string;
   avatar?: string;
-  level?: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level?: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
 }
 
 export interface StudentFilters {
-  level?: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13';
+  level?: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
   search?: string;
   sortBy?: 'name' | 'level' | 'joinedAt' | 'totalSessions';
   sortOrder?: 'asc' | 'desc';

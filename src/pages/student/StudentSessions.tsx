@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer, Video } from 'lucide-react';
+import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer, Video, Download, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,7 @@ export default function StudentSessions() {
   const [recordings, setRecordings] = useState<SessionRecording[]>([]);
   const [loadingRecordings, setLoadingRecordings] = useState(false);
   const [selectedSessionName, setSelectedSessionName] = useState('');
+  const [selectedRoomName, setSelectedRoomName] = useState('');
   
   const dateLocale = language === 'ar' ? ar : fr;
 
@@ -108,6 +109,7 @@ export default function StudentSessions() {
       return;
     }
     setSelectedSessionName(session.name);
+    setSelectedRoomName(roomName);
     setRecordingDialogOpen(true);
     setLoadingRecordings(true);
     setRecordings([]);
@@ -126,6 +128,43 @@ export default function StudentSessions() {
     } finally {
       setLoadingRecordings(false);
     }
+  };
+
+  const handleDownloadRecording = async (rec: SessionRecording) => {
+    try {
+      const res = await RecordingService.getDownloadUrl(selectedRoomName, rec.id);
+      if (res.success && res.data?.downloadUrl) {
+        const link = document.createElement('a');
+        link.href = res.data.downloadUrl;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        toast.error(res.error || (isRTL ? 'فشل في تحميل التسجيل' : 'Échec du téléchargement'));
+      }
+    } catch {
+      toast.error(isRTL ? 'فشل في تحميل التسجيل' : 'Échec du téléchargement');
+    }
+  };
+
+  const getExpirationInfo = (rec: SessionRecording) => {
+    if (!rec.expiresAt) return null;
+    const expiresAt = new Date(rec.expiresAt);
+    const now = new Date();
+    if (expiresAt <= now) return null;
+    const diffMs = expiresAt.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    const remainingHours = diffHours % 24;
+    if (diffDays > 0) {
+      return isRTL
+        ? `متبقي ${diffDays} يوم و ${remainingHours} ساعة`
+        : `${diffDays}j ${remainingHours}h restants`;
+    }
+    return isRTL
+      ? `متبقي ${diffHours} ساعة`
+      : `${diffHours}h restantes`;
   };
 
   return (
@@ -318,7 +357,18 @@ export default function StudentSessions() {
               {isRTL ? `تسجيلات: ${selectedSessionName}` : `Recordings: ${selectedSessionName}`}
             </DialogTitle>
           </DialogHeader>
-          <div className="mt-4 space-y-4">
+
+          {/* Expiration warning banner */}
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>
+              {isRTL
+                ? 'التسجيلات متاحة لمدة 3 أيام فقط بعد الجلسة. قم بتحميلها قبل انتهاء الصلاحية.'
+                : "Les enregistrements sont disponibles pendant 3 jours seulement après la session. Téléchargez-les avant l'expiration."}
+            </span>
+          </div>
+
+          <div className="mt-2 space-y-4">
             {loadingRecordings ? (
               <p className="text-center text-muted-foreground py-8">
                 {isRTL ? 'جاري التحميل...' : 'Loading...'}
@@ -331,16 +381,36 @@ export default function StudentSessions() {
                 </p>
               </div>
             ) : (
-              recordings.map((rec) => (
-                <div key={rec.id} className="rounded-lg border border-border overflow-hidden">
-                  <video
-                    src={rec.recordingUrl}
-                    controls
-                    className="w-full max-h-[500px] bg-black"
-                    controlsList="nodownload"
-                  />
-                </div>
-              ))
+              recordings.map((rec) => {
+                const expirationText = getExpirationInfo(rec);
+                return (
+                  <div key={rec.id} className="rounded-lg border border-border overflow-hidden">
+                    <video
+                      src={rec.recordingUrl}
+                      controls
+                      className="w-full max-h-[500px] bg-black"
+                      controlsList="nodownload"
+                    />
+                    <div className={cn("flex items-center justify-between p-3 bg-muted/50", isRTL && "flex-row-reverse")}>
+                      {expirationText && (
+                        <div className={cn("flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400", isRTL && "flex-row-reverse")}>
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{expirationText}</span>
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadRecording(rec)}
+                        className={cn("gap-1.5", isRTL && "flex-row-reverse")}
+                      >
+                        <Download className="w-4 h-4" />
+                        {isRTL ? 'تحميل' : 'Télécharger'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </DialogContent>
