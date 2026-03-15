@@ -1084,7 +1084,7 @@ export default function AuthPage() {
 
       {/* Footer */}
       <footer className="p-4 text-center text-sm text-muted-foreground">
-        © 2024 LangSchool AI. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
+        © {new Date().getFullYear()} LangSchool AI. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
       </footer>
     </div>
   );
