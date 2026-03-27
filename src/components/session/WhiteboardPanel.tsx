@@ -1158,7 +1158,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       >
         <Tldraw
           store={store}
-          hideUi={isReadOnly}
+          hideUi={isRecordingMode}  // show controls for students in read-only mode
           inferDarkMode
           onMount={(editor) => {
             editorRef.current = editor;
