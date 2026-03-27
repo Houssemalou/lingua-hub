@@ -983,8 +983,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
           {/* Right: actions */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Professor-only: permission selector dropdown */}
-            {isProfessor && (
+            {/* Professor-only: permission selector dropdown (hidden in fullscreen) */}
+            {isProfessor && !isFullscreen && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <motion.div whileTap={{ scale: 0.95 }}>
