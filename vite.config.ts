@@ -12,9 +12,10 @@ export default defineConfig(({ mode }) => ({
       // Proxy API calls to backend during development
       // This ensures cookies are sent on the same origin (avoiding CORS cookie issues)
       '/api': {
-        target: 'http://91.134.137.202',
+        target: 'https://learnup.tn',
         changeOrigin: true,
-        secure: false,
+        secure: true, // ou false si certificat auto-signé
+        cookieDomainRewrite: "learnup.tn"
       },
     },
   },
