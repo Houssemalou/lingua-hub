@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+
+interface WindowWithWhiteboard extends Window {
+  __whiteboardWindow?: Window | null;
+}
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -43,6 +47,12 @@ export default function ProfessorLiveRoom() {
   const recordingWsUrl = searchParams.get('wsUrl');
   const isRecordingMode = !!(recordingToken && recordingWsUrl);
 
+  const queryRoomId = searchParams.get('roomId');
+  const effectiveRoomId = roomId || queryRoomId || '';
+
+  const location = useLocation();
+  const isTableauRoute = location.pathname.endsWith('/tableau');
+
   const [room, setRoom] = useState<RoomModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +64,16 @@ export default function ProfessorLiveRoom() {
   
   useEffect(() => {
     const loadRoom = async () => {
-      if (!roomId || isRecordingMode) return;
+      if (!effectiveRoomId || isRecordingMode) return;
 
       try {
         setLoading(true);
         const response = await RoomService.getById(roomId);
         if (response.success && response.data) {
           // Backend might return an ApiResponse wrapper
-          const roomPayload = (response.data as any).data ? (response.data as any).data : response.data;
-          setRoom(roomPayload);
+          const responseData = response.data as { data?: unknown };
+          const roomPayload = responseData.data ? responseData.data : response.data;
+          setRoom(roomPayload as RoomModel);
         } else {
           setError(response.error || (isRTL ? 'فشل في تحميل الغرفة' : 'Échec du chargement de la salle'));
         }
@@ -74,7 +85,7 @@ export default function ProfessorLiveRoom() {
     };
 
     loadRoom();
-  }, [roomId]);
+  }, [effectiveRoomId, isRTL, isRecordingMode]);
 
   useEffect(() => {
     if (!isSessionActive) return;
@@ -87,6 +98,13 @@ export default function ProfessorLiveRoom() {
   }, [isSessionActive]);
 
   const handleLeaveRoom = async () => {
+    // Fermer la fenêtre tableau secondaire si elle existe
+    const wb = (window as WindowWithWhiteboard).__whiteboardWindow;
+    if (wb && !wb.closed) {
+      wb.close();
+      (window as WindowWithWhiteboard).__whiteboardWindow = null;
+    }
+
     if (room && room.id) {
       try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
     }
@@ -184,8 +202,10 @@ export default function ProfessorLiveRoom() {
                     setStarting(true);
                     const startRes = await RoomService.startSession(room.id);
                     if (startRes.success) {
-                      const started = (startRes as any).data?.data ? (startRes as any).data.data : startRes.data;
-                      if (started) setRoom(started);
+                      const startResData = startRes as { data?: unknown };
+                      const maybePayload = startResData.data as { data?: RoomModel } | RoomModel | undefined;
+                      const started = maybePayload && 'data' in maybePayload && maybePayload.data ? maybePayload.data : maybePayload;
+                      if (started) setRoom(started as RoomModel);
                       toast.success(isRTL ? 'تم بدء الجلسة' : 'Session started');
                     } else {
                       toast.error(getFriendlyErrorMessage(startRes.error, isRTL));
@@ -203,6 +223,32 @@ export default function ProfessorLiveRoom() {
             )}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (isTableauRoute) {
+    if (!effectiveRoomId) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-black text-white">
+          <div className="text-center">
+            <h2 className="text-xl font-bold">{isRTL ? 'معرّف الغرفة غير موجود' : 'Room ID missing'}</h2>
+            <p className="text-muted-foreground mt-2">{isRTL ? 'يرجى فتح اللوح من داخل جلسة محادثة نشطة.' : 'Please open the board from an active room session.'}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black">
+        <LiveKitRoom
+          roomId={effectiveRoomId}
+          onLeaveRoom={handleLeaveRoom}
+          externalToken={recordingToken!}
+          externalServerUrl={recordingWsUrl!}
+          isRecordingMode={isRecordingMode}
+          showOnlyWhiteboard
+        />
       </div>
     );
   }
