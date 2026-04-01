@@ -177,7 +177,7 @@ export const AccessTokenGenerator: React.FC = () => {
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`LinguaAI - ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+    doc.text(`LearnUP - ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
 
     // Tokens table
     doc.setFontSize(12);
@@ -253,7 +253,7 @@ export const AccessTokenGenerator: React.FC = () => {
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`LinguaAI - ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+    doc.text(`LearnUP - ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
 
     let y = 50;
     const lineHeight = 12;

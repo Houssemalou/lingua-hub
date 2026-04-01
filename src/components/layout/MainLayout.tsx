@@ -160,7 +160,7 @@ export function MainLayout() {
               <Menu className="w-5 h-5" />
             )}
           </Button>
-          <span className={cn("font-bold text-sidebar-foreground", isRTL ? "mr-3" : "ml-3")}>LinguaAI</span>
+          <span className={cn("font-bold text-sidebar-foreground", isRTL ? "mr-3" : "ml-3")}>LearnUP</span>
         </header>
       )}
 

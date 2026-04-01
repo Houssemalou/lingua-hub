@@ -534,7 +534,7 @@ const downloadSummary = useCallback(async () => {
         <div style="width: 100%; max-width: 800px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: ${language === 'ar' ? 'rtl' : 'ltr'};">
           <!-- En-tête -->
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 0 0 20px 20px;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Lingua Hub</h1>
+            <h1 style="margin: 0; font-size: 32px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">LearnUP</h1>
             <p style="margin: 10px 0 0 0; font-size: 18px; opacity: 0.9;">${language === 'ar' ? 'ملخص جلسة التعلم' : "Résumé de Session d'Apprentissage"}</p>
           </div>
 
@@ -585,7 +585,7 @@ const downloadSummary = useCallback(async () => {
           <!-- Pied de page -->
           <div style="background: #2c3e50; color: white; padding: 30px; text-align: center; margin-top: 40px;">
             <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-              <p style="margin: 0; font-size: 14px; opacity: 0.8;">${language === 'ar' ? 'وثيقة تم إنشاؤها تلقائياً بواسطة Lingua Hub' : 'Document généré automatiquement par Lingua Hub'}</p>
+              <p style="margin: 0; font-size: 14px; opacity: 0.8;">${language === 'ar' ? 'وثيقة تم إنشاؤها تلقائياً بواسطة LearnUP' : 'Document généré automatiquement par LearnUP'}</p>
               <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.6;">${language === 'ar' ? 'منصة تعلم اللغات' : "Plateforme d'apprentissage des langues"} • ${new Date().getFullYear()}</p>
             </div>
           </div>
@@ -632,7 +632,7 @@ const downloadSummary = useCallback(async () => {
       }
 
       // Télécharger le PDF
-      pdf.save(`resume-session-lingua-hub-${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`resume-session-learnup-${new Date().toISOString().split('T')[0]}.pdf`);
 
       // Nettoyer
       document.body.removeChild(printElement);

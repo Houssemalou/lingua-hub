@@ -879,7 +879,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(140, 140, 140);
-      doc.text("Tableau Blanc — Lingua Hub", A4_W - MARGIN, MARGIN + 7, {
+      doc.text("Tableau Blanc — LearnUP", A4_W - MARGIN, MARGIN + 7, {
         align: "right",
       });
       doc.setDrawColor(210, 210, 210);

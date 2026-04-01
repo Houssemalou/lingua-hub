@@ -1,4 +1,4 @@
-# Lingua Hub - Plateforme d'apprentissage des langues
+# LearnUP - Plateforme d'apprentissage des langues
 
 Une plateforme innovante pour l'apprentissage des langues avec sessions vidéo en direct, animées par des professeurs ou des agents IA.
 
