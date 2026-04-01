@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext, AudioTrack } from '@livekit/components-react';
-import { Room, RoomEvent, RemoteParticipant, RoomOptions } from 'livekit-client';
+import { Room, RoomEvent, RemoteParticipant, RoomOptions, Track } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
 import { useAuth } from '@/contexts/AuthContext';
 import { VideoGrid } from './VideoGrid';
