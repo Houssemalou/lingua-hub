@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -35,6 +35,8 @@ export default function AuthPage() {
   const { t, language, setLanguage, isRTL } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSuperAdminPath = location.pathname.startsWith('/super-admin');
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [signupRole, setSignupRole] = useState<SignupRole>(null);
@@ -278,24 +280,26 @@ export default function AuthPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setSignupRole('admin');
-                setStudentStep('info');
-              }}
-              className="p-6 rounded-xl border-2 border-border hover:border-primary bg-card transition-all text-center"
-            >
-              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Shield className="w-7 h-7 text-primary" />
-              </div>
-              <h3 className="font-semibold text-lg">{isRTL ? 'مشرف' : 'Administrateur'}</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {isRTL ? 'إدارة الطلاب والغرف والجلسات' : 'Gérer les étudiants, salles et sessions'}
-              </p>
-            </motion.button>
-            
+            {isSuperAdminPath && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setSignupRole('admin');
+                  setStudentStep('info');
+                }}
+                className="p-6 rounded-xl border-2 border-border hover:border-primary bg-card transition-all text-center"
+              >
+                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg">{isRTL ? 'مشرف' : 'Administrateur'}</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {isRTL ? 'إدارة الطلاب والغرف والجلسات' : 'Gérer les étudiants, salles et sessions'}
+                </p>
+              </motion.button>
+            )}
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

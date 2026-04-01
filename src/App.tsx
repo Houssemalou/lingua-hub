@@ -53,6 +53,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Navigate to="/auth" replace />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/super-admin" element={<AuthPage />} />
                   <Route path="/verify-email" element={<EmailVerificationPage />} />
                   {/* Recording route — loaded by LiveKit Egress (no auth needed, token in query params) */}
                   <Route path="/professor/room/:roomId/record" element={<ProfessorLiveRoom />} />

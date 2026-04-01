@@ -24,6 +24,32 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
 }) => {
   const { isRTL } = useLanguage();
   const [isPiPMinimized, setIsPiPMinimized] = React.useState(false);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+  const toggleFullscreen = async () => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    if (!document.fullscreenElement) {
+      await containerRef.current.requestFullscreen();
+      setIsFullscreen(true);
+      return;
+    }
+
+    await document.exitFullscreen();
+    setIsFullscreen(false);
+  };
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   // Get screen share track
   const screenSharePublication = Array.from(screenShareParticipant.videoTrackPublications.values())
@@ -38,7 +64,10 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
   const localAudioTrack = localAudioPublication?.track;
 
   return (
-    <div className="relative w-full h-full bg-black flex items-center justify-center">
+    <div
+      ref={containerRef}
+      className="relative w-full h-full bg-black flex items-center justify-center"
+    >
       {/* Main Screen Share View - Takes maximum space */}
       <div className="w-full h-full flex items-center justify-center p-4">
         {screenShareTrack && screenSharePublication ? (
@@ -64,6 +93,20 @@ export const ScreenShareLayout: React.FC<ScreenShareLayoutProps> = ({
           <MonitorUp className="w-4 h-4 mr-2" />
           {isRTL ? `${participantName} يشارك شاشته` : `${participantName} partage son écran`}
         </Badge>
+        <Button
+          size="icon"
+          variant="secondary"
+          className="h-10 w-10 bg-black/60 hover:bg-black/75 text-white"
+          onClick={toggleFullscreen}
+          aria-label={isRTL ? 'ملء الشاشة' : 'Plein ecran'}
+          title={isRTL ? 'ملء الشاشة' : 'Plein ecran'}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-5 h-5" />
+          ) : (
+            <Maximize2 className="w-5 h-5" />
+          )}
+        </Button>
       </div>
 
       {/* Picture-in-Picture: Local Camera (only when sharing locally) */}
