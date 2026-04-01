@@ -36,7 +36,17 @@ export default function AuthPage() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const isSuperAdminPath = location.pathname.startsWith('/super-admin');
+  const isSuperAdminPath = React.useMemo(() => {
+    const path = location?.pathname ?? '';
+    if (path.startsWith('/super-admin')) {
+      return true;
+    }
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    const { hash, href } = window.location;
+    return hash.startsWith('#/super-admin') || href.includes('/super-admin');
+  }, [location.pathname]);
 
   const [mode, setMode] = useState<AuthMode>('login');
   const [signupRole, setSignupRole] = useState<SignupRole>(null);
@@ -68,6 +78,13 @@ export default function AuthPage() {
   const [languages, setLanguages] = useState<string[]>(['Français']);
   const [specialization, setSpecialization] = useState('');
   const [professorType, setProfessorType] = useState<ProfessorType>('PROF_BASE');
+
+  useEffect(() => {
+    if (!isSuperAdminPath && signupRole === 'admin') {
+      setSignupRole(null);
+      setStudentStep('role');
+    }
+  }, [isSuperAdminPath, signupRole]);
 
   // Redirection après login réussi uniquement
   useEffect(() => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext } from '@livekit/components-react';
+import { LiveKitRoom as LiveKitRoomComponent, useParticipants, useRoomContext, AudioTrack } from '@livekit/components-react';
 import { Room, RoomEvent, RemoteParticipant, RoomOptions } from 'livekit-client';
 import { useLiveKitRoom, LiveKitParticipant } from '@/hooks/useLiveKitRoom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,7 @@ import { ChatPanel, type ChatMessage } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
 import { WhiteboardPanel } from './WhiteboardPanel';
-import { PhoneOff, MessageSquare, Users, X, ChevronDown, Pencil } from 'lucide-react';
+import { PhoneOff, MessageSquare, Users, X, ChevronDown, Pencil, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -82,6 +82,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [syncWhiteboard, setSyncWhiteboard] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -162,9 +163,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
           setMessages(prev => [...prev, newMessage]);
           if (!showChat) setUnreadCount(prev => prev + 1);
         }
-        // Listen for whiteboard toggle events (so recorder can show/hide whiteboard)
-        if (data?.type === 'whiteboard_toggle') {
-          setShowWhiteboard(data.visible);
+        if (data?.type === 'whiteboard_toggle' && data?.scope === 'global') {
+          setShowWhiteboard(Boolean(data.visible));
         }
       } catch (error) {
         console.error('Error parsing chat message:', error);
@@ -284,17 +284,20 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               variant="ghost"
               size={isMobile ? "sm" : "sm"}
               onClick={() => {
-                const newState = !showWhiteboard;
-                setShowWhiteboard(newState);
-                // Broadcast whiteboard toggle to all participants (including recorder)
-                try {
-                  room.localParticipant.publishData(
-                    new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: newState })),
-                    { reliable: true }
-                  );
-                } catch (e) {
-                  console.error('Error broadcasting whiteboard toggle:', e);
-                }
+                setShowWhiteboard(s => {
+                  const next = !s;
+                  if (syncWhiteboard && isProfessor) {
+                    try {
+                      room.localParticipant.publishData(
+                        new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: next, scope: 'global' })),
+                        { reliable: true }
+                      );
+                    } catch (e) {
+                      console.error('Error broadcasting whiteboard toggle:', e);
+                    }
+                  }
+                  return next;
+                });
               }}
               className={cn(
                 "rounded-full font-semibold transition-all border-0 relative",
@@ -308,6 +311,24 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               {!isMobile && <span className={isRTL ? 'mr-1' : 'ml-1'}>{isRTL ? 'اللوحة' : 'Tableau'}</span>}
             </Button>
           </motion.div>
+          {isProfessor && !isMobile && (
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSyncWhiteboard(s => !s)}
+                className={cn(
+                  "rounded-full font-semibold transition-all border-0 relative",
+                  syncWhiteboard
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg"
+                    : "bg-white/10 hover:bg-white/20 text-white"
+                )}
+              >
+                <Link className="w-4 h-4" />
+                <span className={isRTL ? 'mr-1' : 'ml-1'}>{isRTL ? 'مزامنة' : 'Sync'}</span>
+              </Button>
+            </motion.div>
+          )}
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               variant="ghost"
@@ -393,6 +414,22 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               participantName={screenSharingParticipant.formatted.name}
               isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
             />
+            {formattedParticipants.map(({ formatted, liveKit }) => {
+              const audioPublication = liveKit ? Array.from(liveKit.audioTrackPublications.values())[0] : undefined;
+              const audioTrack = audioPublication?.track;
+
+              if (!audioTrack || !audioPublication || !liveKit) {
+                return null;
+              }
+
+              return (
+                <AudioTrack
+                  key={`audio-${liveKit.identity}`}
+                  trackRef={{ participant: liveKit, publication: audioPublication, source: Track.Source.Microphone }}
+                  volume={formatted.isCurrentUser ? 0 : 1}
+                />
+              );
+            })}
           </div>
           {/* Whiteboard overlay in screen share mode */}
           {showWhiteboard && (
