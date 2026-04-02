@@ -24,7 +24,6 @@ const mockParticipants: Map<string, SessionParticipant[]> = new Map();
 //   ws = new WebSocket(`${WS_URL}/session/${sessionId}`);
 //   
 //   ws.onopen = () => {
-//     console.log('WebSocket connected');
 //   };
 //   
 //   ws.onmessage = (event) => {
@@ -33,7 +32,6 @@ const mockParticipants: Map<string, SessionParticipant[]> = new Map();
 //   };
 //   
 //   ws.onclose = () => {
-//     console.log('WebSocket disconnected');
 //     // Auto-reconnect logic
 //     setTimeout(() => connectWebSocket(sessionId, onMessage), 3000);
 //   };

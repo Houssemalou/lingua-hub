@@ -85,18 +85,15 @@ export const useLiveKitRoom = (roomId: string) => {
       eventListenersSetupRef.current = true;
       
       room.on(RoomEvent.Connected, () => {
-        console.log('RoomEvent.Connected fired');
         setIsConnected(true);
         updateParticipants();
       });
 
       room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-        console.log('Participant connected:', participant.identity);
         updateParticipants();
       });
 
       room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-        console.log('Participant disconnected:', participant.identity);
         updateParticipants();
       });
 
@@ -109,21 +106,7 @@ export const useLiveKitRoom = (roomId: string) => {
       });
 
       room.on(RoomEvent.Disconnected, (reason) => {
-        console.log('Disconnected from room, reason:', reason);
         setIsConnected(false);
-      });
-
-      room.on(RoomEvent.Reconnecting, () => {
-        console.log('Reconnecting to room...');
-      });
-
-      room.on(RoomEvent.Reconnected, () => {
-        console.log('Reconnected to room');
-        setIsConnected(true);
-      });
-
-      room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
-        console.log('Connection quality changed:', quality, participant?.identity);
       });
     }
   }, [room, updateParticipants]);
@@ -138,12 +121,7 @@ export const useLiveKitRoom = (roomId: string) => {
       isConnectingRef.current = true;
 
       try {
-        console.log('Getting LiveKit token for room:', roomId, 'user:', user.id);
-        
         const tokenResponse = await RoomService.getLiveKitToken(roomId, user.id);
-        
-        console.log('Token response received:', tokenResponse);
-        
         if (!tokenResponse.success || !tokenResponse.data) {
           const errorMessage = tokenResponse.error || 'Failed to get LiveKit token';
           console.error('Token error:', errorMessage);
@@ -155,8 +133,6 @@ export const useLiveKitRoom = (roomId: string) => {
         if (!token || !serverUrl) {
           throw new Error('Invalid token or server URL received from backend');
         }
-
-        console.log('LiveKit credentials ready:', { serverUrl, hasToken: !!token });
 
         setToken(token);
         setServerUrl(serverUrl);
@@ -176,7 +152,6 @@ export const useLiveKitRoom = (roomId: string) => {
 
   const connectToRoom = useCallback(async () => {
     // This is now a no-op since LiveKitRoomComponent handles connection
-    console.log('connectToRoom called but connection is managed by LiveKitRoomComponent');
   }, []);
 
   const disconnectFromRoom = useCallback(async () => {

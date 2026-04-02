@@ -148,7 +148,6 @@ export function StudentChatbot({
       publication: RemoteTrackPublication,
       participant: RemoteParticipant
     ) => {
-      console.log('Track subscribed:', track.kind, 'from', participant.identity);
       if (track.kind === Track.Kind.Audio) {
         const audioElement = track.attach();
         audioElement.play().catch(e => console.error('Failed to play audio:', e));
@@ -161,7 +160,6 @@ export function StudentChatbot({
       publication: RemoteTrackPublication,
       participant: RemoteParticipant
     ) => {
-      console.log('Track unsubscribed:', track.kind, 'from', participant.identity);
       if (track.kind === Track.Kind.Audio) {
         const elementKey = `${participant.identity}_${publication.trackSid}`;
         const audioElement = attachedElements.current.get(elementKey);
@@ -189,56 +187,23 @@ export function StudentChatbot({
       participant?: Participant,
       publication?: TrackPublication
     ) => {
-      console.log('Transcription received from', participant?.identity, transcriptions);
       transcriptions.forEach(t => {
         handleTranscription(t, participant);
       });
     });
 
     room.on(RoomEvent.Disconnected, () => {
-      console.log('Room disconnected');
       setIsConnected(false);
       setIsRecording(false);
     });
 
     room.on(RoomEvent.Reconnecting, () => {
-      console.log('Room reconnecting');
       setIsConnecting(true);
     });
 
     room.on(RoomEvent.Reconnected, () => {
-      console.log('Room reconnected');
       setIsConnected(true);
       setIsConnecting(false);
-    });
-
-    room.on(RoomEvent.ParticipantConnected, (participant) => {
-      console.log('Participant connected:', participant.identity);
-    });
-
-    room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-      console.log('Participant disconnected:', participant.identity);
-    });
-
-    // Additional event listeners for debugging and handling tracks
-    room.on(RoomEvent.TrackPublished, (publication, participant) => {
-      console.log('Track published:', publication.kind, 'by', participant.identity);
-    });
-
-    room.on(RoomEvent.LocalTrackPublished, (publication) => {
-      console.log('Local track published:', publication.kind);
-    });
-
-    room.on(RoomEvent.TrackSubscriptionFailed, (trackSid, participant) => {
-      console.log('Track subscription failed:', trackSid, 'from', participant.identity);
-    });
-
-    room.on(RoomEvent.TrackMuted, (publication, participant) => {
-      console.log('Track muted:', publication.kind, 'by', participant.identity);
-    });
-
-    room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
-      console.log('Track unmuted:', publication.kind, 'by', participant.identity);
     });
   /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, []);
@@ -293,7 +258,6 @@ export function StudentChatbot({
       // Enable microphone for voice-to-voice communication
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
-        console.log('Microphone enabled successfully');
         setIsRecording(true);
       } catch (error) {
         console.error('Failed to enable microphone:', error);
@@ -437,7 +401,6 @@ export function StudentChatbot({
   }, [processMessage, addMessage, language]);
 
   const handleTranscription = useCallback((transcription: TranscriptionSegment, participant?: Participant) => {
-    console.log('Received transcription:', transcription);
     const role = participant?.identity?.toLowerCase()?.includes('agent') ? 'assistant' : 'user';
     const segmentId = transcription.id || Date.now().toString();
     const normalized = transcription.text?.toString().trim() || '';

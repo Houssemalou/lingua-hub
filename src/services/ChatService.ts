@@ -29,7 +29,6 @@ import { mockChatMessages } from '@/data/mockData';
 //   ws = new WebSocket(`${WS_URL}/chat/${sessionId}`);
 //   
 //   ws.onopen = () => {
-//     console.log('Chat WebSocket connected');
 //   };
 //   
 //   ws.onmessage = (event) => {
@@ -38,7 +37,6 @@ import { mockChatMessages } from '@/data/mockData';
 //   };
 //   
 //   ws.onclose = () => {
-//     console.log('Chat WebSocket disconnected');
 //     setTimeout(() => connectWebSocket(sessionId), 3000);
 //   };
 //   

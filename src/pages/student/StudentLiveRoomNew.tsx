@@ -86,9 +86,7 @@ export default function StudentLiveRoom() {
             setShowQuiz(false);
             navigate('/student/sessions');
           }}
-          onComplete={(score) => {
-            console.log('Quiz completed with score:', score);
-          }}
+          onComplete={(_score) => {}}
         />
       )}
     </motion.div>

@@ -153,8 +153,6 @@ export const AuthService = {
       };
 
       storeUser(user);
-      console.log('Login successful - User stored:', user);
-      console.log('Login successful - Tokens in HttpOnly cookies (not accessible from JS)');
 
       return {
         success: true,
