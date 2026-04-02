@@ -8,11 +8,20 @@ import {
   TLStore,
   getSnapshot,
   loadSnapshot,
+  DefaultToolbar,
+  ToolbarItem,
+  StateNode,
+  TLPointerEventInfo,
+  TLUiOverrides,
+  TLUiAssetUrlOverrides,
+  toRichText,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import jsPDF from "jspdf";
 import { Room } from "livekit-client";
 import { motion, AnimatePresence } from "framer-motion";
+import { createShapeId, TLShapeId } from "@tldraw/tlschema";
+import { getIndices, IndexKey } from "@tldraw/utils";
 import {
   X,
   Download,
@@ -106,6 +115,581 @@ interface WhiteboardSnapshotMessage {
   allowedStudentName?: string;
 }
 
+const TOOL_MIN_RADIUS = 20;
+const TOOL_DOT_SIZE = 8;
+const PROTRACTOR_MIN_RADIUS = 60;
+const PROTRACTOR_ARC_POINTS = 61;
+const PROTRACTOR_TICK_COUNT = 19;
+const PROTRACTOR_LABEL_COUNT = 7;
+const PROTRACTOR_MAJOR_TICK = 12;
+const PROTRACTOR_MINOR_TICK = 7;
+const COMPASS_TRACE_POINTS = 80;
+const MM_TO_PX = 96 / 25.4;
+
+const toFixedPoint = (point: { x: number; y: number }) => ({
+  x: Number(point.x.toFixed(2)),
+  y: Number(point.y.toFixed(2)),
+});
+
+const getDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.hypot(b.x - a.x, b.y - a.y);
+
+const getAngle = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.atan2(b.y - a.y, b.x - a.x);
+
+const normalizeAngleDelta = (delta: number) => {
+  let d = delta;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+};
+
+const getPointOnCircle = (
+  center: { x: number; y: number },
+  radius: number,
+  angle: number,
+) => ({
+  x: center.x + Math.cos(angle) * radius,
+  y: center.y + Math.sin(angle) * radius,
+});
+
+const toRelativePoints = (
+  points: { x: number; y: number }[],
+  center: { x: number; y: number },
+) => points.map((point) => ({ x: point.x - center.x, y: point.y - center.y }));
+
+const toLinePointsRecord = (points: { x: number; y: number }[]) => {
+  const indices = getIndices(points.length);
+  return points.reduce(
+    (acc, point, i) => {
+      const index = indices[i] as IndexKey;
+      acc[index] = { id: index, index, x: point.x, y: point.y };
+      return acc;
+    },
+    {} as Record<string, { id: string; index: IndexKey; x: number; y: number }>,
+  );
+};
+
+const createLineShape = (id: TLShapeId, x: number, y: number) => ({
+  id,
+  type: "line" as const,
+  x,
+  y,
+  props: {
+    dash: "solid" as const,
+    size: "s" as const,
+    color: "black" as const,
+    spline: "line" as const,
+    points: toLinePointsRecord([
+      { x: -0.5, y: 0 },
+      { x: 0.5, y: 0 },
+    ]),
+    scale: 1,
+  },
+});
+
+const createArcPolyline = (
+  center: { x: number; y: number },
+  radius: number,
+  start: number,
+  sweep: number,
+  pointsCount: number,
+) => {
+  const safeCount = Math.max(2, pointsCount);
+  return Array.from({ length: safeCount }, (_, i) => {
+    const t = safeCount === 1 ? 0 : i / (safeCount - 1);
+    return getPointOnCircle(center, radius, start + sweep * t);
+  });
+};
+
+class CompassTool extends StateNode {
+  static override id = "compass";
+  static configuredRadius = 120;
+
+  private center: { x: number; y: number } | null = null;
+  private activeRadius: number | null = null;
+  private startAngle: number | null = null;
+  private lastAngle: number | null = null;
+  private accumulatedSweep = 0;
+
+  private armId: TLShapeId | null = null;
+  private traceId: TLShapeId | null = null;
+  private centerId: TLShapeId | null = null;
+  private tipId: TLShapeId | null = null;
+
+  private allIds(): TLShapeId[] {
+    return [this.armId, this.traceId, this.centerId, this.tipId].filter(
+      Boolean,
+    ) as TLShapeId[];
+  }
+
+  override onEnter() {
+    this.editor.setCursor({ type: "cross", rotation: 0 });
+  }
+
+  override onPointerDown(_info: TLPointerEventInfo) {
+    const center = toFixedPoint(this.editor.inputs.currentPagePoint);
+    this.center = center;
+    this.activeRadius = Math.max(TOOL_MIN_RADIUS, CompassTool.configuredRadius);
+    this.startAngle = null;
+    this.lastAngle = null;
+    this.accumulatedSweep = 0;
+
+    this.armId = createShapeId();
+    this.traceId = createShapeId();
+    this.centerId = createShapeId();
+    this.tipId = createShapeId();
+
+    const dotHalf = TOOL_DOT_SIZE / 2;
+
+    this.editor.createShapes([
+      createLineShape(this.armId, center.x, center.y),
+      createLineShape(this.traceId, center.x, center.y),
+      {
+        id: this.centerId,
+        type: "geo",
+        x: center.x - dotHalf,
+        y: center.y - dotHalf,
+        props: {
+          geo: "ellipse",
+          w: TOOL_DOT_SIZE,
+          h: TOOL_DOT_SIZE,
+          dash: "solid",
+          fill: "solid",
+          color: "black",
+        },
+      },
+      {
+        id: this.tipId,
+        type: "geo",
+        x: center.x + this.activeRadius - dotHalf,
+        y: center.y - dotHalf,
+        props: {
+          geo: "ellipse",
+          w: TOOL_DOT_SIZE,
+          h: TOOL_DOT_SIZE,
+          dash: "solid",
+          fill: "none",
+          color: "black",
+        },
+      },
+    ]);
+  }
+
+  override onPointerMove(_info: TLPointerEventInfo) {
+    if (!this.center || !this.armId || !this.traceId || !this.tipId) return;
+
+    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
+    const angle = getAngle(this.center, current);
+    if (this.activeRadius === null) {
+      this.activeRadius = Math.max(TOOL_MIN_RADIUS, getDistance(this.center, current));
+    }
+    const radius = this.activeRadius;
+
+    if (this.startAngle === null) {
+      this.startAngle = angle;
+      this.lastAngle = angle;
+      this.accumulatedSweep = 0;
+    } else if (this.lastAngle !== null) {
+      const delta = normalizeAngleDelta(angle - this.lastAngle);
+      this.accumulatedSweep += delta;
+      this.lastAngle = angle;
+    }
+
+    const rawSweep = this.accumulatedSweep;
+    const sweep = Math.abs(rawSweep) < 0.07 ? 0.07 : rawSweep;
+    const isCircle = Math.abs(rawSweep) >= Math.PI * 2 - 0.2;
+
+    const tracePoints = isCircle
+      ? createArcPolyline(this.center, radius, 0, Math.PI * 2, COMPASS_TRACE_POINTS)
+      : createArcPolyline(
+          this.center,
+          radius,
+          this.startAngle ?? angle,
+          sweep,
+          Math.max(
+            12,
+            Math.floor((Math.abs(sweep) / (Math.PI * 2)) * COMPASS_TRACE_POINTS),
+          ),
+        );
+
+    const tip = getPointOnCircle(this.center, radius, angle);
+
+    this.editor.updateShape({
+      id: this.armId,
+      type: "line",
+      x: this.center.x,
+      y: this.center.y,
+      props: {
+        points: toLinePointsRecord([
+          { x: 0, y: 0 },
+          { x: tip.x - this.center.x, y: tip.y - this.center.y },
+        ]),
+      },
+    });
+
+    this.editor.updateShape({
+      id: this.traceId,
+      type: "line",
+      x: this.center.x,
+      y: this.center.y,
+      props: {
+        points: toLinePointsRecord(toRelativePoints(tracePoints, this.center)),
+      },
+    });
+
+    this.editor.updateShape({
+      id: this.tipId,
+      type: "geo",
+      x: tip.x - TOOL_DOT_SIZE / 2,
+      y: tip.y - TOOL_DOT_SIZE / 2,
+      props: {
+        geo: "ellipse",
+        w: TOOL_DOT_SIZE,
+        h: TOOL_DOT_SIZE,
+      },
+    });
+  }
+
+  override onPointerUp(_info: TLPointerEventInfo) {
+    this.finish();
+  }
+
+  override onCancel() {
+    this.finish(true);
+  }
+
+  private finish(isCanceled = false) {
+    if (!this.center) return;
+
+    const helperIds = [this.armId, this.centerId, this.tipId].filter(
+      Boolean,
+    ) as TLShapeId[];
+    const traceId = this.traceId;
+
+    if (isCanceled) {
+      const all = this.allIds().filter((id) => !!this.editor.getShape(id));
+      this.editor.deleteShapes(all);
+    } else {
+      const existingHelpers = helperIds.filter((id) => !!this.editor.getShape(id));
+      if (existingHelpers.length > 0) {
+        this.editor.deleteShapes(existingHelpers);
+      }
+      if (traceId && this.editor.getShape(traceId)) {
+        this.editor.select(traceId);
+      }
+    }
+
+    this.center = null;
+    this.activeRadius = null;
+    this.startAngle = null;
+    this.lastAngle = null;
+    this.accumulatedSweep = 0;
+    this.armId = null;
+    this.traceId = null;
+    this.centerId = null;
+    this.tipId = null;
+  }
+}
+
+class ProtractorTool extends StateNode {
+  static override id = "protractor";
+
+  private center: { x: number; y: number } | null = null;
+  private arcId: TLShapeId | null = null;
+  private baseId: TLShapeId | null = null;
+  private centerId: TLShapeId | null = null;
+  private tickIds: TLShapeId[] = [];
+  private labelIds: TLShapeId[] = [];
+
+  private allIds(): TLShapeId[] {
+    return [
+      this.arcId,
+      this.baseId,
+      this.centerId,
+      ...this.tickIds,
+      ...this.labelIds,
+    ].filter(Boolean) as TLShapeId[];
+  }
+
+  override onEnter() {
+    this.editor.setCursor({ type: "cross", rotation: 0 });
+  }
+
+  override onPointerDown(_info: TLPointerEventInfo) {
+    const center = toFixedPoint(this.editor.inputs.currentPagePoint);
+    this.center = center;
+    this.arcId = createShapeId();
+    this.baseId = createShapeId();
+    this.centerId = createShapeId();
+    this.tickIds = Array.from({ length: PROTRACTOR_TICK_COUNT }, () =>
+      createShapeId(),
+    );
+    this.labelIds = Array.from({ length: PROTRACTOR_LABEL_COUNT }, () =>
+      createShapeId(),
+    );
+
+    const dotHalf = TOOL_DOT_SIZE / 2;
+
+    this.editor.createShapes([
+      {
+        id: this.arcId,
+        type: "line",
+        x: center.x,
+        y: center.y,
+        props: {
+          dash: "solid",
+          size: "s",
+          color: "black",
+          spline: "line",
+          points: toLinePointsRecord([
+            { x: -1, y: 0 },
+            { x: 1, y: 0 },
+          ]),
+          scale: 1,
+        },
+      },
+      {
+        id: this.baseId,
+        type: "line",
+        x: center.x,
+        y: center.y,
+        props: {
+          dash: "solid",
+          size: "s",
+          color: "black",
+          spline: "line",
+          points: toLinePointsRecord([
+            { x: -1, y: 0 },
+            { x: 1, y: 0 },
+          ]),
+          scale: 1,
+        },
+      },
+      {
+        id: this.centerId,
+        type: "geo",
+        x: center.x - dotHalf,
+        y: center.y - dotHalf,
+        props: {
+          geo: "ellipse",
+          w: TOOL_DOT_SIZE,
+          h: TOOL_DOT_SIZE,
+          dash: "solid",
+          fill: "solid",
+          color: "black",
+        },
+      },
+      ...this.tickIds.map((tickId) => ({
+        ...createLineShape(tickId, center.x, center.y),
+      })),
+      ...this.labelIds.map((labelId, i) => ({
+        id: labelId,
+        type: "text" as const,
+        x: center.x,
+        y: center.y,
+        props: {
+          richText: toRichText(`${i * 30}`),
+          size: "s" as const,
+          color: "black" as const,
+        },
+      })),
+    ]);
+  }
+
+  override onPointerMove(_info: TLPointerEventInfo) {
+    if (!this.center || !this.arcId || !this.baseId || !this.centerId) return;
+    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
+    const radius = Math.max(PROTRACTOR_MIN_RADIUS, getDistance(this.center, current));
+    const angle = getAngle(this.center, current);
+    const arcStart = angle + Math.PI;
+    const arcSweep = -Math.PI;
+    const arcPoints = createArcPolyline(
+      this.center,
+      radius,
+      arcStart,
+      arcSweep,
+      PROTRACTOR_ARC_POINTS,
+    );
+
+    const baseRight = getPointOnCircle(this.center, radius, angle);
+    const baseLeft = getPointOnCircle(this.center, radius, angle + Math.PI);
+
+    this.editor.updateShape({
+      id: this.arcId,
+      type: "line",
+      x: this.center.x,
+      y: this.center.y,
+      props: {
+        points: toLinePointsRecord(toRelativePoints(arcPoints, this.center)),
+      },
+    });
+
+    this.editor.updateShape({
+      id: this.baseId,
+      type: "line",
+      x: this.center.x,
+      y: this.center.y,
+      props: {
+        points: toLinePointsRecord(
+          toRelativePoints([baseLeft, baseRight], this.center),
+        ),
+      },
+    });
+
+    this.tickIds.forEach((tickId, index) => {
+      const t = index / (PROTRACTOR_TICK_COUNT - 1);
+      const tickAngle = arcStart + arcSweep * t;
+      const isMajor = index % 3 === 0 || index === PROTRACTOR_TICK_COUNT - 1;
+      const tickLen = isMajor ? PROTRACTOR_MAJOR_TICK : PROTRACTOR_MINOR_TICK;
+      const outer = getPointOnCircle(this.center!, radius, tickAngle);
+      const inner = getPointOnCircle(this.center!, radius - tickLen, tickAngle);
+
+      this.editor.updateShape({
+        id: tickId,
+        type: "line",
+        x: this.center!.x,
+        y: this.center!.y,
+        props: {
+          points: toLinePointsRecord(
+            toRelativePoints([inner, outer], this.center!),
+          ),
+        },
+      });
+    });
+
+    this.labelIds.forEach((labelId, index) => {
+      const t = index / (PROTRACTOR_LABEL_COUNT - 1);
+      const labelAngle = arcStart + arcSweep * t;
+      const labelPoint = getPointOnCircle(this.center!, radius - 24, labelAngle);
+      const value = Math.round(t * 180);
+
+      this.editor.updateShape({
+        id: labelId,
+        type: "text",
+        x: labelPoint.x,
+        y: labelPoint.y,
+        rotation: 0,
+        props: {
+          richText: toRichText(`${value}°`),
+          size: "s",
+          color: "black",
+        },
+      });
+    });
+  }
+
+  override onPointerUp(_info: TLPointerEventInfo) {
+    this.finish();
+  }
+
+  override onCancel() {
+    this.finish(true);
+  }
+
+  private finish(isCanceled = false) {
+    if (!this.center) return;
+
+    const ids = this.allIds();
+    const validIds = ids.filter((id) => !!this.editor.getShape(id));
+
+    if (isCanceled) {
+      this.editor.deleteShapes(validIds);
+    } else if (validIds.length > 1) {
+      const center = this.center;
+      const groupId = createShapeId();
+
+      // Restore robust move-as-one behavior by creating a parent group and reparenting all parts.
+      this.editor.createShape({
+        id: groupId,
+        type: "group",
+        x: center.x,
+        y: center.y,
+      } as any);
+      this.editor.reparentShapes(validIds, groupId);
+      this.editor.select(groupId);
+    }
+
+    this.center = null;
+    this.arcId = null;
+    this.baseId = null;
+    this.centerId = null;
+    this.tickIds = [];
+    this.labelIds = [];
+  }
+}
+
+const CUSTOM_TOOLS = [CompassTool, ProtractorTool];
+
+const customToolAssetUrls: TLUiAssetUrlOverrides = {
+  icons: {
+    "tool-compass-custom": "/tldraw-icons/compass.svg",
+    "tool-protractor-custom": "/tldraw-icons/protractor.svg",
+  },
+};
+
+const customToolOverrides: TLUiOverrides = {
+  tools(editor, tools) {
+    tools.compass = {
+      id: "compass",
+      icon: "tool-compass-custom",
+      label: "tools.compass",
+      kbd: "c",
+      onSelect: () => editor.setCurrentTool("compass"),
+    };
+    tools.protractor = {
+      id: "protractor",
+      icon: "tool-protractor-custom",
+      label: "tools.protractor",
+      kbd: "p",
+      onSelect: () => editor.setCurrentTool("protractor"),
+    };
+    return tools;
+  },
+  translations: {
+    en: {
+      "tools.compass": "Compass",
+      "tools.protractor": "Protractor",
+    },
+    fr: {
+      "tools.compass": "Compas",
+      "tools.protractor": "Rapporteur",
+    },
+    ar: {
+      "tools.compass": "فرجار",
+      "tools.protractor": "منقلة",
+    },
+  },
+};
+
+const CustomToolbar = () => (
+  <DefaultToolbar>
+    <>
+      <ToolbarItem tool="select" />
+      <ToolbarItem tool="hand" />
+      <ToolbarItem tool="draw" />
+      <ToolbarItem tool="eraser" />
+      <ToolbarItem tool="arrow" />
+      <ToolbarItem tool="text" />
+      <ToolbarItem tool="note" />
+      <ToolbarItem tool="asset" />
+      <ToolbarItem tool="rectangle" />
+      <ToolbarItem tool="ellipse" />
+      <ToolbarItem tool="triangle" />
+      <ToolbarItem tool="diamond" />
+      <ToolbarItem tool="hexagon" />
+      <ToolbarItem tool="oval" />
+      <ToolbarItem tool="rhombus" />
+      <ToolbarItem tool="star" />
+      <ToolbarItem tool="line" />
+      <ToolbarItem tool="highlight" />
+      <ToolbarItem tool="frame" />
+      <ToolbarItem tool="compass" />
+      <ToolbarItem tool="protractor" />
+    </>
+  </DefaultToolbar>
+);
+
 export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   room,
   isProfessor,
@@ -123,6 +707,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   );
   const editorRef = useRef<any>(null);
   const [currentTool, setCurrentTool] = useState<string>("select");
+  const [compassRadiusMm, setCompassRadiusMm] = useState<number>(32);
   const [permissions, setPermissions] =
     useState<WritingPermission>("professor-only");
   const [allowedStudentIdentity, setAllowedStudentIdentity] = useState<
@@ -222,6 +807,27 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
   // Filter to only students for the selector
   const studentParticipants = participants.filter((p) => p.role === "student");
+
+  useEffect(() => {
+    const radiusPx = Math.round(compassRadiusMm * MM_TO_PX);
+    CompassTool.configuredRadius = Math.max(
+      TOOL_MIN_RADIUS,
+      radiusPx || TOOL_MIN_RADIUS,
+    );
+  }, [compassRadiusMm]);
+
+  // Keep local tool state synced so custom controls can appear/disappear reliably.
+  useEffect(() => {
+    if (!editorReady) return;
+    const timer = window.setInterval(() => {
+      const editor = editorRef.current;
+      if (!editor?.getCurrentToolId) return;
+      const id = editor.getCurrentToolId();
+      setCurrentTool((prev) => (prev === id ? prev : id));
+    }, 150);
+
+    return () => window.clearInterval(timer);
+  }, [editorReady]);
 
   storeRef.current = store;
 
@@ -1156,8 +1762,34 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         style={{ touchAction: "none" }}
         onDoubleClick={handleCanvasDoubleClick}
       >
+        {!isRecordingMode && currentTool === "compass" && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white/95 backdrop-blur border border-gray-200 rounded-xl px-3 py-2 shadow-lg flex items-center gap-2">
+            <span className="text-xs text-gray-600 whitespace-nowrap">
+              {isRTL ? "نصف القطر" : "Rayon"}
+            </span>
+            <input
+              type="number"
+              min={5}
+              max={150}
+              step={1}
+              value={compassRadiusMm}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (Number.isNaN(next)) return;
+                setCompassRadiusMm(Math.max(5, Math.min(150, next)));
+              }}
+              className="w-20 h-8 text-sm text-black rounded-md border border-gray-300 px-2 bg-white"
+            />
+            <span className="text-xs text-gray-500">mm</span>
+          </div>
+        )}
+
         <Tldraw
           store={store}
+          tools={CUSTOM_TOOLS}
+          assetUrls={customToolAssetUrls}
+          overrides={customToolOverrides}
+          components={{ Toolbar: CustomToolbar }}
           hideUi={isRecordingMode}  // show controls for students in read-only mode
           inferDarkMode
           onMount={(editor) => {

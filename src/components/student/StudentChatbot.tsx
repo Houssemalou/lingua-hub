@@ -37,6 +37,9 @@ interface ChatMessage {
   summary?: SessionSummaryData['summary'];
 }
 
+const STUDENT_CHAT_SESSION_DURATION_SECONDS = 15 * 60;
+const STUDENT_CHAT_DAILY_SESSION_LIMIT = 2;
+
 export function StudentChatbot({
   studentId,
   studentName,
@@ -54,9 +57,49 @@ export function StudentChatbot({
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [roomName, setRoomName] = useState<string | null>(null);
-  const [sessionTimeLeft, setSessionTimeLeft] = useState(10 * 60); // 10 minutes in seconds
+  const [sessionTimeLeft, setSessionTimeLeft] = useState(STUDENT_CHAT_SESSION_DURATION_SECONDS);
   const [sessionTimer, setSessionTimer] = useState<NodeJS.Timeout | null>(null);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  const [sessionsUsedToday, setSessionsUsedToday] = useState(0);
+
+  const getTodayKey = useCallback(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = `${now.getMonth() + 1}`.padStart(2, '0');
+    const d = `${now.getDate()}`.padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const getUsageStorageKey = useCallback(
+    () => `student-chatbot-usage:${studentId}`,
+    [studentId],
+  );
+
+  const getTodaySessionCount = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(getUsageStorageKey());
+      if (!raw) return 0;
+      const parsed = JSON.parse(raw) as { day?: string; count?: number };
+      if (parsed.day !== getTodayKey()) return 0;
+      return Math.max(0, Number(parsed.count || 0));
+    } catch {
+      return 0;
+    }
+  }, [getTodayKey, getUsageStorageKey]);
+
+  const reserveTodaySession = useCallback(() => {
+    const current = getTodaySessionCount();
+    const next = current + 1;
+    localStorage.setItem(
+      getUsageStorageKey(),
+      JSON.stringify({ day: getTodayKey(), count: next }),
+    );
+    return next;
+  }, [getTodayKey, getTodaySessionCount, getUsageStorageKey]);
+
+  useEffect(() => {
+    setSessionsUsedToday(getTodaySessionCount());
+  }, [getTodaySessionCount]);
 
   // track viewport size for mobile-specific behaviour
   useEffect(() => {
@@ -313,7 +356,7 @@ export function StudentChatbot({
       setSessionSummary(null);
       setRoomName(null);
       stopSessionTimer();
-      setSessionTimeLeft(10 * 60); // Reset timer
+      setSessionTimeLeft(STUDENT_CHAT_SESSION_DURATION_SECONDS);
       handleCloseChat();
     } catch (error) {
       console.error('Failed to close room:', error);
@@ -330,7 +373,12 @@ export function StudentChatbot({
         if (prev <= 1) {
           // Time's up - close the session
           closeRoom();
-          addMessage(language === 'ar' ? 'انتهت جلسة الـ 10 دقائق. شكراً على مشاركتك!' : 'La session de 10 minutes est terminée. Merci d\'avoir participé !', false);
+          addMessage(
+            language === 'ar'
+              ? 'انتهت جلسة الـ 15 دقيقة. شكراً على مشاركتك!'
+              : 'La session de 15 minutes est terminée. Merci d\'avoir participé !',
+            false,
+          );
           return 0;
         }
         return prev - 1;
@@ -343,12 +391,41 @@ export function StudentChatbot({
   const handleOpenChat = useCallback(() => {
     setIsChatOpen(true);
     setIsMinimized(false);
-    setSessionTimeLeft(10 * 60); // Reset to 10 minutes
+    setSessionTimeLeft(STUDENT_CHAT_SESSION_DURATION_SECONDS);
+
     if (!isConnected && !isConnecting) {
+      const sessionsToday = getTodaySessionCount();
+      if (sessionsToday >= STUDENT_CHAT_DAILY_SESSION_LIMIT) {
+        setSessionsUsedToday(sessionsToday);
+        addMessage(
+          language === 'ar'
+            ? 'لقد وصلت إلى الحد اليومي: جلستان فقط مع الذكاء الاصطناعي. يمكنك المحاولة غداً.'
+            : 'Vous avez atteint la limite quotidienne: 2 sessions IA par jour. Réessayez demain.',
+          false,
+        );
+        return;
+      }
+
+      const usedAfterReserve = reserveTodaySession();
+      setSessionsUsedToday(usedAfterReserve);
       connectToRoom();
+      startSessionTimer();
     }
-    startSessionTimer();
-  }, [isConnected, isConnecting, connectToRoom, startSessionTimer]);
+  }, [
+    isConnected,
+    isConnecting,
+    connectToRoom,
+    startSessionTimer,
+    getTodaySessionCount,
+    reserveTodaySession,
+    addMessage,
+    language,
+  ]);
+
+  const sessionsRemainingToday = Math.max(
+    0,
+    STUDENT_CHAT_DAILY_SESSION_LIMIT - sessionsUsedToday,
+  );
 
   const handleDataReceived = useCallback((payload: Uint8Array, participant: RemoteParticipant) => {
     try {
@@ -754,6 +831,11 @@ const downloadSummary = useCallback(async () => {
               )} />
               <span className="text-xs text-gray-600">
                 {isConnected ? (language === 'ar' ? "متصل" : "Connecté") : isConnecting ? (language === 'ar' ? "جارٍ الاتصال..." : "Connexion...") : (language === 'ar' ? "غير متصل" : "Déconnecté")}
+              </span>
+              <span className="ml-auto text-[11px] px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                {language === 'ar'
+                  ? `المتبقي اليوم: ${sessionsRemainingToday}/${STUDENT_CHAT_DAILY_SESSION_LIMIT}`
+                  : `Restant aujourd'hui: ${sessionsRemainingToday}/${STUDENT_CHAT_DAILY_SESSION_LIMIT}`}
               </span>
             </div>
 
