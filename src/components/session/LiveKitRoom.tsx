@@ -415,7 +415,9 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               isLocalSharing={screenSharingParticipant.formatted.isCurrentUser}
             />
             {formattedParticipants.map(({ formatted, liveKit }) => {
-              const audioPublication = liveKit ? Array.from(liveKit.audioTrackPublications.values())[0] : undefined;
+              const audioPublication = liveKit
+                ? liveKit.audioTrackPublications.values().next().value
+                : undefined;
               const audioTrack = audioPublication?.track;
 
               if (!audioTrack || !audioPublication || !liveKit) {

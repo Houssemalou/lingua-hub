@@ -7,7 +7,6 @@ import {
   MicOff,
   Send,
   Download,
-  Sparkles,
   MessageCircle,
   X,
   Minimize2,
@@ -38,7 +37,8 @@ interface ChatMessage {
 }
 
 const STUDENT_CHAT_SESSION_DURATION_SECONDS = 15 * 60;
-const STUDENT_CHAT_DAILY_SESSION_LIMIT = 2;
+const CHAT_HISTORY_TTL_MS = 5 * 60 * 1000;
+const SUMMARY_ICON_THRESHOLD_SECONDS = 10 * 60;
 
 export function StudentChatbot({
   studentId,
@@ -54,52 +54,15 @@ export function StudentChatbot({
   const [currentMessage, setCurrentMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<SessionSummaryData['summary'] | null>(null);
+  const [summaryPdf, setSummaryPdf] = useState<{ base64: string; filename: string } | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [roomName, setRoomName] = useState<string | null>(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(STUDENT_CHAT_SESSION_DURATION_SECONDS);
-  const [sessionTimer, setSessionTimer] = useState<NodeJS.Timeout | null>(null);
+  const [sessionTimer, setSessionTimer] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [summaryRequested, setSummaryRequested] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
-  const [sessionsUsedToday, setSessionsUsedToday] = useState(0);
-
-  const getTodayKey = useCallback(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = `${now.getMonth() + 1}`.padStart(2, '0');
-    const d = `${now.getDate()}`.padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }, []);
-
-  const getUsageStorageKey = useCallback(
-    () => `student-chatbot-usage:${studentId}`,
-    [studentId],
-  );
-
-  const getTodaySessionCount = useCallback(() => {
-    try {
-      const raw = localStorage.getItem(getUsageStorageKey());
-      if (!raw) return 0;
-      const parsed = JSON.parse(raw) as { day?: string; count?: number };
-      if (parsed.day !== getTodayKey()) return 0;
-      return Math.max(0, Number(parsed.count || 0));
-    } catch {
-      return 0;
-    }
-  }, [getTodayKey, getUsageStorageKey]);
-
-  const reserveTodaySession = useCallback(() => {
-    const current = getTodaySessionCount();
-    const next = current + 1;
-    localStorage.setItem(
-      getUsageStorageKey(),
-      JSON.stringify({ day: getTodayKey(), count: next }),
-    );
-    return next;
-  }, [getTodayKey, getTodaySessionCount, getUsageStorageKey]);
-
-  useEffect(() => {
-    setSessionsUsedToday(getTodaySessionCount());
-  }, [getTodaySessionCount]);
+  const [periodEndsAt, setPeriodEndsAt] = useState<string | null>(null);
 
   // track viewport size for mobile-specific behaviour
   useEffect(() => {
@@ -112,6 +75,65 @@ export function StudentChatbot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const transcriptionBuffer = useRef(new Map<string, ChatMessage>());
   const attachedElements = useRef(new Map<string, HTMLMediaElement>());
+  const clearHistoryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const historyStorageKey = `student-chatbot-history:${studentId}`;
+
+  const serializeMessages = useCallback((items: ChatMessage[]) => {
+    return items.map((msg) => ({
+      id: msg.id,
+      content: msg.content,
+      isUser: msg.isUser,
+      timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString(),
+      type: msg.type,
+    }));
+  }, []);
+
+  const loadSavedHistory = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(historyStorageKey);
+      if (!raw) return [] as ChatMessage[];
+      const parsed = JSON.parse(raw) as Array<{
+        id?: string;
+        content?: string;
+        isUser?: boolean;
+        timestamp?: string;
+        type?: 'text' | 'summary' | 'transcription';
+      }>;
+      return (parsed || [])
+        .filter((m) => m && typeof m.content === 'string' && m.content.trim())
+        .slice(-50)
+        .map((m, idx) => ({
+          id: m.id || `msg-${idx}-${Date.now()}`,
+          content: m.content || '',
+          isUser: Boolean(m.isUser),
+          timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+          type: m.type || 'text',
+        }));
+    } catch {
+      return [] as ChatMessage[];
+    }
+  }, [historyStorageKey]);
+
+  const fetchSessionState = useCallback(async () => {
+    const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://learnup.tn/assistant';
+    const response = await fetch(
+      `${aiBase}/api/chatbot/session/state?userIdentity=${encodeURIComponent(studentId)}`,
+      { method: 'GET' },
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch chatbot session state');
+    }
+
+    return await response.json() as {
+      totalSeconds: number;
+      usedSeconds: number;
+      remainingSeconds: number;
+      periodEndsAt?: string;
+      isSessionActive?: boolean;
+    };
+  }, [studentId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -130,9 +152,56 @@ export function StudentChatbot({
     }
   }, [sessionTimer]);
 
+  const clearChatHistory = useCallback(() => {
+    try {
+      localStorage.removeItem(historyStorageKey);
+    } catch {
+      // Best effort local persistence only.
+    }
+    setMessages([]);
+    setSessionSummary(null);
+    setSummaryPdf(null);
+    setSummaryRequested(false);
+  }, [historyStorageKey]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const saved = loadSavedHistory();
+    if (saved.length > 0) {
+      setMessages(saved);
+    }
+  }, [loadSavedHistory]);
+
+  useEffect(() => {
+    if (clearHistoryTimeoutRef.current) {
+      clearTimeout(clearHistoryTimeoutRef.current);
+      clearHistoryTimeoutRef.current = null;
+    }
+
+    if (!isChatOpen) {
+      clearHistoryTimeoutRef.current = setTimeout(() => {
+        clearChatHistory();
+      }, CHAT_HISTORY_TTL_MS);
+    }
+
+    return () => {
+      if (clearHistoryTimeoutRef.current) {
+        clearTimeout(clearHistoryTimeoutRef.current);
+        clearHistoryTimeoutRef.current = null;
+      }
+    };
+  }, [isChatOpen, clearChatHistory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(historyStorageKey, JSON.stringify(serializeMessages(messages)));
+    } catch {
+      // Best effort local persistence only.
+    }
+  }, [historyStorageKey, messages, serializeMessages]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -252,7 +321,7 @@ export function StudentChatbot({
   }, []);
 
   const connectToRoom = useCallback(async () => {
-    if (isConnected) return;
+    if (isConnected) return true;
 
     setIsConnecting(true);
     try {
@@ -269,16 +338,24 @@ export function StudentChatbot({
           language,
           age,
           level,
+          recentHistory: serializeMessages(messages).slice(-20),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create room');
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload?.message || payload?.error || 'Failed to create room');
       }
 
-      const { roomName, token, url } = await response.json();
+      const { roomName, token, url, remainingSeconds, periodEndsAt: endsAt } = await response.json();
 
       setRoomName(roomName);
+      if (typeof remainingSeconds === 'number') {
+        setSessionTimeLeft(Math.max(0, remainingSeconds));
+      }
+      if (endsAt) {
+        setPeriodEndsAt(endsAt);
+      }
 
       // Connect to LiveKit room
       const room = new Room({
@@ -306,13 +383,19 @@ export function StudentChatbot({
         console.error('Failed to enable microphone:', error);
         addMessage(language === 'ar' ? 'خطأ في تفعيل الميكروفون. تحقق من الأذونات.' : 'Erreur d\'activation du microphone. Vérifiez les permissions.', false);
       }
+
+      return true;
     } catch (error) {
       console.error('Failed to connect to room:', error);
-      addMessage(language === 'ar' ? 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.' : 'Erreur de connexion. Veuillez réessayer.', false);
+      addMessage(
+        (error as Error)?.message || (language === 'ar' ? 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.' : 'Erreur de connexion. Veuillez réessayer.'),
+        false,
+      );
+      return false;
     } finally {
       setIsConnecting(false);
     }
-  }, [studentId, studentName, language, level, age, isConnected, addMessage, setupRoomListeners]);
+  }, [studentId, studentName, language, level, age, isConnected, addMessage, setupRoomListeners, serializeMessages, messages]);
 
   const handleCloseChat = useCallback(() => {
     setIsChatOpen(false);
@@ -333,7 +416,7 @@ export function StudentChatbot({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ roomName }),
+        body: JSON.stringify({ roomName, userIdentity: studentId }),
       });
 
       // Disconnect room
@@ -352,16 +435,25 @@ export function StudentChatbot({
 
       setIsConnected(false);
       setIsRecording(false);
-      setMessages([]);
       setSessionSummary(null);
+      setSummaryPdf(null);
+      setSummaryRequested(false);
       setRoomName(null);
       stopSessionTimer();
-      setSessionTimeLeft(STUDENT_CHAT_SESSION_DURATION_SECONDS);
+
+      try {
+        const state = await fetchSessionState();
+        setSessionTimeLeft(Math.max(0, state.remainingSeconds || 0));
+        setPeriodEndsAt(state.periodEndsAt || null);
+      } catch {
+        // ignore quota refresh errors on close
+      }
+
       handleCloseChat();
     } catch (error) {
       console.error('Failed to close room:', error);
     }
-  }, [roomName, handleCloseChat, stopSessionTimer]);
+  }, [roomName, handleCloseChat, stopSessionTimer, studentId, fetchSessionState]);
 
   const startSessionTimer = useCallback(() => {
     if (sessionTimer) {
@@ -371,12 +463,12 @@ export function StudentChatbot({
     const timer = setInterval(() => {
       setSessionTimeLeft(prev => {
         if (prev <= 1) {
-          // Time's up - close the session
-          closeRoom();
+          clearInterval(timer);
+          setSessionTimer(null);
           addMessage(
             language === 'ar'
-              ? 'انتهت جلسة الـ 15 دقيقة. شكراً على مشاركتك!'
-              : 'La session de 15 minutes est terminée. Merci d\'avoir participé !',
+              ? 'انتهى الوقت المتاح. يتم الآن إعداد الملخص النهائي.'
+              : 'Le temps disponible est termine. Le resume final est en preparation.',
             false,
           );
           return 0;
@@ -386,72 +478,70 @@ export function StudentChatbot({
     }, 1000);
     
     setSessionTimer(timer);
-  }, [closeRoom, addMessage, sessionTimer, language]);
+  }, [addMessage, sessionTimer, language]);
 
-  const handleOpenChat = useCallback(() => {
+  const handleOpenChat = useCallback(async () => {
     setIsChatOpen(true);
     setIsMinimized(false);
-    setSessionTimeLeft(STUDENT_CHAT_SESSION_DURATION_SECONDS);
 
     if (!isConnected && !isConnecting) {
-      const sessionsToday = getTodaySessionCount();
-      if (sessionsToday >= STUDENT_CHAT_DAILY_SESSION_LIMIT) {
-        setSessionsUsedToday(sessionsToday);
+      try {
+        const state = await fetchSessionState();
+        setSessionTimeLeft(Math.max(0, state.remainingSeconds || 0));
+        setPeriodEndsAt(state.periodEndsAt || null);
+
+        if ((state.remainingSeconds || 0) <= 0) {
+          addMessage(
+            language === 'ar'
+              ? 'استهلكت 15 دقيقة كاملة. ينجم ترجع تستعمل الشاتبوت بعد نهاية فترة 48 ساعة.'
+              : 'Tu as consomme les 15 minutes. Tu pourras reutiliser le chatbot apres la fin de la fenetre de 48h.',
+            false,
+          );
+          return;
+        }
+
+        const connected = await connectToRoom();
+        if (connected) {
+          startSessionTimer();
+        }
+      } catch {
         addMessage(
-          language === 'ar'
-            ? 'لقد وصلت إلى الحد اليومي: جلستان فقط مع الذكاء الاصطناعي. يمكنك المحاولة غداً.'
-            : 'Vous avez atteint la limite quotidienne: 2 sessions IA par jour. Réessayez demain.',
+          language === 'ar' ? 'تعذر جلب رصيد الوقت الحالي.' : 'Impossible de recuperer le quota de temps actuel.',
           false,
         );
-        return;
       }
-
-      const usedAfterReserve = reserveTodaySession();
-      setSessionsUsedToday(usedAfterReserve);
-      connectToRoom();
-      startSessionTimer();
     }
   }, [
     isConnected,
     isConnecting,
     connectToRoom,
     startSessionTimer,
-    getTodaySessionCount,
-    reserveTodaySession,
     addMessage,
     language,
+    fetchSessionState,
   ]);
 
-  const sessionsRemainingToday = Math.max(
-    0,
-    STUDENT_CHAT_DAILY_SESSION_LIMIT - sessionsUsedToday,
-  );
-
-  const handleDataReceived = useCallback((payload: Uint8Array, participant: RemoteParticipant) => {
+  const requestSummaryNow = useCallback(async () => {
+    if (!roomRef.current || summaryRequested) return;
     try {
-      const decoder = new TextDecoder();
-      const data = JSON.parse(decoder.decode(payload)) as DataTrackMessage;
-
-      switch (data.type) {
-        case 'session_summary':
-          setSessionSummary(data.summary);
-          addMessage(language === 'ar' ? 'ملخص الجلسة متاح للتحميل.' : 'Résumé de la session disponible pour téléchargement.', false, 'summary');
-          break;
-
-        case 'transcription':
-          // Transcription messages may arrive via LiveKit `TranscriptionReceived` event —
-          // ignore data-track 'transcription' here to avoid duplicate UI entries.
-          // If you really need data-track transcription, implement deduplication here.
-          break;
-      }
+      await roomRef.current.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({
+          type: 'request_summary',
+          timestamp: new Date().toISOString(),
+        })),
+        { reliable: true }
+      );
+      setSummaryRequested(true);
+      addMessage(
+        language === 'ar'
+          ? 'جاري إعداد ملخص الجلسة...'
+          : 'Preparation du resume en cours...'
+        , false
+      );
     } catch (error) {
-      console.error('Failed to parse data track message:', error);
+      console.error('Failed to request summary:', error);
     }
-  }, [addMessage, language]);
-
-  const handleParticipantConnected = useCallback((participant: RemoteParticipant) => {
-    // Participant joined - no message added
-  }, []);
+  }, [addMessage, language, summaryRequested]);
 
   const processMessage = useCallback((data: DataTrackMessage | { type?: string; content?: string }) => {
     if ('content' in data && typeof data.content === 'string') {
@@ -470,6 +560,12 @@ export function StudentChatbot({
         processMessage(data);
       } else if (data.type === 'session_summary') {
         setSessionSummary(data.summary);
+        if (data.pdfBase64) {
+          setSummaryPdf({
+            base64: data.pdfBase64,
+            filename: data.pdfFilename || `session-summary-${new Date().toISOString().split('T')[0]}.pdf`,
+          });
+        }
         addMessage(language === 'ar' ? 'ملخص الجلسة متاح للتحميل.' : 'Résumé de la session disponible pour téléchargement.', false, 'summary');
       }
     } catch (e) {
@@ -558,6 +654,29 @@ export function StudentChatbot({
 const downloadSummary = useCallback(async () => {
     if (!sessionSummary) return;
 
+    if (summaryPdf?.base64) {
+      try {
+        const binaryString = atob(summaryPdf.base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i += 1) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = summaryPdf.filename || `session-summary-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        return;
+      } catch (error) {
+        console.error('Failed to download backend PDF:', error);
+      }
+    }
+
     try {
       // Créer un élément HTML temporaire pour le rendu
       const printElement = document.createElement('div');
@@ -597,10 +716,21 @@ const downloadSummary = useCallback(async () => {
               <span style="background: #667eea; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">🎯</span>
               ${language === 'ar' ? 'هدف الجلسة' : 'Objectif de la Session'}
             </h3>
-            <p style="margin: 0; color: #555; font-size: 16px; line-height: 1.6;">${language === 'ar' ? 'تعلم وممارسة كلمات جديدة بالعربية والفرنسية' : 'Apprentissage et pratique de nouveaux mots en arabe et français'}</p>
+            <p style="margin: 0; color: #555; font-size: 16px; line-height: 1.6;">${sessionSummary.sessionObjective || ''}</p>
           </div>
 
-          <!-- Mots appris (groupés) -->
+          <!-- Resume detaille -->
+          ${sessionSummary.detailedSummary ? `
+          <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0; display: flex; align-items: center;">
+              <span style="background: #17a2b8; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">📝</span>
+              ${language === 'ar' ? 'تفاصيل الجلسة' : 'Resume detaille'}
+            </h3>
+            <p style="margin: 0; color: #555; font-size: 15px; line-height: 1.6;">${sessionSummary.detailedSummary}</p>
+          </div>
+          ` : ''}
+
+          <!-- Mots appris (groupes) -->
           ${sessionSummary.learnedGroups && sessionSummary.learnedGroups.length > 0 ? `
           <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
@@ -619,6 +749,24 @@ const downloadSummary = useCallback(async () => {
             </div>
           </div>
           ` : ''} 
+
+          <!-- Exemples -->
+          ${sessionSummary.examples && sessionSummary.examples.length > 0 ? `
+          <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
+              <span style="background: #ffc107; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">💬</span>
+              ${language === 'ar' ? 'امثلة' : 'Exemples'}
+            </h3>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              ${sessionSummary.examples.map(ex => `
+                <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:10px; padding:12px;">
+                  <div style="font-weight:700; color:#2c3e50; margin-bottom:6px;">${ex.title}</div>
+                  <div style="color:#555; font-size:14px; line-height:1.6;">${ex.text}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
 
 
 
@@ -703,7 +851,7 @@ const downloadSummary = useCallback(async () => {
 
       doc.save(`resume-session-simple-${new Date().toISOString().split('T')[0]}.pdf`);
     }
-  }, [sessionSummary, language]);
+  }, [sessionSummary, language, summaryPdf]);
 
   const toggleRecording = useCallback(async () => {
     if (!roomRef.current) return;
@@ -754,7 +902,7 @@ const downloadSummary = useCallback(async () => {
               // Mobile: full-screen
               "inset-0 sm:inset-auto",
               // Desktop: positioned bottom-right widget
-              "sm:bottom-6 sm:right-6 sm:w-[420px] md:w-[460px] sm:rounded-2xl",
+              "sm:bottom-6 sm:right-6 sm:w-[460px] sm:h-[720px] sm:rounded-2xl",
               // Minimized state
               isMinimized && "sm:max-h-[40vh]"
             )}
@@ -763,7 +911,7 @@ const downloadSummary = useCallback(async () => {
                 ? { maxHeight: isMobile ? undefined : '40vh' }
                 : isMobile
                 ? {}
-                : { maxHeight: '80vh' }
+                : { height: '720px' }
             }
           >
             {/* Chat Header */}
@@ -788,6 +936,21 @@ const downloadSummary = useCallback(async () => {
                       {formatTime(sessionTimeLeft)}
                     </span>
                   </div>
+                )}
+                {isConnected && (STUDENT_CHAT_SESSION_DURATION_SECONDS - sessionTimeLeft) >= SUMMARY_ICON_THRESHOLD_SECONDS && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={requestSummaryNow}
+                    disabled={summaryRequested}
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                      summaryRequested ? "bg-white/10 text-white/50" : "bg-white/20 text-white hover:bg-white/30"
+                    )}
+                    title={language === 'ar' ? 'احصل على ملخص الجلسة' : 'Generer le resume'}
+                  >
+                    <Download className="w-4 h-4" />
+                  </motion.button>
                 )}
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -815,7 +978,13 @@ const downloadSummary = useCallback(async () => {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={handleCloseChat}
+                  onClick={() => {
+                    if (isConnected) {
+                      closeRoom();
+                    } else {
+                      handleCloseChat();
+                    }
+                  }}
                   className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -834,10 +1003,18 @@ const downloadSummary = useCallback(async () => {
               </span>
               <span className="ml-auto text-[11px] px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                 {language === 'ar'
-                  ? `المتبقي اليوم: ${sessionsRemainingToday}/${STUDENT_CHAT_DAILY_SESSION_LIMIT}`
-                  : `Restant aujourd'hui: ${sessionsRemainingToday}/${STUDENT_CHAT_DAILY_SESSION_LIMIT}`}
+                  ? `الوقت المتبقي: ${formatTime(sessionTimeLeft)}`
+                  : `Temps restant: ${formatTime(sessionTimeLeft)}`}
               </span>
             </div>
+
+            {periodEndsAt && (
+              <div className="px-4 py-1 bg-amber-50 border-b text-[11px] text-amber-800">
+                {language === 'ar'
+                  ? `إعادة شحن الرصيد بعد: ${new Date(periodEndsAt).toLocaleString('ar-TN')}`
+                  : `Rechargement du quota: ${new Date(periodEndsAt).toLocaleString('fr-FR')}`}
+              </div>
+            )}
 
             {/* Messages Area */}
             {!isMinimized && (
@@ -847,8 +1024,7 @@ const downloadSummary = useCallback(async () => {
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
                       <Bot className="w-6 h-6 text-blue-500" />
                     </div>
-                    <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'مرحباً!' : 'Bienvenue !'}</p>
-                    <p className="text-xs text-gray-400">{language === 'ar' ? 'اطرح عليّ أسئلتك حول تعلم اللغة' : `Posez-moi vos questions sur l'apprentissage du ${language}`}</p>
+                    <p className="text-sm text-gray-500 mb-1">{language === 'ar' ? 'أهلا بيك' : 'Bienvenue'}</p>
                   </div>
                 ) : (
                   <AnimatePresence>
@@ -860,7 +1036,8 @@ const downloadSummary = useCallback(async () => {
                             key={`${message.id}-${index}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4"
+                            className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 cursor-pointer"
+                            onClick={downloadSummary}
                           >
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2">
@@ -907,11 +1084,34 @@ const downloadSummary = useCallback(async () => {
                               </div>
                             )}
 
+                            {sessionSummary.detailedSummary && (
+                              <div className="mb-4">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">{language === 'ar' ? 'تفاصيل الجلسة' : 'Resume detaille'}</h5>
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-700 leading-relaxed">
+                                  {sessionSummary.detailedSummary}
+                                </div>
+                              </div>
+                            )}
+
+                            {sessionSummary.examples && sessionSummary.examples.length > 0 && (
+                              <div className="mb-4">
+                                <h5 className="text-sm font-medium text-gray-700 mb-2">{language === 'ar' ? 'امثلة' : 'Exemples'}</h5>
+                                <div className="space-y-2">
+                                  {sessionSummary.examples.map((ex, exIdx) => (
+                                    <div key={`${ex.title}-${exIdx}`} className="bg-white border border-gray-200 rounded-lg p-3">
+                                      <div className="text-xs font-semibold text-gray-700 mb-1">{ex.title}</div>
+                                      <div className="text-sm text-gray-600 leading-relaxed">{ex.text}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
 
 
                             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                               <p className="text-xs text-gray-600 text-center">
-                                🎯 <strong>{language === 'ar' ? 'ملخص الجلسة تم إنشاؤه عند الطلب' : 'Résumé de session généré sur demande'}</strong>
+                                🎯 <strong>{language === 'ar' ? 'اضغط على الملخص لتحميله مباشرة PDF' : 'Cliquez sur le résumé pour le télécharger directement en PDF'}</strong>
                               </p>
                             </div>
                           </motion.div>
@@ -1000,20 +1200,6 @@ const downloadSummary = useCallback(async () => {
             {/* Input Area */}
             {!isMinimized && (
               <div className="p-3 sm:p-4 border-t bg-white/90 backdrop-blur-sm flex-none pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                  <button
-                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition"
-                    onClick={() => { setCurrentMessage(language === 'ar' ? 'صحح نطقي' : 'Corriger ma prononciation'); setTimeout(sendMessage, 150); }}
-                  >
-                    {language === 'ar' ? 'تصحيح النطق' : 'Corriger prononciation'}
-                  </button>
-                  <button
-                    className="text-xs px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition"
-                    onClick={() => { setCurrentMessage(language === 'ar' ? 'أعطني تمريناً في المفردات' : 'Donne-moi un exercice de vocabulaire'); setTimeout(sendMessage, 150); }}
-                  >
-                    {language === 'ar' ? 'تمرين مفردات' : 'Exercice vocabulaire'}
-                  </button>
-                </div>
 
                 <div className="flex gap-2 items-center min-w-0">
                   <button

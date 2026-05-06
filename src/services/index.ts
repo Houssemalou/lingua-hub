@@ -10,6 +10,8 @@ export { EvaluationService } from './EvaluationService';
 export { ChallengeService } from './ChallengeService';
 export { ModerationService } from './ModerationService';
 export { ChatService } from './ChatService';
+export { CourseService } from './CourseService';
+export { LearningDocumentService } from './LearningDocumentService';
 export { AuthService, getStoredTokens, getStoredUser } from './AuthService';
 export { RecordingService } from './RecordingService';
 export { StatsService } from './StatsService';

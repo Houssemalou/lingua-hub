@@ -3,6 +3,9 @@ import {
   Tldraw,
   createTLStore,
   defaultShapeUtils,
+  DefaultColorStyle,
+  DefaultDashStyle,
+  DefaultSizeStyle,
   TLStoreWithStatus,
   TLRecord,
   TLStore,
@@ -125,11 +128,85 @@ const PROTRACTOR_MAJOR_TICK = 12;
 const PROTRACTOR_MINOR_TICK = 7;
 const COMPASS_TRACE_POINTS = 80;
 const MM_TO_PX = 96 / 25.4;
+const TABLET_DRAW_MIN_POINT_DISTANCE = 0.75;
+const TABLET_DRAW_DECIMALS = 2;
 
 const toFixedPoint = (point: { x: number; y: number }) => ({
   x: Number(point.x.toFixed(2)),
   y: Number(point.y.toFixed(2)),
 });
+
+const roundPoint = (point: { x: number; y: number; z?: number }) => ({
+  x: Number(point.x.toFixed(TABLET_DRAW_DECIMALS)),
+  y: Number(point.y.toFixed(TABLET_DRAW_DECIMALS)),
+  z: point.z,
+});
+
+const simplifyFreehandPoints = (
+  points: Array<{ x: number; y: number; z?: number }>,
+) => {
+  if (!points || points.length <= 2) {
+    return points?.map((p) => roundPoint(p)) || [];
+  }
+
+  const simplified: Array<{ x: number; y: number; z?: number }> = [];
+  let lastKept = points[0];
+  simplified.push(roundPoint(lastKept));
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const current = points[i];
+    if (
+      Math.hypot(current.x - lastKept.x, current.y - lastKept.y) >=
+      TABLET_DRAW_MIN_POINT_DISTANCE
+    ) {
+      simplified.push(roundPoint(current));
+      lastKept = current;
+    }
+  }
+
+  const last = points[points.length - 1];
+  const alreadyHasLast =
+    simplified.length > 0 &&
+    simplified[simplified.length - 1].x === Number(last.x.toFixed(TABLET_DRAW_DECIMALS)) &&
+    simplified[simplified.length - 1].y === Number(last.y.toFixed(TABLET_DRAW_DECIMALS));
+
+  if (!alreadyHasLast) {
+    simplified.push(roundPoint(last));
+  }
+
+  if (simplified.length < 2 && points.length >= 2) {
+    return points.map((p) => roundPoint(p));
+  }
+
+  return simplified;
+};
+
+const normalizeDrawSegments = (
+  segments: Array<{ type: "free" | "straight"; points: Array<{ x: number; y: number; z?: number }> }>,
+) => {
+  return segments.map((segment) => ({
+    type: segment.type,
+    points: simplifyFreehandPoints(segment.points || []),
+  }));
+};
+
+const areDrawSegmentsEquivalent = (
+  a: Array<{ type: "free" | "straight"; points: Array<{ x: number; y: number; z?: number }> }>,
+  b: Array<{ type: "free" | "straight"; points: Array<{ x: number; y: number; z?: number }> }>,
+) => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const sa = a[i];
+    const sb = b[i];
+    if (sa.type !== sb.type || sa.points.length !== sb.points.length) return false;
+    for (let j = 0; j < sa.points.length; j++) {
+      const pa = sa.points[j];
+      const pb = sb.points[j];
+      if (pa.x !== pb.x || pa.y !== pb.y) return false;
+    }
+  }
+  return true;
+};
 
 const getDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(b.x - a.x, b.y - a.y);
@@ -721,6 +798,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   const [showParticipantMenu, setShowParticipantMenu] = useState(false);
   const storeRef = useRef(store);
   const isSyncingRef = useRef(false);
+  const isNormalizingDrawRef = useRef(false);
   const lastSentRef = useRef<number>(0);
   const lastCameraSentRef = useRef<number>(0);
   const isCameraSyncingRef = useRef(false);
@@ -830,6 +908,82 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   }, [editorReady]);
 
   storeRef.current = store;
+
+  // Tablet writing mode: normalize draw points to reduce jitter from micro-movements.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const unsubscribe = store.listen(
+      (entry: any) => {
+        if (isSyncingRef.current || isNormalizingDrawRef.current) return;
+
+        const changedRecordIds = new Set<string>();
+        const updates = entry?.changes?.updated ?? {};
+        const additions = entry?.changes?.added ?? {};
+
+        Object.keys(updates).forEach((id) => changedRecordIds.add(id));
+        Object.keys(additions).forEach((id) => changedRecordIds.add(id));
+
+        if (changedRecordIds.size === 0) return;
+
+        const shapePatches: Array<{
+          id: string;
+          type: "draw";
+          props: {
+            segments: Array<{ type: "free" | "straight"; points: Array<{ x: number; y: number; z?: number }> }>;
+            isPen: boolean;
+          };
+        }> = [];
+
+        changedRecordIds.forEach((id) => {
+          const shape = editor.getShape?.(id);
+          if (!shape || shape.type !== "draw") return;
+
+          const rawSegments = (shape.props?.segments ?? []) as Array<{
+            type: "free" | "straight";
+            points: Array<{ x: number; y: number; z?: number }>;
+          }>;
+          if (!Array.isArray(rawSegments) || rawSegments.length === 0) return;
+
+          const normalizedSegments = normalizeDrawSegments(rawSegments);
+          const currentSegments = rawSegments.map((segment) => ({
+            type: segment.type,
+            points: (segment.points || []).map((p) => roundPoint(p)),
+          }));
+
+          const needsUpdate =
+            !areDrawSegmentsEquivalent(currentSegments, normalizedSegments) ||
+            shape.props?.isPen !== true;
+
+          if (needsUpdate) {
+            shapePatches.push({
+              id: shape.id,
+              type: "draw",
+              props: {
+                segments: normalizedSegments,
+                isPen: true,
+              },
+            });
+          }
+        });
+
+        if (shapePatches.length === 0) return;
+
+        isNormalizingDrawRef.current = true;
+        try {
+          editor.updateShapes(shapePatches as any);
+        } finally {
+          window.setTimeout(() => {
+            isNormalizingDrawRef.current = false;
+          }, 0);
+        }
+      },
+      { source: "user", scope: "document" },
+    );
+
+    return () => unsubscribe();
+  }, [store, editorReady]);
 
   // Update read-only state based on permissions
   useEffect(() => {
@@ -1785,26 +1939,45 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         )}
 
         <Tldraw
+          autoFocus
           store={store}
           tools={CUSTOM_TOOLS}
           assetUrls={customToolAssetUrls}
           overrides={customToolOverrides}
           components={{ Toolbar: CustomToolbar }}
           hideUi={isRecordingMode}  // show controls for students in read-only mode
-          inferDarkMode
+          inferDarkMode={false}
           onMount={(editor) => {
             editorRef.current = editor;
             // isReadonly blocks drawing but still allows pan/zoom for all users
             editor.updateInstanceState({ isReadonly: isReadOnly });
+            // Keep handwriting visible/clear by default on pen tablets.
+            try {
+              editor.setStyleForNextShapes(DefaultSizeStyle, "m");
+              editor.setStyleForNextShapes(DefaultDashStyle, "draw");
+              editor.setStyleForNextShapes(DefaultColorStyle, "black");
+            } catch (e) {
+              /* ignore */
+            }
+            // Disable debug rendering and keep default instance behavior stable.
+            editor.updateInstanceState({ isDebugMode: false });
+            // Tablet profile: prefer clean medium strokes for handwriting clarity.
+            try {
+              editor.user.updateUserPreferences?.({ colorScheme: "light" });
+            } catch (e) {
+              /* ignore */
+            }
             // Start at 50% zoom — users can freely zoom in/out
             try {
               editor.setCamera({ x: 0, y: 0, z: 0.5 });
             } catch (e) {
               /* ignore */
             }
-            // Select tool active on mount so panning works immediately
+            // Default to draw tool when user can write; otherwise keep select for pan/zoom.
             try {
-              editor.selectTool?.("select");
+              const mountTool = isReadOnly ? "select" : "draw";
+              editor.setCurrentTool?.(mountTool);
+              setCurrentTool(mountTool);
             } catch (e) {
               /* ignore */
             }

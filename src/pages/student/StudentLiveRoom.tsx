@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Users, Target, MessageSquare, Clock } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Users, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 import { LiveKitRoom } from '@/components/session/LiveKitRoom';
 import { getLevelLabel } from '@/lib/levelLabels';
 import { RoomService } from '@/services/RoomService';
@@ -44,7 +42,6 @@ export default function StudentLiveRoom() {
 
     loadRoom();
   }, [roomId]);
-
   const handleLeaveRoom = async () => {
     if (room && room.id) {
       try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }

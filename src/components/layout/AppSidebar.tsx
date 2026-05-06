@@ -63,6 +63,7 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const studentNavItems = [
     { to: '/student/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/student/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/student/resources', icon: BookOpen, label: isRTL ? 'الموارد' : 'Ressources' },
     { to: '/student/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     ...(!hideGamification ? [{ to: '/student/games', icon: Gamepad2, label: t('nav.games') || 'Jeux' }] : []),
     { to: '/student/quizzes', icon: ClipboardList, label: t('nav.quiz') },
@@ -73,6 +74,8 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
   const professorNavItems = [
     { to: '/professor/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
     { to: '/professor/sessions', icon: CalendarCheck, label: t('nav.sessions') },
+    { to: '/professor/courses', icon: BookOpen, label: isRTL ? 'الدروس' : 'Cours' },
+    { to: '/professor/resources', icon: FileText, label: isRTL ? 'مكتبة الوثائق' : 'Bibliothèque docs' },
     { to: '/professor/summaries', icon: FileText, label: t('nav.summaries') || 'Résumés' },
     ...(!hideGamification ? [{ to: '/professor/challenges', icon: Swords, label: t('nav.challenges') || 'Défis' }] : []),
     { to: '/professor/evaluations', icon: GraduationCap, label: t('nav.evaluations') || 'Évaluations' },

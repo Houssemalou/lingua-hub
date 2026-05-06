@@ -8,7 +8,7 @@ export interface Student {
   avatar: string;
   nickname: string;
   bio: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   studentType?: StudentType;
   joinedAt: string;
   skills: {
@@ -41,7 +41,7 @@ export interface Room {
   id: string;
   name: string;
   language: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   objective: string;
   scheduledAt: string;
   duration: number; // in minutes
@@ -59,7 +59,7 @@ export interface Session {
   roomId: string;
   roomName: string;
   language: string;
-  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2';
+  level: 'YEAR1' | 'YEAR2' | 'YEAR3' | 'YEAR4' | 'YEAR5' | 'YEAR6' | 'YEAR7' | 'YEAR8' | 'YEAR9' | 'YEAR10' | 'YEAR11' | 'YEAR12' | 'YEAR13' | 'PREPA1' | 'PREPA2' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
   objective: string;
   scheduledAt: string;
   duration: number;
@@ -85,11 +85,18 @@ export interface SessionSummaryData {
   type: 'session_summary';
   summary: {
     sessionObjective?: string;
+    detailedSummary?: string;
     learnedGroups: {
       group: string;
       words: string[];
     }[];
+    examples?: {
+      title: string;
+      text: string;
+    }[];
   };
+  pdfBase64?: string | null;
+  pdfFilename?: string | null;
   timestamp: string;
 } 
 
@@ -100,4 +107,15 @@ export interface TranscriptionData {
   isUser: boolean;
 }
 
-export type DataTrackMessage = SessionSummaryData | TranscriptionData;
+export interface StudentThemeSelectedData {
+  type: 'student_theme_selected';
+  theme: {
+    id: string;
+    label: string;
+    group?: string;
+  };
+  targetLanguage?: 'fr' | 'en';
+  timestamp: string;
+}
+
+export type DataTrackMessage = SessionSummaryData | TranscriptionData | StudentThemeSelectedData;

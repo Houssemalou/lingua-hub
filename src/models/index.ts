@@ -9,6 +9,8 @@ export * from './Session';
 export * from './Quiz';
 export * from './Evaluation';
 export * from './ChatMessage';
+export * from './Course';
+export * from './LearningDocument';
 
 // Common types
 export interface PaginatedResponse<T> {
