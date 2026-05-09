@@ -15,6 +15,7 @@ import {
   GraduationCap,
   BarChart3,
   ArrowUpRight,
+  Check,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,13 +47,13 @@ const item = {
 };
 
 const LANGUAGES = [
-  { value: 'French', label: 'Français', labelAr: 'الفرنسية', icon: '🇫🇷' },
-  { value: 'English', label: 'Anglais', labelAr: 'الإنجليزية', icon: '🇬🇧' },
-  { value: 'German', label: 'Allemand', labelAr: 'الألمانية', icon: '🇩🇪' },
-  { value: 'Spanish', label: 'Espagnol', labelAr: 'الإسبانية', icon: '🇪🇸' },
-  { value: 'Italian', label: 'Italien', labelAr: 'الإيطالية', icon: '🇮🇹' },
-  { value: 'Arabic', label: 'Arabe', labelAr: 'العربية', icon: '🇸🇦' },
-  { value: 'Portuguese', label: 'Portugais', labelAr: 'البرتغالية', icon: '🇵🇹' },
+  { value: 'French', label: 'Français', labelAr: 'الفرنسية', icon: null },
+  { value: 'English', label: 'Anglais', labelAr: 'الإنجليزية', icon: null },
+  { value: 'German', label: 'Allemand', labelAr: 'الألمانية', icon: null },
+  { value: 'Spanish', label: 'Espagnol', labelAr: 'الإسبانية', icon: null },
+  { value: 'Italian', label: 'Italien', labelAr: 'الإيطالية', icon: null },
+  { value: 'Arabic', label: 'Arabe', labelAr: 'العربية', icon: null },
+  { value: 'Portuguese', label: 'Portugais', labelAr: 'البرتغالية', icon: null },
 ];
 
 function getLevelColor(level: string) {
@@ -112,7 +113,7 @@ function EvaluationDetailCard({ evaluation, isRTL, dateLocale }: {
           {/* Header */}
           <div className={cn("flex items-center justify-between gap-3 mb-4", isRTL && "flex-row-reverse")}>
             <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
-              <div className="text-2xl">{langInfo?.icon}</div>
+              <Globe className="w-6 h-6 text-primary" />
               <div className={cn(isRTL && "text-right")}>
                 <p className="font-semibold">{isRTL ? langInfo?.labelAr : langInfo?.label}</p>
                 <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", isRTL && "flex-row-reverse")}>
@@ -193,7 +194,7 @@ function EvaluationDetailCard({ evaluation, isRTL, dateLocale }: {
                       <ul className="space-y-1">
                         {evaluation.strengths.map((s, i) => (
                           <li key={i} className={cn("text-sm text-foreground/70 flex items-start gap-2", isRTL && "flex-row-reverse")}>
-                            <span className="text-emerald-500 mt-0.5">✓</span> {s}
+                            <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" /> <span>{s}</span>
                           </li>
                         ))}
                       </ul>
@@ -248,7 +249,6 @@ export default function StudentEvaluations() {
           setEvaluations(response.data);
         }
       } catch (error) {
-        console.error('Error loading evaluations:', error);
         toast.error(isRTL ? 'فشل تحميل التقييمات' : 'Impossible de charger les évaluations');
       } finally {
         setIsLoading(false);
@@ -404,7 +404,7 @@ export default function StudentEvaluations() {
               <SelectItem value="all">{isRTL ? 'كل اللغات' : 'Toutes les langues'}</SelectItem>
               {LANGUAGES.map(lang => (
                 <SelectItem key={lang.value} value={lang.value}>
-                  {lang.icon} {isRTL ? lang.labelAr : lang.label}
+                  <Globe className="w-4 h-4 mr-1" /> {isRTL ? lang.labelAr : lang.label}
                 </SelectItem>
               ))}
             </SelectContent>

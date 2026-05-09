@@ -50,7 +50,6 @@ export default function ProfessorDashboard() {
         const data = await StatsService.getProfessorStats();
         setStatsData(data);
       } catch (err) {
-        console.error('Failed to fetch professor stats:', err);
         setError(isRTL ? 'فشل في تحميل إحصائيات لوحة التحكم' : 'Échec du chargement des statistiques');
       } finally {
         setLoading(false);
@@ -70,7 +69,7 @@ export default function ProfessorDashboard() {
         {/* Stats grid skeleton */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="glass-card">
+            <Card key={i} className="glass">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center gap-3">
                   <Skeleton className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl" />
@@ -85,7 +84,7 @@ export default function ProfessorDashboard() {
         </div>
         {/* Two column grid skeleton */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="glass-card">
+          <Card className="glass">
             <CardHeader className="flex flex-row items-center justify-between">
               <Skeleton className="h-5 w-36" />
               <Skeleton className="h-8 w-20" />
@@ -105,7 +104,7 @@ export default function ProfessorDashboard() {
               ))}
             </CardContent>
           </Card>
-          <Card className="glass-card">
+          <Card className="glass">
             <CardHeader className="flex flex-row items-center justify-between">
               <Skeleton className="h-5 w-28" />
               <Skeleton className="h-5 w-8 rounded-full" />
@@ -177,7 +176,7 @@ export default function ProfessorDashboard() {
       {/* Header */}
       <motion.div variants={item}>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-          {isRTL ? 'مرحباً' : 'Bienvenue'}, {professor?.name || (isRTL ? 'أستاذ' : 'Professeur')} 👋
+          {isRTL ? 'مرحباً' : 'Bienvenue'}, {professor?.name || (isRTL ? 'أستاذ' : 'Professeur')}
         </h1>
         <p className="text-muted-foreground mt-1">
           {isRTL ? 'إليك ملخص نشاطك التعليمي' : 'Voici un résumé de votre activité pédagogique'}
@@ -187,7 +186,7 @@ export default function ProfessorDashboard() {
       {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="glass-card">
+          <Card key={stat.title} className="glass">
             <CardContent className="p-4 sm:p-6">
               <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
@@ -239,7 +238,7 @@ export default function ProfessorDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Upcoming Sessions */}
         <motion.div variants={item}>
-          <Card className="glass-card h-full">
+          <Card className="glass h-full">
             <CardHeader className={`flex flex-row items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
               <CardTitle className="text-lg">
                 {isRTL ? 'الجلسات القادمة' : 'Sessions à venir'}
@@ -283,7 +282,7 @@ export default function ProfessorDashboard() {
 
         {/* My Students */}
         <motion.div variants={item}>
-          <Card className="glass-card h-full">
+          <Card className="glass h-full">
             <CardHeader className={`flex flex-row items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
               <CardTitle className="text-lg">
                 {isRTL ? 'طلابي' : 'Mes Étudiants'}

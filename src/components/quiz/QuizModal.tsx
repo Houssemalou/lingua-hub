@@ -72,10 +72,10 @@ export function QuizModal({ quiz, isOpen, onClose, onComplete }: QuizModalProps)
     const correctCount = answers.filter((answer, index) => answer === quiz.questions[index].correctAnswer).length;
     const score = Math.round((correctCount / quiz.questions.length) * 100);
     
-    if (score >= 80) return isRTL ? 'ممتاز! 🎉' : 'Excellent ! 🎉';
-    if (score >= 60) return isRTL ? 'جيد جداً! 👏' : 'Très bien ! 👏';
-    if (score >= 40) return isRTL ? 'يمكنك التحسن 💪' : 'Peut mieux faire 💪';
-    return isRTL ? 'استمر في الممارسة 📚' : 'Continue à pratiquer 📚';
+    if (score >= 80) return isRTL ? 'ممتاز!' : 'Excellent !';
+    if (score >= 60) return isRTL ? 'جيد جداً!' : 'Très bien !';
+    if (score >= 40) return isRTL ? 'يمكنك التحسن' : 'Peut mieux faire';
+    return isRTL ? 'استمر في الممارسة' : 'Continue à pratiquer';
   };
 
   const correctCount = answers.filter((answer, index) => answer === quiz.questions[index].correctAnswer).length;

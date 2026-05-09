@@ -34,7 +34,6 @@ export const StudentService = {
       }
       return { success: false, error: response.message || 'Failed to fetch profile' };
     } catch (error) {
-      console.error('Error fetching student profile:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -57,7 +56,6 @@ export const StudentService = {
       // Fallback to generic `/students` endpoint when no creator filter is provided
       return await apiClient.get<PaginatedResponse<StudentModel>>('/students', filters as Record<string, unknown>);
     } catch (error) {
-      console.error('Error fetching students:', error);
       throw error;
     }
   },
@@ -71,7 +69,6 @@ export const StudentService = {
       }
       return { success: false, error: response.message || 'Failed to fetch student' };
     } catch (error) {
-      console.error('Error fetching student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -85,7 +82,6 @@ export const StudentService = {
       }
       return { success: false, error: response.message || 'Failed to create student' };
     } catch (error) {
-      console.error('Error creating student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -99,7 +95,6 @@ export const StudentService = {
       }
       return { success: false, error: response.message || 'Failed to update student' };
     } catch (error) {
-      console.error('Error updating student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -110,7 +105,6 @@ export const StudentService = {
       await apiClient.delete<void>(`/students/${id}`);
       return { success: true };
     } catch (error) {
-      console.error('Error deleting student:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -126,7 +120,6 @@ export const StudentService = {
       const result = await apiClient.patch<StudentModel>(`/students/${id}/skills`, skills);
       return { success: true, data: result };
     } catch (error) {
-      console.error('Error updating skills:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -139,7 +132,6 @@ export const StudentService = {
       const data = await apiClient.post<StudentModel[]>('/students/batch', { ids });
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching students by IDs:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 

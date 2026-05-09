@@ -11,7 +11,10 @@ import {
   FileText, 
   Lightbulb,
   Star,
-  GraduationCap
+  GraduationCap,
+  Hand,
+  Mic,
+  Pen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -291,27 +294,27 @@ export function SessionSummaryEditor({
             {renderScoreSlider(
               isRTL ? 'النطق' : 'Prononciation',
               'pronunciation',
-              <span className="w-4 h-4 text-center">🎤</span>
+              <Mic className="w-4 h-4" />
             )}
             {renderScoreSlider(
               isRTL ? 'القواعد' : 'Grammaire',
               'grammar',
-              <span className="w-4 h-4 text-center">📝</span>
+              <Pen className="w-4 h-4" />
             )}
             {renderScoreSlider(
               isRTL ? 'المفردات' : 'Vocabulaire',
               'vocabulary',
-              <span className="w-4 h-4 text-center">📚</span>
+              <BookOpen className="w-4 h-4" />
             )}
             {renderScoreSlider(
               isRTL ? 'الطلاقة' : 'Fluidité',
               'fluency',
-              <span className="w-4 h-4 text-center">💬</span>
+              <MessageSquare className="w-4 h-4" />
             )}
             {renderScoreSlider(
               isRTL ? 'المشاركة' : 'Participation',
               'participation',
-              <span className="w-4 h-4 text-center">🙋</span>
+              <Hand className="w-4 h-4" />
             )}
           </div>
         </CardContent>
@@ -473,7 +476,7 @@ export function SessionSummaryEditor({
       <Card>
         <CardHeader>
           <CardTitle className={cn("flex items-center gap-2 text-lg", isRTL && "flex-row-reverse")}>
-            <span className="text-lg">📝</span>
+            <Pen className="w-5 h-5 text-primary" />
             {isRTL ? 'نقاط القواعد' : 'Points de grammaire'}
           </CardTitle>
         </CardHeader>
@@ -509,7 +512,7 @@ export function SessionSummaryEditor({
       <Card>
         <CardHeader>
           <CardTitle className={cn("flex items-center gap-2 text-lg", isRTL && "flex-row-reverse")}>
-            <span className="text-lg">📌</span>
+            <Target className="w-5 h-5 text-primary" />
             {isRTL ? 'تركيز الجلسة القادمة' : 'Focus de la prochaine session'}
           </CardTitle>
         </CardHeader>

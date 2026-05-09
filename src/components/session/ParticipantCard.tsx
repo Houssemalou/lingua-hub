@@ -254,8 +254,8 @@ export function ParticipantCard({
               participant.role === 'admin' && "bg-rose-500/90 text-white"
             )}
           >
-            {participant.role === 'professor' ? '🎓 Prof' : 
-             participant.role === 'student' ? '⭐ Élève' : '🛡️ Admin'}
+            {participant.role === 'professor' ? 'Prof' : 
+             participant.role === 'student' ? 'Élève' : 'Admin'}
           </Badge>
         </motion.div>
       )}

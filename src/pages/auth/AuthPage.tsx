@@ -9,12 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen, Mail, RefreshCw } from 'lucide-react';
+import { GraduationCap, Shield, User, Sun, Moon, Languages, ArrowLeft, ArrowRight, Check, KeyRound, BookOpen, Mail, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
 import { AuthService } from '@/services/AuthService';
 import { avatarOptions } from '@/data/avatars';
 import { cn } from '@/lib/utils';
 import { getLevelLabel } from '@/lib/levelLabels';
 import { getFriendlyErrorMessage } from '@/lib/errorMessages';
+import { loginSchema, studentInfoSchema, professorInfoSchema, adminSignupSchema, StudentInfoData, ProfessorInfoData, AdminSignupData } from '@/lib/validation';
+import { FieldError } from '@/components/ui/field-error';
 
 type AuthMode = 'login' | 'signup';
 type SignupRole = 'admin' | 'student' | 'professor' | null;
@@ -79,6 +81,17 @@ export default function AuthPage() {
   const [specialization, setSpecialization] = useState('');
   const [professorType, setProfessorType] = useState<ProfessorType>('PROF_BASE');
 
+  // Field-level validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateField = (field: string, value: any) => {
+    setFieldErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
   useEffect(() => {
     if (!isSuperAdminPath && signupRole === 'admin') {
       setSignupRole(null);
@@ -110,9 +123,21 @@ export default function AuthPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setFieldErrors({});
     setError('');
     
+    const parsed = loginSchema.safeParse({ username, password });
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      parsed.error.errors.forEach(err => {
+        const field = err.path[0] as string;
+        if (!errs[field]) errs[field] = err.message;
+      });
+      setFieldErrors(errs);
+      return;
+    }
+    
+    setLoading(true);
     const result = await login(username, password);
     if (!result.success) {
       setError(getFriendlyErrorMessage(result.error, isRTL) || (isRTL ? 'خطأ في تسجيل الدخول' : 'Erreur de connexion'));
@@ -124,9 +149,21 @@ export default function AuthPage() {
 
   const handleAdminSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setFieldErrors({});
     setError('');
     
+    const parsed = adminSignupSchema.safeParse({ name, email, password, accessToken });
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      parsed.error.errors.forEach(err => {
+        const field = err.path[0] as string;
+        if (!errs[field]) errs[field] = err.message;
+      });
+      setFieldErrors(errs);
+      return;
+    }
+    
+    setLoading(true);
     const result = await signupAdmin({
       name,
       email,
@@ -214,6 +251,7 @@ export default function AuthPage() {
     setProfessorType('PROF_BASE');
     setStudentType('SCOLAIRE');
     setError('');
+    setFieldErrors({});
   };
 
   const renderLogin = () => (
@@ -222,7 +260,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-primary flex items-center justify-center">
             <GraduationCap className="w-8 h-8 text-primary-foreground" />
@@ -241,10 +279,12 @@ export default function AuthPage() {
                 type="text"
                 placeholder={isRTL ? 'votre nom d\'utilisateur' : 'votre nom d\'utilisateur'}
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => { setUsername(e.target.value); clearFieldError('username'); }}
                 required
                 dir="ltr"
+                className={fieldErrors.username ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.username} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{isRTL ? 'كلمة المرور' : 'Mot de passe'}</Label>
@@ -253,10 +293,12 @@ export default function AuthPage() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
                 required
                 dir="ltr"
+                className={fieldErrors.password ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.password} />
             </div>
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
@@ -288,7 +330,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass-card">
+      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{isRTL ? 'إنشاء حساب' : 'Créer un compte'}</CardTitle>
           <CardDescription>
@@ -370,7 +412,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -389,35 +431,41 @@ export default function AuthPage() {
         <CardContent>
           <form onSubmit={handleAdminSignup} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
+              <Label htmlFor="admin-name">{isRTL ? 'الاسم الكامل' : 'Nom complet'}</Label>
               <Input
-                id="name"
+                id="admin-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
                 required
+                className={fieldErrors.name ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.name} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="admin-email">Email</Label>
               <Input
-                id="email"
+                id="admin-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
                 required
                 dir="ltr"
+                className={fieldErrors.email ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.email} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{isRTL ? 'كلمة المرور' : 'Mot de passe'}</Label>
+              <Label htmlFor="admin-password">{isRTL ? 'كلمة المرور' : 'Mot de passe'}</Label>
               <Input
-                id="password"
+                id="admin-password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
                 required
                 dir="ltr"
+                className={fieldErrors.password ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.password} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="accessToken">{isRTL ? 'رمز الوصول' : 'Token d\'accès'}</Label>
@@ -425,16 +473,18 @@ export default function AuthPage() {
                 id="accessToken"
                 type="text"
                 value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
+                onChange={(e) => { setAccessToken(e.target.value); clearFieldError('accessToken'); }}
                 placeholder={isRTL ? 'أدخل رمز الوصول' : 'Entrez le token d\'accès'}
                 required
                 dir="ltr"
+                className={fieldErrors.accessToken ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.accessToken} />
             </div>
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
-            <Button type="submit" className="w-full" disabled={loading || !name || !email || !password || !accessToken}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (isRTL ? 'جاري الإنشاء...' : 'Création...') : (isRTL ? 'إنشاء الحساب' : 'Créer le compte')}
             </Button>
           </form>
@@ -449,7 +499,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass-card">
+      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -514,7 +564,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -542,19 +592,23 @@ export default function AuthPage() {
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
                 required
+                className={fieldErrors.name ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.name} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="nickname">{isRTL ? 'اسم المستخدم' : 'Pseudo'}</Label>
               <Input
                 id="nickname"
                 value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={(e) => { setNickname(e.target.value); clearFieldError('nickname'); }}
                 placeholder={isRTL ? 'كيف تريد أن تظهر' : 'Comment voulez-vous apparaître'}
                 required
+                className={fieldErrors.nickname ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.nickname} />
             </div>
           </div>
           <div className="space-y-2">
@@ -563,11 +617,13 @@ export default function AuthPage() {
               id="uniqueCode"
               type="text"
               value={uniqueCode}
-              onChange={(e) => setUniqueCode(e.target.value)}
+              onChange={(e) => { setUniqueCode(e.target.value); clearFieldError('uniqueCode'); }}
               placeholder={isRTL ? 'أدخل رمز الوصول الفريد' : 'Entrez votre code d\'accès unique'}
               required
               dir="ltr"
+              className={fieldErrors.uniqueCode ? 'border-destructive' : ''}
             />
+            <FieldError message={fieldErrors.uniqueCode} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">{isRTL ? 'كلمة المرور' : 'Mot de passe'}</Label>
@@ -575,10 +631,12 @@ export default function AuthPage() {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
               required
               dir="ltr"
+              className={fieldErrors.password ? 'border-destructive' : ''}
             />
+            <FieldError message={fieldErrors.password} />
           </div>
           <div className="space-y-2">
             <Label>{isRTL ? 'نوع الطالب' : 'Type d\'étudiant'}</Label>
@@ -633,8 +691,20 @@ export default function AuthPage() {
           </div>
           <Button
             className="w-full"
-            onClick={() => setStudentStep('token')}
-            disabled={!name || !nickname || !uniqueCode || !password}
+            onClick={() => {
+              setFieldErrors({});
+              const parsed = studentInfoSchema.safeParse({ name, nickname, uniqueCode, password });
+              if (!parsed.success) {
+                const errs: Record<string, string> = {};
+                parsed.error.errors.forEach(err => {
+                  const field = err.path[0] as string;
+                  if (!errs[field]) errs[field] = err.message;
+                });
+                setFieldErrors(errs);
+                return;
+              }
+              setStudentStep('token');
+            }}
           >
             {isRTL ? 'التالي' : 'Continuer'}
             {isRTL ? <ArrowLeft className="w-4 h-4 mr-2" /> : <ArrowRight className="w-4 h-4 ml-2" />}
@@ -650,7 +720,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -705,7 +775,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass-card">
+      <Card className="w-full max-w-2xl sm:max-w-3xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -770,7 +840,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -798,9 +868,11 @@ export default function AuthPage() {
               <Input
                 id="prof-name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); clearFieldError('name'); }}
                 required
+                className={fieldErrors.name ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.name} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="prof-email">Email</Label>
@@ -808,10 +880,12 @@ export default function AuthPage() {
                 id="prof-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
                 required
                 dir="ltr"
+                className={fieldErrors.email ? 'border-destructive' : ''}
               />
+              <FieldError message={fieldErrors.email} />
             </div>
           </div>
           <div className="space-y-2">
@@ -820,20 +894,24 @@ export default function AuthPage() {
               id="prof-password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
               required
               dir="ltr"
+              className={fieldErrors.password ? 'border-destructive' : ''}
             />
+            <FieldError message={fieldErrors.password} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="prof-specialization">{isRTL ? 'التخصص' : 'Spécialisation'}</Label>
             <Input
               id="prof-specialization"
               value={specialization}
-              onChange={(e) => setSpecialization(e.target.value)}
+              onChange={(e) => { setSpecialization(e.target.value); clearFieldError('specialization'); }}
               placeholder={isRTL ? 'مثال: المحادثة، القواعد...' : 'Ex: Conversation, Grammaire...'}
               required
+              className={fieldErrors.specialization ? 'border-destructive' : ''}
             />
+            <FieldError message={fieldErrors.specialization} />
           </div>
           <div className="space-y-2">
             <Label>{isRTL ? 'نوع الأستاذ' : 'Type de professeur'}</Label>
@@ -857,7 +935,7 @@ export default function AuthPage() {
               ))}
             </div>
           </div>
-          <div className="space-y-2">
+            <div className="space-y-2">
             <Label>{isRTL ? 'المواد التي تدرسها' : 'Matières enseignées'}</Label>
             <div className="flex flex-wrap gap-2">
               {['Français', 'Anglais', 'Espagnol', 'Arabe', 'Allemand', 'Mathématiques', 'Physique', 'Science', 'Informatique', 'Mécanique', 'Électrique'].map((lang) => (
@@ -872,12 +950,14 @@ export default function AuthPage() {
                     } else {
                       setLanguages([...languages, lang]);
                     }
+                    clearFieldError('languages');
                   }}
                 >
                   {lang}
                 </Button>
               ))}
             </div>
+            <FieldError message={fieldErrors.languages} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="prof-bio">{isRTL ? 'نبذة عنك' : 'Bio'}</Label>
@@ -891,8 +971,20 @@ export default function AuthPage() {
           </div>
           <Button
             className="w-full"
-            onClick={() => setProfessorStep('token')}
-            disabled={!name || !email || !password || !specialization || languages.length === 0}
+            onClick={() => {
+              setFieldErrors({});
+              const parsed = professorInfoSchema.safeParse({ name, email, password, specialization, languages });
+              if (!parsed.success) {
+                const errs: Record<string, string> = {};
+                parsed.error.errors.forEach(err => {
+                  const field = err.path[0] as string;
+                  if (!errs[field]) errs[field] = err.message;
+                });
+                setFieldErrors(errs);
+                return;
+              }
+              setProfessorStep('token');
+            }}
           >
             {isRTL ? 'التالي' : 'Continuer'}
             {isRTL ? <ArrowLeft className="w-4 h-4 mr-2" /> : <ArrowRight className="w-4 h-4 ml-2" />}
@@ -908,7 +1000,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader>
           <Button
             variant="ghost"
@@ -976,7 +1068,7 @@ export default function AuthPage() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
     >
-      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass-card">
+      <Card className="w-full max-w-xl sm:max-w-2xl mx-auto glass">
         <CardHeader className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-primary/10 flex items-center justify-center">
             <Mail className="w-8 h-8 text-primary" />
@@ -1073,10 +1165,7 @@ export default function AuthPage() {
       {/* Header */}
       <header className="p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg">LearnUp</span>
+          <img src="/new_logo.png" alt="LearnUp" className="h-[7.5rem] object-contain" />
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -1105,7 +1194,7 @@ export default function AuthPage() {
 
       {/* Footer */}
       <footer className="p-4 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} LangSchool AI. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
+        © {new Date().getFullYear()} LearnUp. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
       </footer>
     </div>
   );

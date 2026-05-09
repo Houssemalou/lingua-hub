@@ -106,7 +106,7 @@ export default function ProfessorLiveRoom() {
     }
 
     if (room && room.id) {
-      try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
+      try { await RoomService.leave(room.id); } catch { /* ignore leave errors */ }
     }
     navigate('/professor/sessions');
   };

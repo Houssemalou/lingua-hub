@@ -17,6 +17,8 @@ import { getLevelLabel } from '@/lib/levelLabels';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { studentProfileSchema } from '@/lib/validation';
+import { FieldError } from '@/components/ui/field-error';
 
 const container = {
   hidden: { opacity: 0 },
@@ -44,6 +46,7 @@ export default function StudentProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [profile, setProfile] = useState({
     nickname: studentData?.nickname || '',
     bio: studentData?.bio || '',
@@ -61,6 +64,18 @@ export default function StudentProfile() {
 
   const handleSave = async () => {
     if (!studentData) return;
+    setFieldErrors({});
+
+    const parsed = studentProfileSchema.safeParse({ name: profile.name, nickname: profile.nickname, bio: profile.bio });
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      parsed.error.errors.forEach(err => {
+        const field = err.path[0] as string;
+        if (!errs[field]) errs[field] = err.message;
+      });
+      setFieldErrors(errs);
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -92,8 +107,8 @@ export default function StudentProfile() {
       } else {
         toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch {
+      // handle profile update error
       toast.error(isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil');
     } finally {
       setIsSaving(false);
@@ -216,25 +231,29 @@ export default function StudentProfile() {
                       <Input
                         id="name"
                         value={profile.name}
-                        onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                        onChange={(e) => { setProfile({ ...profile, name: e.target.value }); setFieldErrors(prev => ({ ...prev, name: '' })); }}
                         placeholder={isRTL ? 'اسمك' : 'Votre nom'}
+                        className={fieldErrors.name ? 'border-destructive' : ''}
                       />
+                      <FieldError message={fieldErrors.name} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nickname">{isRTL ? 'اسم المستخدم' : 'Pseudo'}</Label>
                       <Input
                         id="nickname"
                         value={profile.nickname}
-                        onChange={(e) => setProfile({ ...profile, nickname: e.target.value })}
+                        onChange={(e) => { setProfile({ ...profile, nickname: e.target.value }); setFieldErrors(prev => ({ ...prev, nickname: '' })); }}
                         placeholder={isRTL ? 'اسم المستخدم الخاص بك' : 'Votre pseudo'}
+                        className={fieldErrors.nickname ? 'border-destructive' : ''}
                       />
+                      <FieldError message={fieldErrors.nickname} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="bio">{isRTL ? 'نبذة عنك' : 'Bio'}</Label>
                       <Textarea
                         id="bio"
                         value={profile.bio}
-                        onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                        onChange={(e) => { setProfile({ ...profile, bio: e.target.value }); setFieldErrors(prev => ({ ...prev, bio: '' })); }}
                         placeholder={isRTL ? 'أخبرنا عن نفسك...' : 'Parlez-nous de vous...'}
                         rows={3}
                       />

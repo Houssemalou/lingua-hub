@@ -91,7 +91,7 @@ export default function AdminLiveSession() {
 
   const handleLeaveRoom = async () => {
     if (room && room.id) {
-      try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
+      try { await RoomService.leave(room.id); } catch (e) { /* silent fail */ }
     }
     navigate('/admin/rooms');
   };

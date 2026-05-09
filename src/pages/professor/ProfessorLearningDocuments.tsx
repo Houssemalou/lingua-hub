@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Download, FilePenLine, FileText, Save, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Download, Eye, FilePenLine, FileText, Save, Trash2, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SubjectTiles } from '@/components/learning-documents/SubjectTiles';
 import { getLearningDocumentSubjectInfo } from '@/data/learningDocumentSubjects';
+import { DocumentAccessModal } from '@/components/learning-documents/DocumentAccessModal';
 
 const LEVELS: LanguageLevel[] = [
   'YEAR1', 'YEAR2', 'YEAR3', 'YEAR4', 'YEAR5', 'YEAR6', 'YEAR7', 'YEAR8', 'YEAR9', 'YEAR10',
@@ -74,6 +75,7 @@ export default function ProfessorLearningDocuments() {
   const [editingCommentValue, setEditingCommentValue] = useState('');
   const [visibleCommentsByDocument, setVisibleCommentsByDocument] = useState<Record<string, number>>({});
   const formSectionRef = useRef<HTMLDivElement | null>(null);
+  const [selectedDocumentForAccess, setSelectedDocumentForAccess] = useState<{ id: string; title: string } | null>(null);
 
   const COMMENTS_PAGE_SIZE = 5;
 
@@ -578,6 +580,10 @@ export default function ProfessorLearningDocuments() {
                             <Button size="sm" variant="outline" onClick={() => startEditing(doc)}>
                               <FilePenLine className="w-4 h-4" />
                             </Button>
+                            <Button size="sm" variant="outline" onClick={() => setSelectedDocumentForAccess({ id: doc.id, title: doc.title })}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              {isRTL ? 'رؤية التلاميذ' : 'Voir élèves'}
+                            </Button>
                             <Button size="sm" variant="destructive" onClick={() => handleDelete(doc.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -698,6 +704,13 @@ export default function ProfessorLearningDocuments() {
           )}
         </CardContent>
       </Card>
+
+      <DocumentAccessModal
+        open={!!selectedDocumentForAccess}
+        onClose={() => setSelectedDocumentForAccess(null)}
+        documentId={selectedDocumentForAccess?.id || ''}
+        documentTitle={selectedDocumentForAccess?.title || ''}
+      />
     </motion.div>
   );
 }

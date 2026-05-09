@@ -15,19 +15,12 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 // Components
-import { AchievementCard } from '@/components/gamification/AchievementCard';
-import { MiniGameCard } from '@/components/gamification/MiniGameCard';
 import { DailyChallenges } from '@/components/gamification/DailyChallenges';
-import { MathPuzzleGame } from '@/components/gamification/MathPuzzleGame';
 import { ChallengeCard } from '@/components/gamification/ChallengeCard';
 import { ChallengeGame } from '@/components/gamification/ChallengeGame';
 import { ChallengeLeaderboard } from '@/components/gamification/ChallengeLeaderboard';
 
 // Data
-import {
-  mockAchievements,
-  mockMiniGames,
-} from '@/data/gamification';
 import {
   ProfessorChallenge,
   ChallengeLeaderboardEntry
@@ -52,8 +45,6 @@ export default function StudentGames() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('challenges');
-  const [mathGameOpen, setMathGameOpen] = useState(false);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [challengeGameOpen, setChallengeGameOpen] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState<ProfessorChallenge | null>(null);
   const [activeChallenges, setActiveChallenges] = useState<ProfessorChallenge[]>([]);
@@ -90,7 +81,6 @@ export default function StudentGames() {
         setGameStats(statsRes.data);
       }
     } catch (error) {
-      console.error('Failed to fetch challenge data:', error);
     } finally {
       setLoadingChallenges(false);
     }
@@ -143,14 +133,6 @@ export default function StudentGames() {
 
   const t = labels[language as keyof typeof labels] || labels.fr;
 
-  const handlePlayGame = (gameId: string) => {
-    const game = mockMiniGames.find(g => g.id === gameId);
-    if (game) {
-      setSelectedDifficulty(game.difficulty);
-      setMathGameOpen(true);
-    }
-  };
-
   const handlePlayChallenge = (challengeId: string) => {
     const challenge = activeChallenges.find(c => c.id === challengeId);
     if (challenge) {
@@ -170,16 +152,6 @@ export default function StudentGames() {
     // Refresh data after completing a challenge
     fetchChallengeData();
   };
-
-  const handleGameComplete = (score: number) => {
-    toast({
-      title: language === 'fr' ? 'Jeu terminé!' : language === 'ar' ? 'انتهت اللعبة!' : 'Game complete!',
-      description: `${language === 'fr' ? 'Tu as gagné' : language === 'ar' ? 'لقد ربحت' : 'You earned'} ${score} XP!`,
-    });
-  };
-
-  const unlockedCount = mockAchievements.filter(a => a.unlocked).length;
-  const inProgressCount = mockAchievements.filter(a => !a.unlocked && a.progress).length;
 
   return (
     <motion.div
@@ -263,22 +235,14 @@ export default function StudentGames() {
       {/* Tabs */}
       <motion.div variants={item}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="challenges" className="gap-2">
               <Swords className="w-4 h-4" />
               <span className="hidden sm:inline">{t.challenges}</span>
             </TabsTrigger>
-            <TabsTrigger value="games" className="gap-2">
-              <Gamepad2 className="w-4 h-4" />
-              <span className="hidden sm:inline">{t.games}</span>
-            </TabsTrigger>
             <TabsTrigger value="daily" className="gap-2">
               <Target className="w-4 h-4" />
               <span className="hidden sm:inline">{t.dailyChallenges}</span>
-            </TabsTrigger>
-            <TabsTrigger value="achievements" className="gap-2">
-              <Trophy className="w-4 h-4" />
-              <span className="hidden sm:inline">{t.achievements}</span>
             </TabsTrigger>
             <TabsTrigger value="leaderboard" className="gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -344,21 +308,6 @@ export default function StudentGames() {
               </div>
             )}
 
-            {/* Challenge Leaderboard */}
-            <div className="mt-8">
-              <ChallengeLeaderboard
-                entries={leaderboard}
-                currentStudentId={user?.id}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="games" className="space-y-4">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockMiniGames.map((game) => (
-                <MiniGameCard key={game.id} game={game} onPlay={handlePlayGame} />
-              ))}
-            </div>
           </TabsContent>
 
           <TabsContent value="daily">
@@ -397,27 +346,6 @@ export default function StudentGames() {
             )}
           </TabsContent>
 
-          <TabsContent value="achievements" className="space-y-4">
-            {/* Stats */}
-            <div className={cn("flex gap-4 flex-wrap", isRTL && "flex-row-reverse")}>
-              <Badge variant="secondary" className="gap-1 text-sm py-1">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                {t.unlockedAchievements}: {unlockedCount}
-              </Badge>
-              <Badge variant="secondary" className="gap-1 text-sm py-1">
-                <Zap className="w-4 h-4 text-blue-500" />
-                {t.inProgress}: {inProgressCount}
-              </Badge>
-            </div>
-
-            {/* Achievement grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockAchievements.map((achievement) => (
-                <AchievementCard key={achievement.id} achievement={achievement} />
-              ))}
-            </div>
-          </TabsContent>
-
           <TabsContent value="leaderboard">
             {loadingChallenges ? (
               <Card className="p-8">
@@ -443,14 +371,6 @@ export default function StudentGames() {
           </TabsContent>
         </Tabs>
       </motion.div>
-
-      {/* Math Puzzle Game Modal */}
-      <MathPuzzleGame
-        isOpen={mathGameOpen}
-        onClose={() => setMathGameOpen(false)}
-        onComplete={handleGameComplete}
-        difficulty={selectedDifficulty}
-      />
 
       {/* Challenge Game Modal */}
       <ChallengeGame

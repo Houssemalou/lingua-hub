@@ -82,3 +82,23 @@ export interface UpdateLearningDocumentDTO {
 export interface CreateLearningDocumentCommentDTO {
   content: string;
 }
+
+export interface DocumentAccessModel {
+  id: string;
+  documentId: string;
+  studentId: string;
+  studentName: string;
+  studentAvatar?: string;
+  level?: string;
+  accessedAt: string;
+  completedAt?: string;
+  readTime?: number;
+}
+
+export interface DocumentAccessResponse {
+  data: DocumentAccessModel[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}

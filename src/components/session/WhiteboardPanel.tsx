@@ -1085,8 +1085,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
               toast.success(
                 isRTL ? "تمت مزامنة اللوحة" : "Tableau synchronisé",
               );
-            } catch (e) {
-              console.warn("Failed to reassemble snapshot chunks:", e);
+            } catch {
+              // ignore chunk reassembly errors
             }
             ref.chunks = [];
             ref.total = 0;
@@ -1260,8 +1260,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
               sendChunk([], removed);
             }
           }
-        } catch (e) {
-          console.error("Error sending whiteboard data", e);
+        } catch {
+          // ignore whiteboard data send errors
         }
       },
       { source: "user", scope: "document" },
@@ -1359,8 +1359,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             { reliable: true },
           );
         }
-      } catch (e) {
-        console.error("Error sending whiteboard snapshot", e);
+      } catch {
+        // ignore snapshot send errors
       }
     }, 800);
     return () => clearTimeout(timer);
@@ -1457,8 +1457,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
           new TextEncoder().encode(JSON.stringify(msg)),
           { reliable: true },
         );
-      } catch (e) {
-        console.error("Error sending permission update", e);
+      } catch {
+        // ignore permission update errors
       }
 
       if (next === "specific-student") {
@@ -1558,8 +1558,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             }
             URL.revokeObjectURL(url);
           }
-        } catch (svgErr) {
-          console.warn("SVG export failed:", svgErr);
+        } catch {
+          // ignore SVG export errors
         }
       }
 
@@ -1599,8 +1599,8 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             }
             URL.revokeObjectURL(url);
           }
-        } catch (domErr) {
-          console.warn("DOM SVG fallback failed:", domErr);
+        } catch {
+          // ignore DOM SVG fallback errors
         }
       }
 
@@ -1682,8 +1682,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
       toast.success(
         isRTL ? "تم تصدير الصفحة في PDF بنجاح" : "Export PDF réussi",
       );
-    } catch (e) {
-      console.error("Export PDF error:", e);
+    } catch {
       toast.error(isRTL ? "خطأ أثناء التصدير" : "Erreur lors de l'export");
     }
   }, [isRTL]);

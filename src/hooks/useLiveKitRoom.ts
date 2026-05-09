@@ -124,7 +124,6 @@ export const useLiveKitRoom = (roomId: string) => {
         const tokenResponse = await RoomService.getLiveKitToken(roomId, user.id);
         if (!tokenResponse.success || !tokenResponse.data) {
           const errorMessage = tokenResponse.error || 'Failed to get LiveKit token';
-          console.error('Token error:', errorMessage);
           throw new Error(errorMessage);
         }
 
@@ -141,7 +140,6 @@ export const useLiveKitRoom = (roomId: string) => {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to get LiveKit token';
         setError(errorMessage);
-        console.error('LiveKit token error:', err);
       } finally {
         isConnectingRef.current = false;
       }

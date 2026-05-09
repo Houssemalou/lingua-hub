@@ -24,7 +24,9 @@ import {
   Sparkles,
   Upload,
   X,
-  Check
+  Check,
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -323,14 +325,14 @@ export function ChallengeCreator({ isOpen, onClose, onSubmit }: ChallengeCreator
                   <SelectContent>
                     <SelectItem value="__all__">
                       <span className="flex items-center gap-2">
-                        <span>🎓</span>
+                        <GraduationCap className="w-4 h-4" />
                         <span>{t.allLevels}</span>
                       </span>
                     </SelectItem>
                     {targetLevelOptions.map((level) => (
                       <SelectItem key={level.id} value={level.id}>
                         <span className="flex items-center gap-2">
-                          <span>📚</span>
+                          <BookOpen className="w-4 h-4" />
                           <span>{language === 'fr' ? level.nameFr : language === 'ar' ? level.nameAr : level.nameEn}</span>
                         </span>
                       </SelectItem>

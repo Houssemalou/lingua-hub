@@ -44,7 +44,7 @@ export default function StudentLiveRoom() {
   }, [roomId]);
   const handleLeaveRoom = async () => {
     if (room && room.id) {
-      try { await RoomService.leave(room.id); } catch (e) { console.error('Error notifying leave from page header:', e); }
+      try { await RoomService.leave(room.id); } catch { /* ignore leave errors */ }
     }
     navigate('/student/sessions');
   };

@@ -12,7 +12,10 @@ import {
   Lightbulb,
   Star,
   X,
-  Users
+  Users,
+  Mic,
+  Hand,
+  Pen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -328,32 +331,32 @@ export function RoomSessionSummaryEditor({
                 {renderScoreSlider(
                   isRTL ? 'الدرجة الإجمالية' : 'Score global',
                   'overallScore',
-                  <span className="text-base">🎯</span>
+                  <Target className="w-5 h-5" />
                 )}
                 {renderScoreSlider(
                   isRTL ? 'النطق' : 'Prononciation',
                   'pronunciation',
-                  <span className="text-base">🎤</span>
+                  <Mic className="w-5 h-5" />
                 )}
                 {renderScoreSlider(
                   isRTL ? 'القواعد' : 'Grammaire',
                   'grammar',
-                  <span className="text-base">📝</span>
+                  <FileText className="w-5 h-5" />
                 )}
                 {renderScoreSlider(
                   isRTL ? 'المفردات' : 'Vocabulaire',
                   'vocabulary',
-                  <span className="text-base">📚</span>
+                  <BookOpen className="w-5 h-5" />
                 )}
                 {renderScoreSlider(
                   isRTL ? 'الطلاقة' : 'Fluidité',
                   'fluency',
-                  <span className="text-base">💬</span>
+                  <MessageSquare className="w-5 h-5" />
                 )}
                 {renderScoreSlider(
                   isRTL ? 'المشاركة' : 'Participation',
                   'participation',
-                  <span className="text-base">🙋</span>
+                  <Hand className="w-5 h-5" />
                 )}
               </div>
             </CardContent>
@@ -419,7 +422,7 @@ export function RoomSessionSummaryEditor({
             <Card>
               <CardHeader>
                 <CardTitle className={cn("flex items-center gap-2 text-base", isRTL && "flex-row-reverse")}>
-                  <span className="text-lg">📖</span>
+                  <BookOpen className="w-5 h-5 text-primary" />
                   {isRTL ? 'المفردات المغطاة' : 'Vocabulaire couvert'}
                 </CardTitle>
               </CardHeader>
@@ -436,7 +439,7 @@ export function RoomSessionSummaryEditor({
             <Card>
               <CardHeader>
                 <CardTitle className={cn("flex items-center gap-2 text-base", isRTL && "flex-row-reverse")}>
-                  <span className="text-lg">📝</span>
+                  <Pen className="w-5 h-5 text-primary" />
                   {isRTL ? 'نقاط القواعد' : 'Points de grammaire'}
                 </CardTitle>
               </CardHeader>
@@ -473,7 +476,7 @@ export function RoomSessionSummaryEditor({
           <Card>
             <CardHeader>
               <CardTitle className={cn("flex items-center gap-2 text-base", isRTL && "flex-row-reverse")}>
-                <span className="text-lg">📌</span>
+                <Target className="w-5 h-5 text-primary" />
                 {isRTL ? 'تركيز الجلسة القادمة' : 'Focus de la prochaine session'}
               </CardTitle>
             </CardHeader>

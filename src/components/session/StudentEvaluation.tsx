@@ -6,6 +6,11 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Mic,
+  BookOpen,
+  Pencil,
+  Hand,
+  Brain,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -52,13 +57,22 @@ interface StudentEvaluationProps {
 }
 
 const defaultCriteria = [
-  { id: 'pronunciation', name: 'Prononciation', nameAr: 'النطق', icon: '🗣️' },
-  { id: 'vocabulary', name: 'Vocabulaire', nameAr: 'المفردات', icon: '📚' },
-  { id: 'grammar', name: 'Grammaire', nameAr: 'القواعد', icon: '✏️' },
-  { id: 'fluency', name: 'Fluidité', nameAr: 'الطلاقة', icon: '💬' },
-  { id: 'participation', name: 'Participation', nameAr: 'المشاركة', icon: '🙋' },
-  { id: 'comprehension', name: 'Compréhension', nameAr: 'الفهم', icon: '🧠' },
+  { id: 'pronunciation', name: 'Prononciation', nameAr: 'النطق', icon: 'mic' },
+  { id: 'vocabulary', name: 'Vocabulaire', nameAr: 'المفردات', icon: 'book' },
+  { id: 'grammar', name: 'Grammaire', nameAr: 'القواعد', icon: 'pencil' },
+  { id: 'fluency', name: 'Fluidité', nameAr: 'الطلاقة', icon: 'message' },
+  { id: 'participation', name: 'Participation', nameAr: 'المشاركة', icon: 'hand' },
+  { id: 'comprehension', name: 'Compréhension', nameAr: 'الفهم', icon: 'brain' },
 ];
+
+const iconMap: Record<string, React.ReactNode> = {
+  mic: <Mic className="w-4 h-4 inline" />,
+  book: <BookOpen className="w-4 h-4 inline" />,
+  pencil: <Pencil className="w-4 h-4 inline" />,
+  message: <MessageSquare className="w-4 h-4 inline" />,
+  hand: <Hand className="w-4 h-4 inline" />,
+  brain: <Brain className="w-4 h-4 inline" />,
+};
 
 export function StudentEvaluation({
   students,
@@ -263,7 +277,7 @@ export function StudentEvaluation({
                             isRTL && "flex-row-reverse"
                           )}>
                             <span className="text-sm font-medium">
-                              {criterion.icon} {isRTL ? criterion.nameAr : criterion.name}
+                              {iconMap[criterion.icon]} {isRTL ? criterion.nameAr : criterion.name}
                             </span>
                             <span className={cn(
                               "text-sm font-bold",

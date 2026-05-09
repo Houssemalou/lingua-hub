@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, Zap, ArrowRight } from 'lucide-react';
+import { Clock, CheckCircle, Zap, ArrowRight, FileText, Pencil, GraduationCap, Target, Check } from 'lucide-react';
 import { DailyChallenge } from '@/data/gamification';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -90,9 +90,9 @@ export function DailyChallenges({ challenges, onStartChallenge }: DailyChallenge
                 {challenge.completed ? (
                   <CheckCircle className="w-5 h-5 text-success" />
                 ) : (
-                  challenge.type === 'quiz' ? '📝' : 
-                  challenge.type === 'exercise' ? '✏️' : 
-                  challenge.type === 'session' ? '🎓' : '🎯'
+                  challenge.type === 'quiz' ? <FileText className="w-5 h-5" /> : 
+                  challenge.type === 'exercise' ? <Pencil className="w-5 h-5" /> : 
+                  challenge.type === 'session' ? <GraduationCap className="w-5 h-5" /> : <Target className="w-5 h-5" />
                 )}
               </div>
               
@@ -109,7 +109,7 @@ export function DailyChallenges({ challenges, onStartChallenge }: DailyChallenge
                 {/* Time remaining or completed status */}
                 <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
                   {challenge.completed ? (
-                    <span className="text-sm text-success font-medium">{t.completed} ✓</span>
+                    <span className="text-sm text-success font-medium"><Check className="w-4 h-4 inline" /> {t.completed}</span>
                   ) : (
                     <>
                       <div className={cn("flex items-center gap-1 text-xs text-muted-foreground", isRTL && "flex-row-reverse")}>

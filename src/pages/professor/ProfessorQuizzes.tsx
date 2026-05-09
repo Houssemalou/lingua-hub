@@ -96,7 +96,6 @@ export default function ProfessorQuizzes() {
       );
       setQuizResults(allResults);
     } catch (err) {
-      console.error('Error fetching quiz data:', err);
       setError(isRTL ? 'فشل في تحميل البيانات' : 'Erreur lors du chargement des donnees');
     } finally {
       setIsLoading(false);
@@ -215,7 +214,7 @@ export default function ProfessorQuizzes() {
         {/* Stats skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="glass-card">
+            <Card key={i} className="glass">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <Skeleton className="w-10 h-10 rounded-lg" />
@@ -229,7 +228,7 @@ export default function ProfessorQuizzes() {
           ))}
         </div>
         {/* Quiz list skeleton */}
-        <Card className="glass-card">
+        <Card className="glass">
           <CardHeader>
             <Skeleton className="h-5 w-28" />
           </CardHeader>
@@ -254,7 +253,7 @@ export default function ProfessorQuizzes() {
         {/* Search skeleton */}
         <Skeleton className="h-10 w-full max-w-md" />
         {/* Table skeleton */}
-        <Card className="glass-card">
+        <Card className="glass">
           <CardHeader>
             <Skeleton className="h-5 w-40" />
           </CardHeader>
@@ -339,7 +338,7 @@ export default function ProfessorQuizzes() {
 
       {/* Stats */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="glass-card">
+        <Card className="glass">
           <CardContent className="p-4">
             <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -352,7 +351,7 @@ export default function ProfessorQuizzes() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass">
           <CardContent className="p-4">
             <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
               <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
@@ -365,7 +364,7 @@ export default function ProfessorQuizzes() {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass">
           <CardContent className="p-4">
             <div className={cn("flex items-center gap-3", isRTL && "flex-row-reverse")}>
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -383,7 +382,7 @@ export default function ProfessorQuizzes() {
       {/* Quiz List */}
       {quizzes.length > 0 && (
         <motion.div variants={item}>
-          <Card className="glass-card">
+          <Card className="glass">
             <CardHeader>
               <CardTitle>{isRTL ? 'اختباراتي' : 'Mes Quiz'}</CardTitle>
             </CardHeader>
@@ -460,7 +459,7 @@ export default function ProfessorQuizzes() {
 
       {/* Results */}
       <motion.div variants={item}>
-        <Card className="glass-card">
+        <Card className="glass">
           <CardHeader>
             <CardTitle>{isRTL ? 'نتائج الطلاب' : 'Resultats des Etudiants'}</CardTitle>
           </CardHeader>

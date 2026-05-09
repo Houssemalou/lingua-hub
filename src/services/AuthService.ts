@@ -159,7 +159,6 @@ export const AuthService = {
         data: { user, tokens },
       };
     } catch (error) {
-      console.error('Login error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Login failed',
@@ -212,7 +211,6 @@ export const AuthService = {
         data: { user, tokens },
       };
     } catch (error) {
-      console.error('Student registration error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',
@@ -264,7 +262,6 @@ export const AuthService = {
         data: { user, tokens },
       };
     } catch (error) {
-      console.error('Professor registration error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',
@@ -317,7 +314,6 @@ export const AuthService = {
         data: { user, tokens },
       };
     } catch (error) {
-      console.error('Admin registration error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',
@@ -370,7 +366,6 @@ export const AuthService = {
         data: { user, tokens },
       };
     } catch (error) {
-      console.error('Registration error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Registration failed',
@@ -381,12 +376,10 @@ export const AuthService = {
   // Logout - call backend to clear HttpOnly cookies, then clear local state
   async logout(): Promise<void> {
     try {
-      // Call backend logout endpoint which clears HttpOnly cookies
       await apiClient.post('/auth/logout');
     } catch (error) {
-      console.error('Logout API call failed:', error);
+      // Logout failed, but we still clear local state
     }
-    // Always clear local state regardless of API call result
     clearAuth();
   },
 
@@ -423,7 +416,6 @@ export const AuthService = {
         data: user,
       };
     } catch (error) {
-      console.error('Get current user error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get user',
@@ -477,7 +469,6 @@ export const AuthService = {
         data: { user, tokens },
       };
     } catch (error) {
-      console.error('Token refresh error:', error);
       clearAuth();
       return {
         success: false,
@@ -513,7 +504,6 @@ export const AuthService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Generate access token error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to generate access tokens',
@@ -538,7 +528,6 @@ export const AuthService = {
 
       return { success: true };
     } catch (error) {
-      console.error('Email verification error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Email verification failed',
@@ -563,7 +552,6 @@ export const AuthService = {
 
       return { success: true };
     } catch (error) {
-      console.error('Resend verification error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to resend verification email',
@@ -598,7 +586,6 @@ export const AuthService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Get access tokens error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch access tokens',
@@ -624,7 +611,6 @@ export const AuthService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Generate premium token error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to generate premium tokens' };
     }
   },
@@ -645,7 +631,6 @@ export const AuthService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Get premium tokens error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch premium tokens' };
     }
   },
@@ -666,7 +651,6 @@ export const AuthService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Activate premium token error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to activate premium token' };
     }
   },
@@ -687,7 +671,6 @@ export const AuthService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Get premium status error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to check premium status' };
     }
   },

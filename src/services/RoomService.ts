@@ -1,6 +1,5 @@
 // ============================================
 // Room Service
-// Ready for backend integration
 // ============================================
 
 import { 
@@ -31,12 +30,6 @@ export interface RoomParticipant {
 }
 
 // ============================================
-// API Endpoints (à décommenter pour le backend)
-// ============================================
-// const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-// const ROOMS_ENDPOINT = `${API_BASE_URL}/rooms`;
-
-// ============================================
 // Service Methods
 // ============================================
 
@@ -46,7 +39,6 @@ export const RoomService = {
     try {
       return await apiClient.get<PaginatedResponse<RoomModel>>('/rooms');
     } catch (error) {
-      console.error('Error fetching rooms:', error);
       throw error;
     }
 
@@ -57,7 +49,6 @@ export const RoomService = {
     try {
       return await apiClient.get<PaginatedResponse<RoomModel>>('/rooms/my-sessions');
     } catch (error) {
-      console.error('Error fetching my sessions:', error);
       throw error;
     }
   },
@@ -68,7 +59,6 @@ export const RoomService = {
       const data = await apiClient.get<RoomModel>(`/rooms/${id}`);
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -81,7 +71,6 @@ export const RoomService = {
       const result = await apiClient.post<RoomModel>('/rooms', data);
       return { success: true, data: result };
     } catch (error) {
-      console.error('Error creating room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -94,7 +83,6 @@ export const RoomService = {
       const result = await apiClient.put<RoomModel>(`/rooms/${id}`, data);
       return { success: true, data: result };
     } catch (error) {
-      console.error('Error updating room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -107,7 +95,6 @@ export const RoomService = {
       await apiClient.delete<void>(`/rooms/${id}`);
       return { success: true };
     } catch (error) {
-      console.error('Error deleting room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -120,7 +107,6 @@ export const RoomService = {
       await apiClient.post<void>(`/rooms/${roomId}/join`);
       return { success: true };
     } catch (error) {
-      console.error('Error joining room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -131,7 +117,6 @@ export const RoomService = {
       const result = await apiClient.get<boolean>(`/rooms/${roomId}/can-join`);
       return { success: true, data: result };
     } catch (error) {
-      console.error('Error checking join permission:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error', data: false };
     }
   },
@@ -142,7 +127,6 @@ export const RoomService = {
       await apiClient.post(`/rooms/${roomId}/leave`);
       return { success: true };
     } catch (error) {
-      console.error('Error leaving room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to leave room' };
     }
   },
@@ -153,7 +137,6 @@ export const RoomService = {
       await apiClient.post<void>(`/rooms/${roomId}/start`);
       return { success: true };
     } catch (error) {
-      console.error('Error starting session:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -170,7 +153,6 @@ export const RoomService = {
       
       return { success: true, data: token };
     } catch (error) {
-      console.error('Error starting and joining session:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -181,7 +163,6 @@ export const RoomService = {
       const result = await apiClient.post<RoomModel>(`/rooms/${roomId}/end`);
       return { success: true, data: result };
     } catch (error) {
-      console.error('Error ending session:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -194,7 +175,6 @@ export const RoomService = {
       const data = await apiClient.get<RoomParticipant[]>(`/rooms/${roomId}/participants`);
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching participants:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -206,7 +186,6 @@ export const RoomService = {
       await apiClient.post<void>('/rooms/participants/mute', data);
       return { success: true };
     } catch (error) {
-      console.error('Error muting participant:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -218,7 +197,6 @@ export const RoomService = {
       await apiClient.post<void>('/rooms/participants/ping', data);
       return { success: true };
     } catch (error) {
-      console.error('Error pinging participant:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -231,7 +209,6 @@ export const RoomService = {
       await apiClient.delete<void>('/rooms/participants/ping', { roomId, participantId });
       return { success: true };
     } catch (error) {
-      console.error('Error deleting ping:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 
@@ -262,7 +239,6 @@ export const RoomService = {
         }
       };
     } catch (error) {
-      console.error('Error getting LiveKit token:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -292,7 +268,6 @@ export const RoomService = {
         }
       };
     } catch (error) {
-      console.error('Error joining room:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },

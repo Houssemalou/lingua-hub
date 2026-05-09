@@ -83,7 +83,7 @@ export default function AdminProfile() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Card */}
         <motion.div variants={item} className="lg:col-span-1">
-          <Card className="glass-card">
+          <Card className="glass">
             <CardContent className="p-6">
               <div className="text-center">
                 <Avatar className="w-24 h-24 mx-auto mb-4 ring-4 ring-primary/20">
@@ -107,7 +107,7 @@ export default function AdminProfile() {
 
         {/* Info Card */}
         <motion.div variants={item} className="lg:col-span-2">
-          <Card className="glass-card">
+          <Card className="glass">
             <CardHeader className={cn("flex flex-row items-center justify-between", isRTL && "flex-row-reverse")}>
               <CardTitle>{isRTL ? 'المعلومات الشخصية' : 'Informations personnelles'}</CardTitle>
               {!isEditing ? (

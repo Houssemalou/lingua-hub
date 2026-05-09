@@ -36,7 +36,6 @@ export default function AdminDashboard() {
         const data = await StatsService.getAdminStats();
         setStats(data);
       } catch (err) {
-        console.error('Failed to fetch admin stats:', err);
         setError(true);
       } finally {
         setLoading(false);
@@ -66,14 +65,16 @@ export default function AdminDashboard() {
       title: t('dashboard.totalStudents'),
       value: stats.totalStudents,
       icon: Users,
-      color: 'border-l-primary',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
       trend: t('dashboard.thisMonth'),
     },
     {
       title: t('dashboard.activeRooms'),
       value: stats.activeRooms,
       icon: Activity,
-      color: 'border-l-destructive',
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10',
       trend: t('dashboard.liveNow'),
       isLive: stats.activeRooms > 0,
     },
@@ -81,14 +82,16 @@ export default function AdminDashboard() {
       title: t('dashboard.scheduledSessions'),
       value: stats.scheduledSessions,
       icon: CalendarCheck,
-      color: 'border-l-accent',
+      color: 'text-accent',
+      bgColor: 'bg-accent/10',
       trend: t('dashboard.thisWeek'),
     },
     {
       title: t('dashboard.completedSessions'),
       value: stats.completedSessions,
       icon: TrendingUp,
-      color: 'border-l-success',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
       trend: t('dashboard.allTime'),
     },
   ];
@@ -111,7 +114,7 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <motion.div variants={item} className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} variant="stat" className={stat.color}>
+          <Card key={stat.title}>
             <CardContent className="p-4 sm:p-6">
               <div className={cn("flex items-start sm:items-center justify-between gap-2", isRTL && "flex-row-reverse")}>
                 <div className={cn("min-w-0 flex-1", isRTL && "text-right")}>
@@ -124,8 +127,8 @@ export default function AdminDashboard() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1 hidden sm:block">{stat.trend}</p>
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <stat.icon className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
+                <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0", stat.bgColor)}>
+                  <stat.icon className={cn("w-5 h-5 sm:w-6 sm:h-6", stat.color)} />
                 </div>
               </div>
             </CardContent>

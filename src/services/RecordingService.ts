@@ -38,7 +38,6 @@ export const RecordingService = {
       }
       return { success: true, data: data as unknown as SessionRecording[] };
     } catch (error) {
-      console.error('Error fetching recordings:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch recordings',
@@ -59,7 +58,6 @@ export const RecordingService = {
       }
       return { success: true, data: data as unknown as { downloadUrl: string } };
     } catch (error) {
-      console.error('Error fetching download URL:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get download URL',

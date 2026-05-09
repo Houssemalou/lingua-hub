@@ -27,7 +27,6 @@ export const QuizService = {
       if (response.data) return response.data;
       throw new Error('Failed to fetch quizzes');
     } catch (error) {
-      console.error('Error fetching quizzes:', error);
       throw error;
     }
   },
@@ -37,7 +36,6 @@ export const QuizService = {
     try {
       return await apiClient.get<ApiResponse<QuizModel>>(`/quizzes/${id}`);
     } catch (error) {
-      console.error('Error fetching quiz:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -47,7 +45,6 @@ export const QuizService = {
     try {
       return await apiClient.post<ApiResponse<QuizModel>>('/quizzes', data);
     } catch (error) {
-      console.error('Error creating quiz:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -57,7 +54,6 @@ export const QuizService = {
     try {
       return await apiClient.put<ApiResponse<QuizModel>>(`/quizzes/${id}`, data);
     } catch (error) {
-      console.error('Error updating quiz:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -67,7 +63,6 @@ export const QuizService = {
     try {
       return await apiClient.delete<ApiResponse<void>>(`/quizzes/${id}`);
     } catch (error) {
-      console.error('Error deleting quiz:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -77,7 +72,6 @@ export const QuizService = {
     try {
       return await apiClient.post<ApiResponse<QuizResultModel>>(`/quizzes/${data.quizId}/submit`, data);
     } catch (error) {
-      console.error('Error submitting quiz:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -87,7 +81,6 @@ export const QuizService = {
     try {
       return await apiClient.post<ApiResponse<QuizModel>>(`/quizzes/${id}/publish`);
     } catch (error) {
-      console.error('Error publishing quiz:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -97,7 +90,6 @@ export const QuizService = {
     try {
       return await apiClient.get<ApiResponse<QuizResultModel[]>>(`/quizzes/${quizId}/results`);
     } catch (error) {
-      console.error('Error fetching quiz results:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -107,7 +99,6 @@ export const QuizService = {
     try {
       return await apiClient.get<ApiResponse<QuizResultModel[]>>(`/quizzes/student/${studentId}/results`);
     } catch (error) {
-      console.error('Error fetching student quiz results:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },

@@ -78,7 +78,6 @@ export const SessionSummaryService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Create summary error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create summary',
@@ -107,7 +106,6 @@ export const SessionSummaryService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Fetch summary error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch summary',
@@ -136,7 +134,6 @@ export const SessionSummaryService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Fetch summaries error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch summaries',
@@ -165,7 +162,6 @@ export const SessionSummaryService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Fetch summaries error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch summaries',
@@ -194,7 +190,6 @@ export const SessionSummaryService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Fetch session summaries error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to fetch session summaries',

@@ -33,6 +33,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getLevelLabel, normalizeLevelToYear } from '@/lib/levelLabels';
+import { createRoomSchema } from '@/lib/validation';
+import { FieldError } from '@/components/ui/field-error';
 import { RoomService } from '@/services/RoomService';
 import { RecordingService, SessionRecording } from '@/services/RecordingService';
 import { RoomModel, CreateRoomDTO, StudentModel } from '@/models';
@@ -103,6 +105,7 @@ export default function ProfessorSessions() {
   const [students, setStudents] = useState<StudentModel[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [inviteFilterLevel, setInviteFilterLevel] = useState<string>('');
+  const [roomFieldErrors, setRoomFieldErrors] = useState<Record<string, string>>({});
   const [recordingDialogOpen, setRecordingDialogOpen] = useState(false);
   const [recordings, setRecordings] = useState<SessionRecording[]>([]);
   const [loadingRecordings, setLoadingRecordings] = useState(false);
@@ -132,8 +135,8 @@ export default function ProfessorSessions() {
         } else {
           setSessions((response as any)?.data || []);
         }
-      } catch (err) {
-        console.error('Error loading sessions:', err);
+      } catch {
+        // handle sessions load error
         toast.error(isRTL ? 'فشل في تحميل الجلسات' : 'Échec du chargement des sessions');
       } finally {
         setLoading(false);
@@ -153,13 +156,13 @@ export default function ProfessorSessions() {
           if ((studentsResponse as any).success) {
             setStudents((studentsResponse as any).data?.data || []);
           } else {
-            console.error('Failed to load students', studentsResponse);
+            // handle failed student load response
           }
         } else {
           setStudents((studentsResponse as any)?.data || []);
         }
-      } catch (err) {
-        console.error('Error loading students:', err);
+      } catch {
+        // handle students load error
       }
     };
 
@@ -188,9 +191,21 @@ export default function ProfessorSessions() {
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    setRoomFieldErrors({});
 
-    if (!roomName || !roomLanguage || !roomLevel || !scheduledAt) {
-      toast.error(isRTL ? 'الرجاء ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
+    if (scheduledAt && new Date(scheduledAt) <= new Date()) {
+      setRoomFieldErrors({ scheduledAt: isRTL ? 'يجب أن يكون تاريخ الجلسة في المستقبل' : 'La date de la session doit être dans le futur' });
+      return;
+    }
+
+    const parsed = createRoomSchema.safeParse({ roomName, roomLanguage, roomLevel, scheduledAt });
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      parsed.error.errors.forEach(err => {
+        const field = err.path[0] as string;
+        if (!errs[field]) errs[field] = err.message;
+      });
+      setRoomFieldErrors(errs);
       return;
     }
 
@@ -236,10 +251,10 @@ export default function ProfessorSessions() {
       } else {
         toast.error(getFriendlyErrorMessage((res as any).message || (res as any).error, isRTL));
       }
-    } catch (err) {
-      toast.error(getFriendlyErrorMessage(err, isRTL));
-      console.error('Create session error:', err);
-    } finally {
+} catch {
+        // handle create session error
+        toast.error(getFriendlyErrorMessage(err, isRTL));
+      } finally {
       setCreating(false);
     }
   };
@@ -280,10 +295,10 @@ export default function ProfessorSessions() {
       } else {
         toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
-    } catch (err) {
-      console.error('Error starting room:', err);
-      toast.error(getFriendlyErrorMessage(err, isRTL));
-    }
+} catch {
+        // handle room start error
+        toast.error(getFriendlyErrorMessage(err, isRTL));
+      }
   };
 
   const handleJoinRoom = (session: RoomModel) => {
@@ -408,7 +423,7 @@ export default function ProfessorSessions() {
       </motion.div>
 
       {/* Create Session Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) setRoomFieldErrors({}); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isRTL ? 'إنشاء جلسة جديدة' : 'Créer une nouvelle session'}</DialogTitle>
@@ -417,12 +432,13 @@ export default function ProfessorSessions() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">{isRTL ? 'اسم الجلسة' : 'Nom de la session'}</Label>
-                <Input id="name" placeholder={isRTL ? 'مثال: نادي المحادثة الإسبانية' : 'ex: Club de conversation espagnol'} required value={roomName} onChange={(e) => setRoomName(e.target.value)} />
+                <Input id="name" placeholder={isRTL ? 'مثال: نادي المحادثة الإسبانية' : 'ex: Club de conversation espagnol'} required value={roomName} onChange={(e) => { setRoomName(e.target.value); setRoomFieldErrors(prev => ({ ...prev, roomName: '' })); }} className={roomFieldErrors.roomName ? 'border-destructive' : ''} />
+                <FieldError message={roomFieldErrors.roomName} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="language">{isRTL ? 'المادة' : 'Matière'}</Label>
-                <Select value={roomLanguage} onValueChange={setRoomLanguage} required>
-                  <SelectTrigger>
+                <Select value={roomLanguage} onValueChange={(val) => { setRoomLanguage(val); setRoomFieldErrors(prev => ({ ...prev, roomLanguage: '' })); }} required>
+                  <SelectTrigger className={roomFieldErrors.roomLanguage ? 'border-destructive' : ''}>
                     <SelectValue placeholder={isRTL ? 'اختر مادة' : 'Choisir matière'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -431,11 +447,12 @@ export default function ProfessorSessions() {
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError message={roomFieldErrors.roomLanguage} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="level">{isRTL ? 'المستوى' : 'Niveau'}</Label>
-                <Select value={roomLevel} onValueChange={setRoomLevel} required>
-                  <SelectTrigger>
+                <Select value={roomLevel} onValueChange={(val) => { setRoomLevel(val); setRoomFieldErrors(prev => ({ ...prev, roomLevel: '' })); }} required>
+                  <SelectTrigger className={roomFieldErrors.roomLevel ? 'border-destructive' : ''}>
                     <SelectValue placeholder={isRTL ? 'اختر مستوى' : 'Sélectionner un niveau'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -444,6 +461,7 @@ export default function ProfessorSessions() {
                       ))}
                   </SelectContent>
                 </Select>
+                <FieldError message={roomFieldErrors.roomLevel} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="duration">{isRTL ? 'المدة (دقائق)' : 'Durée (minutes)'}</Label>
@@ -461,7 +479,8 @@ export default function ProfessorSessions() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date">{isRTL ? 'التاريخ والوقت' : 'Date & Heure'}</Label>
-                <Input id="date" type="datetime-local" required value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+                <Input id="date" type="datetime-local" required value={scheduledAt} onChange={(e) => { setScheduledAt(e.target.value); setRoomFieldErrors(prev => ({ ...prev, scheduledAt: '' })); }} className={roomFieldErrors.scheduledAt ? 'border-destructive' : ''} />
+                <FieldError message={roomFieldErrors.scheduledAt} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="maxStudents">{isRTL ? 'الحد الأقصى للطلاب' : 'Max Étudiants'}</Label>

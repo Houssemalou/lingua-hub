@@ -19,6 +19,7 @@ import {
   CheckCircle,
   HelpCircle,
   AlertTriangle,
+  BookOpen,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -154,7 +155,6 @@ export default function ProfessorChallenges() {
         setLeaderboard(leaderboardRes.data);
       }
     } catch (error) {
-      console.error('Failed to fetch challenge data:', error);
     } finally {
       setLoading(false);
     }
@@ -450,7 +450,7 @@ export default function ProfessorChallenges() {
                               const lvl = targetLevelOptions.find(l => l.id === challenge.targetLevel);
                               return lvl ? (
                                 <Badge variant="secondary" className="gap-1">
-                                  📚 {language === 'fr' ? lvl.nameFr : language === 'ar' ? lvl.nameAr : lvl.nameEn}
+                                  <BookOpen className="w-3 h-3" /> {language === 'fr' ? lvl.nameFr : language === 'ar' ? lvl.nameAr : lvl.nameEn}
                                 </Badge>
                               ) : null;
                             })()}
@@ -566,7 +566,7 @@ export default function ProfessorChallenges() {
                         const lvl = targetLevelOptions.find(l => l.id === viewChallenge.targetLevel);
                         return lvl ? (
                           <Badge variant="secondary" className="gap-1">
-                            📚 {language === 'fr' ? lvl.nameFr : language === 'ar' ? lvl.nameAr : lvl.nameEn}
+                            <BookOpen className="w-3 h-3" /> {language === 'fr' ? lvl.nameFr : language === 'ar' ? lvl.nameAr : lvl.nameEn}
                           </Badge>
                         ) : null;
                       })()}

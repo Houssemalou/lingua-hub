@@ -1,32 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Loader2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Users, Search, Plus, Edit, Trash2, Eye, Download } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
-import { getLevelLabel } from '@/lib/levelLabels';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { StudentService } from '@/services/StudentService';
-
-interface StudentData {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  level: string;
-  totalSessions: number;
-  skills: { pronunciation: number; grammar: number; vocabulary: number; fluency: number } | null;
-}
+import { getLevelLabel } from '@/lib/levelLabels';
+import { toast } from 'sonner';
+import { StudentModel } from '@/models';
 
 const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.05 }
+    transition: { staggerChildren: 0.1 }
   }
 };
 
@@ -36,152 +27,187 @@ const item = {
 };
 
 export default function AdminStudents() {
-  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
+  const { language, isRTL, t } = useLanguage();
+  const [students, setStudents] = useState<StudentModel[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
-  const [students, setStudents] = useState<StudentData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
-    const fetchStudents = async () => {
+    const loadStudents = async () => {
       try {
         setLoading(true);
-        // Only fetch students created by this admin
-        const adminId = user?.id;
-        const response = adminId ? await StudentService.getAll({ createdBy: adminId } as any) : [];
-        // Normalize different possible response shapes:
-        // - PaginatedResponse: { data: [...] }
-        // - direct array: [ ... ]
-        // - ApiResponse wrapper: { data: { data: [...] } } (some backends)
-        let rawList: any[] = [];
-
-        if (Array.isArray(response)) {
-          rawList = response as any[];
-        } else if (Array.isArray((response as any).data)) {
-          rawList = (response as any).data;
-        } else if (Array.isArray((response as any).data?.data)) {
-          rawList = (response as any).data.data;
+        const response = await StudentService.getAll({ createdBy: user?.id } as any);
+        if (response && (response as any).success !== undefined) {
+          if ((response as any).success) {
+            const data = (response as any).data?.data || (response as any).data || [];
+            setStudents(Array.isArray(data) ? data : []);
+          } else {
+            toast.error(t('errors.loadStudents') || (isRTL ? 'فشل تحميل الطلاب' : 'Failed to load students'));
+          }
         } else {
-          console.warn('Unexpected students response shape:', response);
-          rawList = [];
+          const data = (response as any)?.data || [];
+          setStudents(Array.isArray(data) ? data : []);
         }
-
-        const mapped = rawList.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          email: s.email || '',
-          avatar: s.avatar || '',
-          level: s.level || 'A1',
-          totalSessions: s.totalSessions || 0,
-          skills: s.skills || null,
-        }));
-
-        setStudents(mapped);
       } catch (err) {
-        console.error('Failed to fetch students:', err);
+        toast.error(isRTL ? 'فشل تحميل الطلاب' : 'Failed to load students');
+        setStudents([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchStudents();
-  }, [user?.id]);
 
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase());
+    if (user?.id) {
+      loadStudents();
+    }
+  }, [user?.id, isRTL]);
+
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          student.email?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLevel = levelFilter === 'all' || student.level === levelFilter;
-    return matchesSearch && matchesLevel;
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'active' && student.isActive) ||
+                         (statusFilter === 'inactive' && !student.isActive);
+    return matchesSearch && matchesLevel && matchesStatus;
   });
-
-  const getAverageSkill = (skills: { pronunciation: number; grammar: number; vocabulary: number; fluency: number } | null) => {
-    if (!skills) return 0;
-    return Math.round((skills.pronunciation + skills.grammar + skills.vocabulary + skills.fluency) / 4);
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-72 skeleton rounded" />
+          <div className="h-4 w-96 mt-2 skeleton rounded" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 skeleton rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 skeleton rounded" />
+                    <div className="h-3 w-24 skeleton rounded" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-6"
-    >
-      {/* Header */}
-      <motion.div variants={item} className={cn(isRTL && "text-right")}>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t('students.title')}</h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">{t('students.subtitle')}</p>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+      <motion.div variants={item}>
+        <h1 className="text-3xl font-bold">{t('nav.students') || (isRTL ? 'إدارة الطلاب' : 'Student Management')}</h1>
+        <p className="text-muted-foreground mt-1">
+          {isRTL ? 'عرض وإدارة جميع الطلاب' : 'View and manage all students'}
+        </p>
       </motion.div>
 
-      {/* Filters */}
-      <motion.div variants={item} className={cn("flex flex-col sm:flex-row gap-4", isRTL && "sm:flex-row-reverse")}>
-        <div className={cn("relative flex-1", isRTL && "text-right")}>
-          <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
+      <motion.div variants={item} className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder={t('students.search')}
+            placeholder={isRTL ? 'البحث عن طالب...' : 'Search students...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={cn(isRTL ? "pr-10 text-right" : "pl-10")}
-            dir={isRTL ? "rtl" : "ltr"}
+            className={isRTL ? 'pr-10 pl-3 text-right' : 'pl-10'}
           />
         </div>
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className={cn("w-full sm:w-40", isRTL && "flex-row-reverse")}>
-            <Filter className={cn("w-4 h-4", isRTL ? "ml-2" : "mr-2")} />
-            <SelectValue placeholder={t('students.allLevels')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('students.allLevels')}</SelectItem>
-            <SelectItem value="YEAR1">{getLevelLabel('YEAR1')}</SelectItem>
-            <SelectItem value="YEAR2">{getLevelLabel('YEAR2')}</SelectItem>
-            <SelectItem value="YEAR3">{getLevelLabel('YEAR3')}</SelectItem>
-            <SelectItem value="YEAR4">{getLevelLabel('YEAR4')}</SelectItem>
-            <SelectItem value="YEAR5">{getLevelLabel('YEAR5')}</SelectItem>
-            <SelectItem value="YEAR6">{getLevelLabel('YEAR6')}</SelectItem>
-            <SelectItem value="YEAR7">{getLevelLabel('YEAR7')}</SelectItem>
-            <SelectItem value="YEAR8">{getLevelLabel('YEAR8')}</SelectItem>
-            <SelectItem value="YEAR9">{getLevelLabel('YEAR9')}</SelectItem>
-            <SelectItem value="YEAR10">{getLevelLabel('YEAR10')}</SelectItem>
-            <SelectItem value="YEAR11">{getLevelLabel('YEAR11')}</SelectItem>
-            <SelectItem value="YEAR12">{getLevelLabel('YEAR12')}</SelectItem>
-            <SelectItem value="YEAR13">{getLevelLabel('YEAR13')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setLevelFilter('all')}>
+            {isRTL ? 'جميع المستويات' : 'All Levels'}
+          </Button>
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            {isRTL ? 'تصدير' : 'Export'}
+          </Button>
+        </div>
       </motion.div>
 
-      {/* Students Grid - Simplified Cards */}
-      <motion.div variants={item} className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {filteredStudents.map((student) => (
-          <Card key={student.id} variant="interactive" className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardContent className="p-3 sm:p-4">
-              <div className={cn("flex flex-col items-center text-center gap-2 sm:gap-3")}>
-                <Avatar className="w-12 h-12 sm:w-16 sm:h-16">
-                  <AvatarImage src={student.avatar} />
-                  <AvatarFallback className="text-sm sm:text-base">{student.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                
-                <h3 className="font-semibold text-foreground text-sm sm:text-base truncate w-full">
-                  {student.name}
-                </h3>
-              </div>
+      <motion.div variants={item} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredStudents.length === 0 ? (
+          <Card className="col-span-full">
+            <CardContent className="p-8 text-center">
+              <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                {searchQuery
+                  ? (isRTL ? 'لا توجد نتائج للبحث' : 'No results found')
+                  : (isRTL ? 'لا يوجد طلاب بعد' : 'No students yet')}
+              </p>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          filteredStudents.map((student) => (
+            <Card key={student.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={student.avatar} />
+                    <AvatarFallback>{student.name?.charAt(0) || 'S'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">{student.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">{student.email}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="outline">{getLevelLabel(student.level)}</Badge>
+                      {student.isActive ? (
+                        <Badge variant="default" className="bg-green-500">{isRTL ? 'نشط' : 'Active'}</Badge>
+                      ) : (
+                        <Badge variant="secondary">{isRTL ? 'غير نشط' : 'Inactive'}</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Button size="sm" variant="ghost">
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </motion.div>
 
-      {filteredStudents.length === 0 && (
-        <motion.div variants={item} className="text-center py-12">
-          <h3 className="text-lg font-medium text-foreground">{t('students.noResults')}</h3>
-          <p className="text-muted-foreground mt-1">{t('students.noResultsHint')}</p>
-        </motion.div>
-      )}
+      <motion.div variants={item}>
+        <Card>
+          <CardHeader>
+            <CardTitle className={isRTL ? 'flex items-center gap-2 flex-row-reverse' : 'flex items-center gap-2'}>
+              <Users className="w-5 h-5" />
+              {isRTL ? 'إحصائيات الطلاب' : 'Student Statistics'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-3xl font-bold">{students.length}</p>
+                <p className="text-sm text-muted-foreground">{isRTL ? 'إجمالي الطلاب' : 'Total Students'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold">{students.filter(s => s.isActive).length}</p>
+                <p className="text-sm text-muted-foreground">{isRTL ? 'نشط' : 'Active'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold">{students.filter(s => !s.isActive).length}</p>
+                <p className="text-sm text-muted-foreground">{isRTL ? 'غير نشط' : 'Inactive'}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold">{new Set(students.map(s => s.level)).size}</p>
+                <p className="text-sm text-muted-foreground">{isRTL ? 'المستويات' : 'Levels'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

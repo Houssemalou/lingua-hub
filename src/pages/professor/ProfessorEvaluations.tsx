@@ -68,13 +68,13 @@ const item = {
 };
 
 const LANGUAGES = [
-  { value: 'French', label: 'Français', labelAr: 'الفرنسية', icon: '🇫🇷' },
-  { value: 'English', label: 'Anglais', labelAr: 'الإنجليزية', icon: '🇬🇧' },
-  { value: 'German', label: 'Allemand', labelAr: 'الألمانية', icon: '🇩🇪' },
-  { value: 'Spanish', label: 'Espagnol', labelAr: 'الإسبانية', icon: '🇪🇸' },
-  { value: 'Italian', label: 'Italien', labelAr: 'الإيطالية', icon: '🇮🇹' },
-  { value: 'Arabic', label: 'Arabe', labelAr: 'العربية', icon: '🇸🇦' },
-  { value: 'Portuguese', label: 'Portugais', labelAr: 'البرتغالية', icon: '🇵🇹' },
+  { value: 'French', label: 'Français', labelAr: 'الفرنسية', icon: null },
+  { value: 'English', label: 'Anglais', labelAr: 'الإنجليزية', icon: null },
+  { value: 'German', label: 'Allemand', labelAr: 'الألمانية', icon: null },
+  { value: 'Spanish', label: 'Espagnol', labelAr: 'الإسبانية', icon: null },
+  { value: 'Italian', label: 'Italien', labelAr: 'الإيطالية', icon: null },
+  { value: 'Arabic', label: 'Arabe', labelAr: 'العربية', icon: null },
+  { value: 'Portuguese', label: 'Portugais', labelAr: 'البرتغالية', icon: null },
 ];
 
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -218,7 +218,7 @@ function EvaluateStudentDialog({
                 {LANGUAGES.map(lang => (
                   <SelectItem key={lang.value} value={lang.value}>
                     <span className="flex items-center gap-2">
-                      <span>{lang.icon}</span>
+                      <Globe className="w-4 h-4" />
                       <span>{isRTL ? lang.labelAr : lang.label}</span>
                     </span>
                   </SelectItem>
@@ -445,7 +445,7 @@ function EvaluationCard({ evaluation, isRTL, dateLocale }: { evaluation: Evaluat
               <div className={cn("min-w-0", isRTL && "text-right")}>
                 <p className="font-semibold text-sm truncate">{evaluation.studentName}</p>
                 <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", isRTL && "flex-row-reverse")}>
-                  <span>{langInfo?.icon} {isRTL ? langInfo?.labelAr : langInfo?.label}</span>
+                  <span><Globe className="w-4 h-4 inline" /> {isRTL ? langInfo?.labelAr : langInfo?.label}</span>
                   <span>•</span>
                   <span>{format(new Date(evaluation.createdAt), 'dd MMM yyyy', { locale: dateLocale })}</span>
                 </div>
@@ -560,7 +560,6 @@ export default function ProfessorEvaluations() {
         setEvaluations(evalsRes.data);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
       toast.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur de chargement');
     } finally {
       setIsLoading(false);
@@ -745,7 +744,7 @@ export default function ProfessorEvaluations() {
                   <SelectItem value="all">{isRTL ? 'كل اللغات' : 'Toutes'}</SelectItem>
                   {LANGUAGES.map(lang => (
                     <SelectItem key={lang.value} value={lang.value}>
-                      {lang.icon} {isRTL ? lang.labelAr : lang.label}
+                      <Globe className="w-4 h-4" /> {isRTL ? lang.labelAr : lang.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

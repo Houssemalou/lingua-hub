@@ -281,11 +281,11 @@ export default function StudentSessionSummaries() {
         if (response.success && Array.isArray(response.data)) {
           setSummaries(response.data);
         } else {
-          console.error('Invalid response format:', response);
+          // handle invalid response
           setSummaries([]);
         }
-      } catch (error) {
-        console.error('Error loading session summaries:', error);
+      } catch {
+        // handle session summaries load error
         toast.error(
           isRTL 
             ? "فشل تحميل ملخصات الجلسات"

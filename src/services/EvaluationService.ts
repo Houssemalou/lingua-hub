@@ -88,7 +88,6 @@ export const EvaluationService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Create evaluation error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to create evaluation' };
     }
   },
@@ -104,7 +103,6 @@ export const EvaluationService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Fetch evaluations error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch evaluations' };
     }
   },
@@ -120,7 +118,6 @@ export const EvaluationService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Fetch students error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch students' };
     }
   },
@@ -136,7 +133,6 @@ export const EvaluationService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Update level error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to update student level' };
     }
   },
@@ -152,7 +148,6 @@ export const EvaluationService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Fetch my evaluations error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch my evaluations' };
     }
   },
@@ -168,7 +163,6 @@ export const EvaluationService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Fetch evaluations by language error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch evaluations' };
     }
   },

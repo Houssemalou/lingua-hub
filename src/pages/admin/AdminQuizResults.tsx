@@ -25,7 +25,6 @@ const AdminQuizResults = () => {
         // Try to fetch evaluations list - this may not be available for admin
         // We'll use the stats data primarily
       } catch (err) {
-        console.error('Failed to fetch data:', err);
       } finally {
         setLoading(false);
       }

@@ -74,7 +74,6 @@ export default function StudentQuizzes() {
         setResults(resultsRes.data as unknown as QuizResultModel[]);
       }
     } catch (error) {
-      console.error('Error fetching quiz data:', error);
       toast.error(isRTL ? 'فشل تحميل البيانات' : 'Erreur lors du chargement');
     } finally {
       setIsLoading(false);

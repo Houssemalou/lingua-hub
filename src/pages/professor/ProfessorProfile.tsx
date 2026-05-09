@@ -26,6 +26,8 @@ import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getFriendlyErrorMessage } from '@/lib/errorMessages';
+import { professorProfileSchema } from '@/lib/validation';
+import { FieldError } from '@/components/ui/field-error';
 
 const container = {
   hidden: { opacity: 0 },
@@ -47,29 +49,13 @@ export default function ProfessorProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [name, setName] = useState(user?.name || professor?.name || '');
   const [bio, setBio] = useState(professor?.bio || '');
   const [specialization, setSpecialization] = useState(professor?.specialization || '');
   const [languages, setLanguages] = useState<string[]>(professor?.languages || []);
   const [newLanguage, setNewLanguage] = useState('');
-  const [name, setName] = useState(professor?.name || '');
-
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const dateLocale = language === 'ar' ? ar : fr;
-
-  const handleEdit = () => {
-    setBio(professor?.bio || '');
-    setSpecialization(professor?.specialization || '');
-    setLanguages(professor?.languages || []);
-    setName(professor?.name || '');
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    setBio(professor?.bio || '');
-    setSpecialization(professor?.specialization || '');
-    setLanguages(professor?.languages || []);
-    setName(professor?.name || '');
-    setIsEditing(false);
-  };
 
   const handleAddLanguage = () => {
     const lang = newLanguage.trim();
@@ -79,12 +65,35 @@ export default function ProfessorProfile() {
     }
   };
 
+  const handleEdit = () => setIsEditing(true);
+
+  const handleCancel = () => {
+    setName(user?.name || professor?.name || '');
+    setBio(professor?.bio || '');
+    setSpecialization(professor?.specialization || '');
+    setLanguages(professor?.languages || []);
+    setFieldErrors({});
+    setIsEditing(false);
+  };
+
   const handleRemoveLanguage = (lang: string) => {
     setLanguages(languages.filter(l => l !== lang));
   };
 
   const handleSave = async () => {
     if (!professor) return;
+    setFieldErrors({});
+
+    const parsed = professorProfileSchema.safeParse({ name, specialization, bio });
+    if (!parsed.success) {
+      const errs: Record<string, string> = {};
+      parsed.error.errors.forEach(err => {
+        const field = err.path[0] as string;
+        if (!errs[field]) errs[field] = err.message;
+      });
+      setFieldErrors(errs);
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -116,7 +125,6 @@ export default function ProfessorProfile() {
         toast.error(getFriendlyErrorMessage(response.error, isRTL));
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
       toast.error(isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil');
     } finally {
       setIsSaving(false);
@@ -147,7 +155,7 @@ export default function ProfessorProfile() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Card */}
         <motion.div variants={item} className="lg:col-span-1">
-          <Card className="glass-card">
+          <Card className="glass">
             <CardContent className="p-6">
               <div className="text-center">
                 <img
@@ -200,7 +208,7 @@ export default function ProfessorProfile() {
 
         {/* Info Card */}
         <motion.div variants={item} className="lg:col-span-2">
-          <Card className="glass-card">
+          <Card className="glass">
             <CardHeader className={cn("flex flex-row items-center justify-between", isRTL && "flex-row-reverse")}>
               <CardTitle>{isRTL ? 'المعلومات الشخصية' : 'Informations personnelles'}</CardTitle>
               {!isEditing ? (
@@ -235,11 +243,13 @@ export default function ProfessorProfile() {
                   {isEditing ? (
                     <Input
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => { setName(e.target.value); setFieldErrors(prev => ({ ...prev, name: '' })); }}
+                      className={fieldErrors.name ? 'border-destructive' : ''}
                     />
                   ) : (
                     <Input value={professor.name} disabled className="bg-muted/50" />
                   )}
+                  <FieldError message={fieldErrors.name} />
                 </div>
                 <div className="space-y-2">
                   <Label className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
@@ -258,11 +268,13 @@ export default function ProfessorProfile() {
                 {isEditing ? (
                   <Input
                     value={specialization}
-                    onChange={(e) => setSpecialization(e.target.value)}
+                    onChange={(e) => { setSpecialization(e.target.value); setFieldErrors(prev => ({ ...prev, specialization: '' })); }}
+                    className={fieldErrors.specialization ? 'border-destructive' : ''}
                   />
                 ) : (
                   <p className="p-2 bg-muted/50 rounded-md">{professor.specialization}</p>
                 )}
+                <FieldError message={fieldErrors.specialization} />
               </div>
 
               <div className="space-y-2">

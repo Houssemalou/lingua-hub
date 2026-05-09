@@ -160,7 +160,7 @@ export function MainLayout() {
               <Menu className="w-5 h-5" />
             )}
           </Button>
-          <span className={cn("font-bold text-sidebar-foreground", isRTL ? "mr-3" : "ml-3")}>LearnUP</span>
+          <img src="/new_logo.png" alt="LearnUp" className={cn("h-[7.5rem] object-contain", isRTL ? "mr-3" : "ml-3")} />
         </header>
       )}
 
@@ -171,7 +171,7 @@ export function MainLayout() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
             onClick={handleOverlayClick}
           />
         )}
@@ -223,7 +223,7 @@ export function MainLayout() {
       {/* Mobile Bottom Navigation Bar */}
       {isMobile && (
         <nav className={cn(
-          "fixed bottom-0 left-0 right-0 h-16 bg-sidebar border-t border-sidebar-border z-40 flex items-center justify-around px-2",
+          "fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-lg border-t border-border z-40 flex items-center justify-around px-2 safe-area-bottom",
         )}>
           {bottomNavItems.map((item) => {
             const isActive = location.pathname === item.to;
@@ -232,20 +232,20 @@ export function MainLayout() {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-xl transition-all min-w-[52px]",
+                  "flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-xl transition-all min-w-[56px] relative",
                   isActive
-                    ? "text-sidebar-primary"
-                    : "text-sidebar-foreground/50"
+                    ? "text-primary"
+                    : "text-muted-foreground/60"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="mobileBottomNav"
-                    className="absolute inset-0 bg-sidebar-primary/10 rounded-xl"
+                    className="absolute inset-0 bg-primary/5 rounded-xl"
                   />
                 )}
-                <item.icon className={cn("w-5 h-5 transition-transform", isActive && "scale-110")} />
-                <span className="text-[10px] font-medium leading-none">{item.label}</span>
+                <item.icon className={cn("w-5 h-5 transition-all duration-200", isActive && "scale-110")} />
+                <span className={cn("text-[10px] font-medium leading-none", isActive ? "text-primary" : "text-muted-foreground/60")}>{item.label}</span>
               </NavLink>
             );
           })}
@@ -266,20 +266,21 @@ export function MainLayout() {
               level={user.student?.level || 'A1'}
               age={undefined}
               onClose={undefined}
+              isRTL={isRTL}
             />
           ) : (
             <>
               {/* Locked floating button */}
               <motion.button
                 onClick={() => setShowPremiumDialog(true)}
-                className="fixed bottom-6 right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
+                className={cn("fixed bottom-6 z-50 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group", isRTL ? "left-6" : "right-6")}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
               >
                 <Crown className="w-6 h-6 text-white" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-400 rounded-full flex items-center justify-center">
+                <div className={cn("absolute -top-1 w-4 h-4 bg-red-400 rounded-full flex items-center justify-center", isRTL ? "-left-1" : "-right-1")}>
                   <Lock className="w-2.5 h-2.5 text-white" />
                 </div>
               </motion.button>

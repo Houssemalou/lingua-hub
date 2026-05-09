@@ -146,7 +146,6 @@ export const StatsService = {
       }>('/stats/admin');
       return response.data;
     } catch (error) {
-      console.error('Error fetching admin stats:', error);
       throw error;
     }
   },
@@ -160,7 +159,6 @@ export const StatsService = {
       }>('/stats/professor');
       return response.data;
     } catch (error) {
-      console.error('Error fetching professor stats:', error);
       throw error;
     }
   },
@@ -174,7 +172,6 @@ export const StatsService = {
       }>('/stats/student');
       return response.data;
     } catch (error) {
-      console.error('Error fetching student stats:', error);
       throw error;
     }
   },

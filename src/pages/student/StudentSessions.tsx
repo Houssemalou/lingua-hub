@@ -67,8 +67,8 @@ export default function StudentSessions() {
         } else {
           setSessions((response as any)?.data || []);
         }
-      } catch (err) {
-        console.error('Error loading sessions:', err);
+      } catch {
+        // handle sessions load error
         toast.error(isRTL ? 'فشل في تحميل الجلسات' : 'Échec du chargement des sessions');
       } finally {
         setLoading(false);

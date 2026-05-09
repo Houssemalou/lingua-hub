@@ -13,7 +13,9 @@ import {
   AlertCircle,
   Star,
   Zap,
-  Loader2
+  Loader2,
+  Expand,
+  X
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -43,6 +45,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
   const [submitting, setSubmitting] = useState(false);
   const [revealedCorrectAnswer, setRevealedCorrectAnswer] = useState<number | null>(null);
   const [earnedPoints, setEarnedPoints] = useState(0);
+  const [imageExpanded, setImageExpanded] = useState(false);
 
   const labels = {
     fr: {
@@ -93,6 +96,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
       setSubmitting(false);
       setRevealedCorrectAnswer(null);
       setEarnedPoints(0);
+      setImageExpanded(false);
     }
   }, [isOpen, challenge]);
 
@@ -224,7 +228,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
             <span>{subject?.icon}</span>
@@ -232,7 +236,7 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Stats bar */}
           <div className={cn("flex items-center justify-between flex-wrap gap-2", isRTL && "flex-row-reverse")}>
             <div className={cn("flex items-center gap-4", isRTL && "flex-row-reverse")}>
@@ -265,12 +269,40 @@ export function ChallengeGame({ isOpen, onClose, challenge, onComplete }: Challe
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="relative rounded-xl overflow-hidden"
+              className="relative rounded-xl overflow-hidden group cursor-pointer"
+              onClick={() => setImageExpanded(true)}
             >
               <img
                 src={challenge.imageUrl}
                 alt="Challenge"
-                className="w-full h-48 object-cover"
+                className="w-full max-h-64 object-contain bg-muted"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-background/80">
+                  <Expand className="w-5 h-5" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Image expanded overlay */}
+          {imageExpanded && challenge.imageUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+              onClick={() => setImageExpanded(false)}
+            >
+              <button
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                onClick={() => setImageExpanded(false)}
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img
+                src={challenge.imageUrl}
+                alt="Challenge full"
+                className="max-w-full max-h-full object-contain"
               />
             </motion.div>
           )}

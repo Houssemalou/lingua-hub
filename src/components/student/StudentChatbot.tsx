@@ -13,6 +13,8 @@ import {
   Maximize2,
   Bot,
   PhoneOff,
+  Timer,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Room, RoomEvent, RemoteParticipant, Track, RemoteTrackPublication, TranscriptionSegment, DataPacket_Kind, Participant, TrackPublication } from 'livekit-client';
@@ -25,6 +27,7 @@ interface StudentChatbotProps {
   level: string;
   age?: string;
   onClose?: () => void;
+  isRTL?: boolean;
 }
 
 interface ChatMessage {
@@ -46,7 +49,8 @@ export function StudentChatbot({
   language,
   level,
   age,
-  onClose
+  onClose,
+  isRTL = false,
 }: StudentChatbotProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -262,7 +266,7 @@ export function StudentChatbot({
     ) => {
       if (track.kind === Track.Kind.Audio) {
         const audioElement = track.attach();
-        audioElement.play().catch(e => console.error('Failed to play audio:', e));
+        audioElement.play().catch(() => {});
         attachedElements.current.set(`${participant.identity}_${publication.trackSid}`, audioElement);
       }
     });
@@ -379,16 +383,14 @@ export function StudentChatbot({
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         setIsRecording(true);
-      } catch (error) {
-        console.error('Failed to enable microphone:', error);
+      } catch {
         addMessage(language === 'ar' ? 'خطأ في تفعيل الميكروفون. تحقق من الأذونات.' : 'Erreur d\'activation du microphone. Vérifiez les permissions.', false);
       }
 
       return true;
-    } catch (error) {
-      console.error('Failed to connect to room:', error);
+    } catch {
       addMessage(
-        (error as Error)?.message || (language === 'ar' ? 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.' : 'Erreur de connexion. Veuillez réessayer.'),
+        (language === 'ar' ? 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.' : 'Erreur de connexion. Veuillez réessayer.'),
         false,
       );
       return false;
@@ -450,8 +452,8 @@ export function StudentChatbot({
       }
 
       handleCloseChat();
-    } catch (error) {
-      console.error('Failed to close room:', error);
+    } catch {
+      // ignore room close errors
     }
   }, [roomName, handleCloseChat, stopSessionTimer, studentId, fetchSessionState]);
 
@@ -538,8 +540,8 @@ export function StudentChatbot({
           : 'Preparation du resume en cours...'
         , false
       );
-    } catch (error) {
-      console.error('Failed to request summary:', error);
+    } catch {
+      // ignore summary request errors
     }
   }, [addMessage, language, summaryRequested]);
 
@@ -568,8 +570,8 @@ export function StudentChatbot({
         }
         addMessage(language === 'ar' ? 'ملخص الجلسة متاح للتحميل.' : 'Résumé de la session disponible pour téléchargement.', false, 'summary');
       }
-    } catch (e) {
-      console.error('Received message:', (e as Error)?.message || e);
+    } catch {
+      // ignore data message errors
     }
   }, [processMessage, addMessage, language]);
 
@@ -646,8 +648,8 @@ export function StudentChatbot({
         new TextEncoder().encode(JSON.stringify(messageData)),
         { reliable: true }
       );
-    } catch (error) {
-      console.error('Failed to send message:', error);
+    } catch {
+      // ignore message send errors
     }
   }, [currentMessage, addMessage]);
 
@@ -672,8 +674,8 @@ const downloadSummary = useCallback(async () => {
         link.remove();
         URL.revokeObjectURL(url);
         return;
-      } catch (error) {
-        console.error('Failed to download backend PDF:', error);
+      } catch {
+        // ignore PDF download errors
       }
     }
 
@@ -705,7 +707,7 @@ const downloadSummary = useCallback(async () => {
                 <p style="margin: 5px 0; color: #666;"><strong>${language === 'ar' ? 'التاريخ:' : 'Date:'}</strong> ${new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'fr-FR')}</p>
               </div>
               <div style="text-align: right;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">📚</div>
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">L</div>
               </div>
             </div>
           </div>
@@ -713,7 +715,7 @@ const downloadSummary = useCallback(async () => {
           <!-- Objectif de la session -->
           <div style="padding: 30px; border-left: 5px solid #667eea; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0; display: flex; align-items: center;">
-              <span style="background: #667eea; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">🎯</span>
+              <span style="background: #667eea; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">O</span>
               ${language === 'ar' ? 'هدف الجلسة' : 'Objectif de la Session'}
             </h3>
             <p style="margin: 0; color: #555; font-size: 16px; line-height: 1.6;">${sessionSummary.sessionObjective || ''}</p>
@@ -723,7 +725,7 @@ const downloadSummary = useCallback(async () => {
           ${sessionSummary.detailedSummary ? `
           <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0; display: flex; align-items: center;">
-              <span style="background: #17a2b8; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">📝</span>
+              <span style="background: #17a2b8; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">R</span>
               ${language === 'ar' ? 'تفاصيل الجلسة' : 'Resume detaille'}
             </h3>
             <p style="margin: 0; color: #555; font-size: 15px; line-height: 1.6;">${sessionSummary.detailedSummary}</p>
@@ -734,7 +736,7 @@ const downloadSummary = useCallback(async () => {
           ${sessionSummary.learnedGroups && sessionSummary.learnedGroups.length > 0 ? `
           <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
-              <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">🗂️</span>
+              <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">V</span>
               ${language === 'ar' ? 'الكلمات المكتسبة (حسب المجموعة)' : 'Mots Appris (par groupe)'}
             </h3>
             <div style="display:flex; flex-direction:column; gap:12px;">
@@ -754,7 +756,7 @@ const downloadSummary = useCallback(async () => {
           ${sessionSummary.examples && sessionSummary.examples.length > 0 ? `
           <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
             <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
-              <span style="background: #ffc107; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">💬</span>
+              <span style="background: #ffc107; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">E</span>
               ${language === 'ar' ? 'امثلة' : 'Exemples'}
             </h3>
             <div style="display:flex; flex-direction:column; gap:12px;">
@@ -825,9 +827,8 @@ const downloadSummary = useCallback(async () => {
       // Nettoyer
       document.body.removeChild(printElement);
 
-    } catch (error) {
-      console.error('Erreur lors de la génération du PDF:', error);
-      // Fallback vers l'ancienne méthode si html2canvas échoue
+    } catch {
+      // ignore PDF generation errors
       const doc = new jsPDF();
       doc.setFontSize(20);
       doc.text(language === 'ar' ? 'ملخص جلسة التعلم' : 'Résumé de Session d\'Apprentissage', 20, 30);
@@ -860,8 +861,8 @@ const downloadSummary = useCallback(async () => {
       const newState = !isRecording;
       await roomRef.current.localParticipant.setMicrophoneEnabled(newState);
       setIsRecording(newState);
-    } catch (error) {
-      console.error('Failed to toggle microphone:', error);
+    } catch {
+      // ignore microphone toggle errors
     }
   }, [isRecording]);
 
@@ -872,7 +873,7 @@ const downloadSummary = useCallback(async () => {
         {!isChatOpen && (
           <motion.button
             onClick={handleOpenChat}
-            className="fixed bottom-6 right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group"
+            className={cn("fixed bottom-6 z-50 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group", isRTL ? "left-6" : "right-6")}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             initial={{ scale: 0, opacity: 0 }}
@@ -880,7 +881,7 @@ const downloadSummary = useCallback(async () => {
             exit={{ scale: 0, opacity: 0 }}
           >
             <MessageCircle className="w-6 h-6 text-white" />
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse" />
+            <div className={cn("absolute -top-1 w-4 h-4 bg-green-400 rounded-full animate-pulse", isRTL ? "-left-1" : "-right-1")} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -902,7 +903,8 @@ const downloadSummary = useCallback(async () => {
               // Mobile: full-screen
               "inset-0 sm:inset-auto",
               // Desktop: positioned bottom-right widget
-              "sm:bottom-6 sm:right-6 sm:w-[460px] sm:h-[720px] sm:rounded-2xl",
+              isRTL ? "sm:bottom-6 sm:left-6" : "sm:bottom-6 sm:right-6",
+              "sm:w-[460px] sm:h-[720px] sm:rounded-2xl",
               // Minimized state
               isMinimized && "sm:max-h-[40vh]"
             )}
@@ -930,7 +932,7 @@ const downloadSummary = useCallback(async () => {
                 {isChatOpen && (
                   <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1">
                     <div className="w-4 h-4 bg-white/30 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">⏱️</span>
+                      <Timer className="w-3 h-3 text-white" />
                     </div>
                     <span className="text-sm font-mono font-semibold">
                       {formatTime(sessionTimeLeft)}
@@ -1042,7 +1044,7 @@ const downloadSummary = useCallback(async () => {
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs">📊</span>
+                                  <BarChart3 className="w-3 h-3 text-white" />
                                 </div>
                                 <h4 className="font-semibold text-gray-900 text-sm">{language === 'ar' ? 'تقرير جلسة التعلم' : "Rapport de Session d'Apprentissage"}</h4>
                               </div>
@@ -1111,7 +1113,7 @@ const downloadSummary = useCallback(async () => {
 
                             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                               <p className="text-xs text-gray-600 text-center">
-                                🎯 <strong>{language === 'ar' ? 'اضغط على الملخص لتحميله مباشرة PDF' : 'Cliquez sur le résumé pour le télécharger directement en PDF'}</strong>
+                                <strong>{language === 'ar' ? 'اضغط على الملخص لتحميله مباشرة PDF' : 'Cliquez sur le résumé pour le télécharger directement en PDF'}</strong>
                               </p>
                             </div>
                           </motion.div>

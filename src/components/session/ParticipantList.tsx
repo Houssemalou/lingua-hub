@@ -99,7 +99,7 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants }
                       participant.role === 'student' && "bg-green-100 text-green-700 border-green-200"
                     )}
                   >
-                    {participant.role === 'professor' ? (isRTL ? '👨‍🏫 أستاذ' : '👨‍🏫 Prof') : (isRTL ? '👨‍🎓 تلميذ' : '👨‍🎓 Élève')}
+                    {participant.role === 'professor' ? (isRTL ? 'أستاذ' : 'Professeur') : (isRTL ? 'تلميذ' : 'Élève')}
                   </Badge>
                 )}
               </div>

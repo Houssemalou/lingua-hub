@@ -35,7 +35,6 @@ export const ProfessorService = {
       }
       return { success: false, error: response.message || 'Failed to fetch profile' };
     } catch (error) {
-      console.error('Error fetching professor profile:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -45,9 +44,7 @@ export const ProfessorService = {
     try {
       return await apiClient.get<PaginatedResponse<ProfessorModel>>('/professors', filters as Record<string, unknown>);
     } catch (error) {
-      console.warn('Error fetching professors, falling back to mock data:', error);
-
-      // Mock Implementation (fallback)
+      // Fallback to mock data
       let filtered = [...mockProfessors] as ProfessorModel[];
 
       if (filters?.language) {
@@ -84,7 +81,6 @@ export const ProfessorService = {
       }
       return { success: false, error: response.message || 'Failed to fetch professor' };
     } catch (error) {
-      console.error('Error fetching professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -98,7 +94,6 @@ export const ProfessorService = {
       }
       return { success: false, error: response.message || 'Failed to create professor' };
     } catch (error) {
-      console.error('Error creating professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -112,7 +107,6 @@ export const ProfessorService = {
       }
       return { success: false, error: response.message || 'Failed to update professor' };
     } catch (error) {
-      console.error('Error updating professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -123,7 +117,6 @@ export const ProfessorService = {
       await apiClient.delete<void>(`/professors/${id}`);
       return { success: true };
     } catch (error) {
-      console.error('Error deleting professor:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
@@ -134,7 +127,6 @@ export const ProfessorService = {
       const data = await apiClient.get<SessionModel[]>(`/professors/${professorId}/sessions`);
       return { success: true, data };
     } catch (error) {
-      console.error('Error fetching sessions:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },

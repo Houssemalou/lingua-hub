@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarCheck, Clock, BookOpen, Bell, ChevronRight, Loader2, TrendingUp } from 'lucide-react';
+import { CalendarCheck, Clock, BookOpen, Bell, ChevronRight, Loader2, TrendingUp, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,6 @@ export default function StudentDashboard() {
         const data = await StatsService.getStudentStats();
         setStatsData(data);
       } catch (err) {
-        console.error('Failed to fetch student stats:', err);
         setError(isRTL ? 'فشل في تحميل إحصائيات لوحة التحكم' : 'Échec du chargement des statistiques');
       } finally {
         setLoading(false);
@@ -79,7 +78,7 @@ export default function StudentDashboard() {
       <motion.div variants={item} className="relative overflow-hidden rounded-2xl gradient-accent p-4 sm:p-6 lg:p-8">
         <div className="relative z-10">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sidebar-primary-foreground">
-            {isRTL ? `مرحبًا بعودتك، ${studentName}! 👋` : `Bon retour, ${studentName} ! 👋`}
+            {isRTL ? `مرحبًا بعودتك، ${studentName}` : `Bon retour, ${studentName}`}
           </h1>
           <p className="text-sidebar-primary-foreground/80 mt-2 max-w-xl text-sm sm:text-base">
             {isRTL
@@ -146,47 +145,55 @@ export default function StudentDashboard() {
 
       {/* Stats Grid */}
       <motion.div variants={item} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card variant="stat" className={cn(isRTL ? "border-r-accent border-r-4" : "border-l-accent")}>
-          <CardContent className="p-6">
+        <Card>
+          <CardContent className="p-5">
             <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
               <div>
                 <p className="text-sm text-muted-foreground">{isRTL ? 'الجلسات القادمة' : 'Sessions à venir'}</p>
-                <p className="text-3xl font-bold mt-2">{statsData.upcomingSessions}</p>
+                <p className="text-3xl font-bold mt-1">{statsData.upcomingSessions}</p>
               </div>
-              <CalendarCheck className="w-8 h-8 text-accent" />
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <CalendarCheck className="w-5 h-5 text-accent" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card variant="stat" className={cn(isRTL ? "border-r-primary border-r-4" : "border-l-primary")}>
-          <CardContent className="p-6">
+        <Card>
+          <CardContent className="p-5">
             <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
               <div>
                 <p className="text-sm text-muted-foreground">{isRTL ? 'التقدم العام' : 'Progression globale'}</p>
-                <p className="text-3xl font-bold mt-2">{Math.round(statsData.overallProgress)}%</p>
+                <p className="text-3xl font-bold mt-1">{Math.round(statsData.overallProgress)}%</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-primary" />
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card variant="stat" className={cn(isRTL ? "border-r-success border-r-4" : "border-l-success")}>
-          <CardContent className="p-6">
+        <Card>
+          <CardContent className="p-5">
             <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
               <div>
                 <p className="text-sm text-muted-foreground">{isRTL ? 'مكتملة' : 'Terminées'}</p>
-                <p className="text-3xl font-bold mt-2">{statsData.completedSessions}</p>
+                <p className="text-3xl font-bold mt-1">{statsData.completedSessions}</p>
               </div>
-              <Clock className="w-8 h-8 text-success" />
+              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-success" />
+              </div>
             </div>
           </CardContent>
         </Card>
-        <Card variant="stat" className={cn(isRTL ? "border-r-warning border-r-4" : "border-l-warning")}>
-          <CardContent className="p-6">
+        <Card>
+          <CardContent className="p-5">
             <div className={cn("flex items-center justify-between", isRTL && "flex-row-reverse")}>
               <div>
                 <p className="text-sm text-muted-foreground">{isRTL ? 'إجمالي الجلسات' : 'Total des sessions'}</p>
-                <p className="text-3xl font-bold mt-2">{statsData.totalSessions}</p>
+                <p className="text-3xl font-bold mt-1">{statsData.totalSessions}</p>
               </div>
-              <span className="text-3xl">🎯</span>
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-muted-foreground" />
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Clock, Play, Eye, Bot, UserCircle } from 'lucide-react';
+import { Search, Filter, Clock, Play, Eye, Bot, UserCircle, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -97,7 +97,6 @@ export default function AdminRooms() {
 
       } catch (err) {
         setError(err instanceof Error ? err.message : (isRTL ? 'فشل تحميل البيانات' : 'Échec du chargement des données'));
-        console.error('Error loading data:', err);
       } finally {
         setLoading(false);
       }
@@ -205,7 +204,7 @@ export default function AdminRooms() {
 
       {error && (
         <motion.div variants={item} className="text-center py-12">
-          <div className="w-12 h-12 text-destructive mx-auto mb-4">⚠️</div>
+          <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">
             {isRTL ? 'خطأ في تحميل البيانات' : 'Erreur de chargement'}
           </h3>

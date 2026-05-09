@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,16 +16,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 231 48% 48%;
+    --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96%;
+    --muted: 210 40% 94%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 174 72% 46%;
+    --accent: 217 91% 60%;
     --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84% 60%;
@@ -32,9 +33,9 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 231 48% 48%;
+    --ring: 221 83% 53%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -44,22 +45,22 @@
 
     --level-a1: 142 71% 45%;
     --level-a2: 160 64% 43%;
-    --level-b1: 174 72% 46%;
-    --level-b2: 199 89% 48%;
-    --level-c1: 231 48% 48%;
-    --level-c2: 270 50% 40%;
+    --level-b1: 199 89% 48%;
+    --level-b2: 217 91% 60%;
+    --level-c1: 221 83% 53%;
+    --level-c2: 226 70% 55%;
 
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 174 72% 46%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 222 47% 18%;
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 174 72% 46%;
+    --sidebar-ring: 217 91% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(231 48% 48%), hsl(270 50% 40%));
-    --gradient-accent: linear-gradient(135deg, hsl(174 72% 46%), hsl(199 89% 48%));
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(226 70% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%), hsl(199 89% 48%));
     --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(160 64% 43%));
   }
 
@@ -73,7 +74,7 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 174 72% 46%;
+    --primary: 217 91% 60%;
     --primary-foreground: 222 47% 11%;
 
     --secondary: 222 47% 15%;
@@ -82,7 +83,7 @@
     --muted: 222 47% 15%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 231 48% 55%;
+    --accent: 221 83% 55%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 63% 31%;
@@ -90,16 +91,16 @@
 
     --border: 222 47% 18%;
     --input: 222 47% 18%;
-    --ring: 174 72% 46%;
+    --ring: 217 91% 60%;
 
     --sidebar-background: 222 47% 5%;
     --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 174 72% 46%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 222 47% 11%;
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 222 47% 11%;
-    --sidebar-ring: 174 72% 46%;
+    --sidebar-ring: 217 91% 60%;
   }
 }
 
@@ -110,11 +111,11 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', 'Inter', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', 'Inter', sans-serif;
   }
 
   /* RTL Support */
@@ -146,11 +147,11 @@
   }
 
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-background/60 backdrop-blur-xl border border-border/40 shadow-sm;
   }
 
   .glass-dark {
-    @apply bg-sidebar-background/80 backdrop-blur-xl border border-sidebar-border/50;
+    @apply bg-sidebar-background/60 backdrop-blur-xl border border-sidebar-border/40 shadow-sm;
   }
 
   .animate-pulse-slow {
@@ -159,14 +160,14 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background: var(--gradient-accent);
+    background: var(--gradient-primary);
   }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {

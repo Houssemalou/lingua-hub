@@ -44,7 +44,6 @@ export default function StudentProgress() {
         const data = await StatsService.getStudentStats();
         setStatsData(data);
       } catch (err) {
-        console.error('Failed to fetch student stats:', err);
       } finally {
         setLoading(false);
       }
@@ -73,28 +72,28 @@ export default function StudentProgress() {
     { 
       name: isRTL ? 'النطق' : 'Prononciation', 
       value: statsData.skills.pronunciation,
-      icon: '🗣️',
+      icon: '🎤',
       description: isRTL ? 'قدرتك على إنتاج الأصوات بدقة' : 'Votre capacité à produire des sons avec précision',
       color: 'bg-level-a1'
     },
     { 
       name: isRTL ? 'القواعد' : 'Grammaire', 
       value: statsData.skills.grammar,
-      icon: '📝',
+      icon: '✏️',
       description: isRTL ? 'فهم واستخدام قواعد اللغة' : 'Compréhension et utilisation des règles de la langue',
       color: 'bg-level-b1'
     },
     { 
       name: isRTL ? 'المفردات' : 'Vocabulaire', 
       value: statsData.skills.vocabulary,
-      icon: '📚',
+      icon: '📖',
       description: isRTL ? 'معرفة الكلمات ومعانيها' : 'Connaissance des mots et de leurs significations',
       color: 'bg-level-b2'
     },
     { 
       name: isRTL ? 'الطلاقة' : 'Fluidité', 
       value: statsData.skills.fluency,
-      icon: '💬',
+      icon: '💭',
       description: isRTL ? 'سلاسة وتدفق الكلام' : 'Aisance et fluidité du discours',
       color: 'bg-level-c1'
     },
@@ -256,8 +255,8 @@ export default function StudentProgress() {
               {[
                 { icon: '🎯', title: isRTL ? 'الجلسة الأولى' : 'Première session', desc: isRTL ? 'أكملت أول جلسة تعلم' : 'Vous avez terminé votre première session' },
                 { icon: '🔥', title: isRTL ? 'متعلم نشط' : 'Apprenant actif', desc: isRTL ? 'أكملت عدة جلسات' : 'Vous avez terminé plusieurs sessions' },
-                { icon: '💬', title: isRTL ? 'محترف المحادثة' : 'Pro de la conversation', desc: isRTL ? 'شاركت في 10 محادثات' : 'Participation à 10 conversations' },
-                { icon: '📚', title: isRTL ? 'بناء المفردات' : 'Bâtisseur de vocabulaire', desc: isRTL ? 'تعلمت 100 كلمة جديدة' : 'Appris 100 nouveaux mots' },
+                { icon: '💭', title: isRTL ? 'محترف المحادثة' : 'Pro de la conversation', desc: isRTL ? 'شاركت في 10 محادثات' : 'Participation à 10 conversations' },
+                { icon: '📖', title: isRTL ? 'بناء المفردات' : 'Bâtisseur de vocabulaire', desc: isRTL ? 'تعلمت 100 كلمة جديدة' : 'Appris 100 nouveaux mots' },
                 { icon: '⭐', title: isRTL ? 'ارتقاء المستوى!' : 'Niveau supérieur !', desc: isRTL ? 'وصلت إلى المستوى B1' : 'Atteint le niveau B1' },
                 { icon: '🏆', title: isRTL ? 'أفضل طالب' : 'Meilleur élève', desc: isRTL ? 'ضمن أفضل 10% هذا الشهر' : 'Dans le top 10% ce mois-ci' },
               ].map((achievement, index) => (

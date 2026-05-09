@@ -9,17 +9,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        outline: "border border-input bg-background hover:bg-accent/10 hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        accent: "bg-accent text-accent-foreground hover:bg-accent/90 shadow-md hover:shadow-lg",
-        success: "bg-success text-success-foreground hover:bg-success/90 shadow-md hover:shadow-lg",
-        gradient: "gradient-accent text-primary-foreground hover:opacity-90 shadow-lg hover:shadow-xl",
-        sidebar: "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
-        live: "bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse-ring",
+        accent: "bg-accent text-accent-foreground hover:bg-accent/90 shadow-sm hover:shadow-md",
+        success: "bg-success text-success-foreground hover:bg-success/90 shadow-sm hover:shadow-md",
+        gradient: "gradient-primary text-primary-foreground hover:opacity-90 shadow-md",
+        live: "bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground animate-pulse-ring",
       },
       size: {
         default: "h-10 px-4 py-2",

@@ -47,7 +47,7 @@ export default function EmailVerificationPage() {
           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
             <GraduationCap className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-lg">LangSchool AI</span>
+          <span className="font-bold text-lg">LearnUp</span>
         </div>
         <Button variant="ghost" size="icon" onClick={toggleTheme}>
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -59,7 +59,7 @@ export default function EmailVerificationPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className="w-full max-w-md mx-auto glass-card">
+          <Card className="w-full max-w-md mx-auto glass">
             <CardHeader className="text-center">
               {status === 'loading' && (
                 <>
@@ -126,7 +126,7 @@ export default function EmailVerificationPage() {
       </main>
 
       <footer className="p-4 text-center text-sm text-muted-foreground">
-        &copy; 2024 LangSchool AI. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
+        &copy; {new Date().getFullYear()} LearnUp. {isRTL ? 'جميع الحقوق محفوظة' : 'Tous droits réservés'}
       </footer>
     </div>
   );

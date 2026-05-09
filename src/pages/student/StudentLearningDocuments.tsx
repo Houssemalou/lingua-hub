@@ -165,7 +165,8 @@ export default function StudentLearningDocuments() {
     }));
   };
 
-  const handleDownload = async (fileUrl: string, fileName: string) => {
+  const handleDownload = async (docId: string, fileUrl: string, fileName: string) => {
+    LearningDocumentService.trackDocumentAccess(docId);
     try {
       const link = document.createElement('a');
       link.href = fileUrl;
@@ -259,14 +260,14 @@ export default function StudentLearningDocuments() {
 
                           <div className={cn('flex items-center gap-2 flex-wrap', isRTL && 'flex-row-reverse')}>
                             {doc.fileUrl && (
-                              <Button size="sm" variant="outline" onClick={() => handleDownload(doc.fileUrl!, doc.fileName || 'document')}>
+                              <Button size="sm" variant="outline" onClick={() => handleDownload(doc.id, doc.fileUrl!, doc.fileName || 'document')}>
                                 <Download className="w-4 h-4 mr-1" />
                                 {isRTL ? 'تنزيل الملف' : 'Télécharger'}
                               </Button>
                             )}
 
                             {doc.correctionFileUrl && (
-                              <Button size="sm" variant="outline" onClick={() => handleDownload(doc.correctionFileUrl!, doc.correctionFileName || 'correction')}>
+                              <Button size="sm" variant="outline" onClick={() => handleDownload(doc.id, doc.correctionFileUrl!, doc.correctionFileName || 'correction')}>
                                 <FileCheck2 className="w-4 h-4 mr-1" />
                                 {isRTL ? 'تنزيل التصحيح' : 'Télécharger correction'}
                               </Button>

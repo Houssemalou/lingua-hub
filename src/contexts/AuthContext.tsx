@@ -84,8 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             premiumExpiresAt: p.premiumExpiresAt || undefined,
           };
         }
-      } catch (error) {
-        console.error('Failed to fetch student profile:', error);
+      } catch {
+        // handle profile fetch error
       }
     } else if (role === 'professor') {
       try {
@@ -106,8 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             createdBy: p.createdBy || undefined,
           };
         }
-      } catch (error) {
-        console.error('Failed to fetch professor profile:', error);
+      } catch {
+        // handle profile fetch error
       }
     }
     return authUser;
@@ -146,9 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const updated = await fetchProfile('student', authUser);
             authUser.student = updated.student;
-          } catch (err) {
-            console.warn('Could not refresh student profile after login:', err);
-          }
+          } catch {
+        // handle profile refresh error
+      }
         } else if (response.data.user.role === 'professor') {
           const professorProfile: Professor = {
             // initially use the user id; we'll fetch the real professor record right after
@@ -173,9 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const updated = await fetchProfile('professor', authUser);
             authUser.professor = updated.professor; // update professor sub-object with full profile
-          } catch (err) {
-            console.warn('Could not refresh professor profile after login:', err);
-          }
+          } catch {
+        // handle profile refresh error
+      }
         } else {
           // Admin
           authUser = {
@@ -196,8 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         return { success: false, error: response.error };
       }
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch {
+      // handle login error
       return { success: false, error: 'Erreur de connexion' };
     }
   };
@@ -211,8 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         return { success: false, error: response.error };
       }
-    } catch (error) {
-      console.error('Admin signup error:', error);
+    } catch {
+      // handle admin signup error
       return { success: false, error: 'Erreur lors de l\'inscription' };
     }
   };
@@ -226,8 +226,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         return { success: false, error: response.error };
       }
-    } catch (error) {
-      console.error('Student signup error:', error);
+    } catch {
+      // handle student signup error
       return { success: false, error: 'Erreur lors de l\'inscription' };
     }
   };
@@ -241,8 +241,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         return { success: false, error: response.error };
       }
-    } catch (error) {
-      console.error('Professor signup error:', error);
+    } catch {
+      // handle professor signup error
       return { success: false, error: 'Erreur lors de l\'inscription' };
     }
   };

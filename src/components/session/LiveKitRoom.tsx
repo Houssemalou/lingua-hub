@@ -166,8 +166,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
         if (data?.type === 'whiteboard_toggle' && data?.scope === 'global') {
           setShowWhiteboard(Boolean(data.visible));
         }
-      } catch (error) {
-        console.error('Error parsing chat message:', error);
+      } catch {
+        // ignore data message errors
       }
     };
 
@@ -179,7 +179,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
   useEffect(() => {
     return () => {
       // fire-and-forget, cannot await in cleanup
-      RoomService.leave(roomId).catch(e => console.error('Error notifying leave on unmount:', e));
+      RoomService.leave(roomId).catch(() => {});
     };
   }, [roomId]);
 
@@ -232,8 +232,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
     // on disconnect/unmount or via webhook when the room finishes.
     try {
       await room.disconnect();
-    } catch (e) {
-      console.error('Error disconnecting from room:', e);
+    } catch {
+      // ignore room disconnect errors
     }
     onLeaveRoom();
   };
@@ -292,8 +292,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
                         new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: next, scope: 'global' })),
                         { reliable: true }
                       );
-                    } catch (e) {
-                      console.error('Error broadcasting whiteboard toggle:', e);
+                    } catch {
+                      // ignore whiteboard toggle errors
                     }
                   }
                   return next;
@@ -570,7 +570,7 @@ export const LiveKitRoom: React.FC<LiveKitRoomProps> = ({ roomId, onLeaveRoom, e
   // notify backend when underlying connection drops at top level
   const handleDisconnected = async () => {
     if (!isRecordingMode) {
-      try { await RoomService.leave(roomId); } catch (e) { console.error('Error notifying leave on disconnect (outer):', e); }
+      try { await RoomService.leave(roomId); } catch { /* ignore leave errors */ }
     }
     onLeaveRoom();
   };

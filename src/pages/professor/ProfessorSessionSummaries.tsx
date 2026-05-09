@@ -95,7 +95,6 @@ export default function ProfessorSessionSummaries() {
           }
         }
       } catch (error) {
-        console.error('Error loading data:', error);
         toast.error(isRTL ? 'فشل في تحميل البيانات' : 'Erreur de chargement');
       } finally {
         setLoading(false);
@@ -136,7 +135,6 @@ export default function ProfessorSessionSummaries() {
         }
       }
     } catch (error) {
-      console.error('Error reloading summaries:', error);
     }
     
     setSelectedSession(null);

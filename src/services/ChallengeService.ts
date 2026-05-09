@@ -178,7 +178,6 @@ export const ChallengeService = {
 
       return { success: true, data: mapBackendToFrontend(response.data) };
     } catch (error) {
-      console.error('Create challenge error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to create challenge' };
     }
   },
@@ -193,7 +192,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data.map(mapBackendToFrontend) };
     } catch (error) {
-      console.error('Fetch my challenges error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch challenges' };
     }
   },
@@ -208,7 +206,6 @@ export const ChallengeService = {
 
       return { success: true };
     } catch (error) {
-      console.error('Delete challenge error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to delete challenge' };
     }
   },
@@ -223,7 +220,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Fetch challenge stats error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch stats' };
     }
   },
@@ -238,7 +234,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data.map(mapBackendAttempt) };
     } catch (error) {
-      console.error('Fetch challenge attempts error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch attempts' };
     }
   },
@@ -253,7 +248,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data.map(mapBackendToFrontend) };
     } catch (error) {
-      console.error('Fetch active challenges error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch active challenges' };
     }
   },
@@ -268,7 +262,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Fetch game stats error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch game stats' };
     }
   },
@@ -284,7 +277,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Submit answer error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to submit answer' };
     }
   },
@@ -299,7 +291,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data.map(mapBackendAttempt) };
     } catch (error) {
-      console.error('Fetch my attempts error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch attempts' };
     }
   },
@@ -314,7 +305,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data.map(mapBackendLeaderboard) };
     } catch (error) {
-      console.error('Fetch leaderboard error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' };
     }
   },
@@ -329,7 +319,6 @@ export const ChallengeService = {
 
       return { success: true, data: response.data.map(mapBackendLeaderboard) };
     } catch (error) {
-      console.error('Fetch leaderboard by level error:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to fetch leaderboard' };
     }
   },

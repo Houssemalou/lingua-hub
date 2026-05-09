@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Timer, Trophy, Star, Sparkles, X, Check, Zap } from 'lucide-react';
+import { Timer, Trophy, Star, Sparkles, X, Check, Zap, Flame } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
@@ -209,7 +209,7 @@ export function MathPuzzleGame({ isOpen, onClose, onComplete, difficulty }: Math
         {/* Header with stats */}
         <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 p-4">
           <DialogHeader>
-            <DialogTitle className="text-center text-xl">🧮 {t.title}</DialogTitle>
+            <DialogTitle className="text-center text-xl">{t.title}</DialogTitle>
           </DialogHeader>
           
           <div className={cn("flex items-center justify-between mt-4", isRTL && "flex-row-reverse")}>
@@ -302,7 +302,7 @@ export function MathPuzzleGame({ isOpen, onClose, onComplete, difficulty }: Math
                     className="text-center"
                   >
                     <Badge className="gap-1 bg-orange-500/20 text-orange-500">
-                      🔥 {t.streak}: {streak}
+                      <Flame className="w-3 h-3" /> {t.streak}: {streak}
                     </Badge>
                   </motion.div>
                 )}
@@ -321,7 +321,7 @@ export function MathPuzzleGame({ isOpen, onClose, onComplete, difficulty }: Math
                   transition={{ duration: 0.5, repeat: 3 }}
                   className="text-6xl"
                 >
-                  {score >= 700 ? '🏆' : score >= 400 ? '⭐' : '💪'}
+                  {score >= 700 ? <Trophy className="w-16 h-16 text-yellow-500" /> : score >= 400 ? <Star className="w-16 h-16 text-yellow-500" /> : <Zap className="w-16 h-16 text-yellow-500" />}
                 </motion.div>
                 
                 <div>

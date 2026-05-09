@@ -7,6 +7,8 @@ import {
   LearningDocumentSubject,
   LearningDocumentModel,
   UpdateLearningDocumentDTO,
+  DocumentAccessModel,
+  DocumentAccessResponse,
 } from '@/models';
 
 interface BackendResponse<T> {
@@ -229,6 +231,34 @@ export const LearningDocumentService = {
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed to delete comment' };
+    }
+  },
+
+  async getDocumentAccess(documentId: string, page: number = 1, pageSize: number = 10): Promise<ApiResponse<DocumentAccessResponse>> {
+    try {
+      const params = new URLSearchParams();
+      params.append('page', String(page));
+      params.append('pageSize', String(pageSize));
+
+      const response = await fetch(`${API_BASE_URL}/learning-documents/${documentId}/access?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      return await parseResponse<DocumentAccessResponse>(response, 'Failed to load student access list');
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to load student access list' };
+    }
+  },
+
+  async trackDocumentAccess(documentId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/learning-documents/${documentId}/access`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      return await parseResponse<void>(response, 'Failed to track document access');
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to track document access' };
     }
   },
 };
