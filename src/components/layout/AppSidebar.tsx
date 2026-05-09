@@ -144,21 +144,21 @@ export function AppSidebar({ collapsed, onToggle, isMobile, onClose }: SidebarPr
               className={cn("flex items-center gap-2.5", isRTL && "flex-row-reverse")}
             >
               {settings.logoUrl && role === 'student' ? (
-                <img src={settings.logoUrl} alt="Logo" className="h-[7.5rem] max-w-[300px] object-contain" />
+                <img src={settings.logoUrl} alt="Logo" className="h-6 max-w-[120px] object-contain" />
               ) : (
                 <>
-                  <img src="/new_logo.png" alt="LearnUp" className="h-[7.5rem] object-contain" />
+                  <img src="/logo_learnUp.jpeg" alt="LearnUp" className="h-6 object-contain" />
                 </>
               )}
             </motion.div>
           )}
         </AnimatePresence>
         {collapsed && !isMobile && (
-          <div className="w-[7.5rem] h-[7.5rem] rounded-lg bg-sidebar-primary/20 flex items-center justify-center mx-auto">
+          <div className="w-6 h-6 rounded-lg bg-sidebar-primary/20 flex items-center justify-center mx-auto">
             {settings.logoUrl && role === 'student' ? (
-              <img src={settings.logoUrl} alt="Logo" className="h-16 w-16 object-contain rounded" />
+              <img src={settings.logoUrl} alt="Logo" className="h-4 w-4 object-contain rounded" />
             ) : (
-              <img src="/new_logo.png" alt="LearnUp" className="h-16 w-16 object-contain rounded" />
+              <img src="/new_logo.jpeg" alt="LearnUp" className="h-4 w-4 object-contain rounded" />
             )}
           </div>
         )}
