@@ -1,4 +1,5 @@
 export type ProfessorType = 'PROF_PRIMAIRE' | 'PROF_BASE' | 'PROF_SECONDAIRE' | 'FORMATEUR' | 'PROF_PREPA';
+export type SubscriptionType = 'BASE' | 'PREMIUM' | 'CUSTOM';
 export type StudentType = 'SCOLAIRE' | 'FORMATION' | 'PREPA';
 
 export interface Student {
@@ -32,6 +33,7 @@ export interface Professor {
   languages: string[];
   specialization: string;
   professorType?: ProfessorType;
+  subscriptionType?: SubscriptionType;
   joinedAt: string;
   totalSessions: number;
   createdBy?: string;

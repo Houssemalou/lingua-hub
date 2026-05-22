@@ -27,6 +27,7 @@ import { AuthService } from '@/services/AuthService';
 interface GeneratedToken {
   token: string;
   role: 'STUDENT' | 'PROFESSOR' | 'ADMIN';
+  subscriptionType?: 'BASE' | 'PREMIUM' | 'CUSTOM' | null;
   expiresAt: string;
   createdAt: string;
 }
@@ -41,6 +42,7 @@ export const AccessTokenGenerator: React.FC = () => {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [tokenCount, setTokenCount] = useState<number>(1);
+  const [professorSubscriptionType, setProfessorSubscriptionType] = useState<'BASE' | 'PREMIUM' | 'CUSTOM'>('BASE');
 
   // Load tokens on component mount
   useEffect(() => {
@@ -72,7 +74,11 @@ export const AccessTokenGenerator: React.FC = () => {
     const count = Math.max(1, Math.min(100, tokenCount));
     setLoading(true);
     try {
-      const response = await AuthService.generateAccessToken(role, count);
+      const response = await AuthService.generateAccessToken(
+        role,
+        count,
+        role === 'PROFESSOR' ? professorSubscriptionType : undefined
+      );
       if (response.success) {
         const newTokens: GeneratedToken[] = response.data.map(t => ({
           ...t,
@@ -344,6 +350,11 @@ export const AccessTokenGenerator: React.FC = () => {
         </div>
       </div>
       <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+        {role === 'PROFESSOR' && token.subscriptionType && (
+          <Badge variant="secondary" className="text-xs">
+            {token.subscriptionType}
+          </Badge>
+        )}
         <Badge variant="outline" className="text-xs">
           {role === 'STUDENT' ? (isRTL ? 'طالب' : 'Étudiant') : role === 'PROFESSOR' ? (isRTL ? 'أستاذ' : 'Professeur') : (isRTL ? 'إداري' : 'Admin')}
         </Badge>
@@ -527,6 +538,18 @@ export const AccessTokenGenerator: React.FC = () => {
                     onChange={(e) => setTokenCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
                     className="w-20 h-9 text-center"
                   />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'الاشتراك' : 'Abonnement'}</Label>
+                  <select
+                    value={professorSubscriptionType}
+                    onChange={(e) => setProfessorSubscriptionType(e.target.value as 'BASE' | 'PREMIUM' | 'CUSTOM')}
+                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="BASE">{isRTL ? 'أساسي (5/شهر)' : 'Base (5/mois)'}</option>
+                    <option value="PREMIUM">{isRTL ? 'ممتاز (12/شهر)' : 'Premium (12/mois)'}</option>
+                    <option value="CUSTOM">{isRTL ? 'مخصص (غير محدود)' : 'Custom (illimité)'}</option>
+                  </select>
                 </div>
                 <Button 
                   onClick={() => generateToken('PROFESSOR')} 

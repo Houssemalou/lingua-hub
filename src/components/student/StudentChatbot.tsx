@@ -15,10 +15,13 @@ import {
   PhoneOff,
   Timer,
   BarChart3,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Room, RoomEvent, RemoteParticipant, Track, RemoteTrackPublication, TranscriptionSegment, DataPacket_Kind, Participant, TrackPublication } from 'livekit-client';
 import { SessionSummaryData, DataTrackMessage } from '@/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface StudentChatbotProps {
   studentId: string;
@@ -42,6 +45,7 @@ interface ChatMessage {
 const STUDENT_CHAT_SESSION_DURATION_SECONDS = 15 * 60;
 const CHAT_HISTORY_TTL_MS = 5 * 60 * 1000;
 const SUMMARY_ICON_THRESHOLD_SECONDS = 10 * 60;
+const AUTO_CLOSE_ROOM_AFTER_MS = 2 * 60 * 1000;
 
 export function StudentChatbot({
   studentId,
@@ -67,6 +71,10 @@ export function StudentChatbot({
   const [summaryRequested, setSummaryRequested] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
   const [periodEndsAt, setPeriodEndsAt] = useState<string | null>(null);
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
+  const [isForfeiting, setIsForfeiting] = useState(false);
+  const summaryCardRef = useRef<HTMLDivElement>(null);
+  const summaryReceivedRef = useRef(false);
 
   // track viewport size for mobile-specific behaviour
   useEffect(() => {
@@ -80,6 +88,7 @@ export function StudentChatbot({
   const transcriptionBuffer = useRef(new Map<string, ChatMessage>());
   const attachedElements = useRef(new Map<string, HTMLMediaElement>());
   const clearHistoryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeRoomTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const historyStorageKey = `student-chatbot-history:${studentId}`;
 
@@ -166,6 +175,7 @@ export function StudentChatbot({
     setSessionSummary(null);
     setSummaryPdf(null);
     setSummaryRequested(false);
+    summaryReceivedRef.current = false;
   }, [historyStorageKey]);
 
   useEffect(() => {
@@ -361,23 +371,36 @@ export function StudentChatbot({
         setPeriodEndsAt(endsAt);
       }
 
-      // Connect to LiveKit room
-      const room = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-        audioCaptureDefaults: {
-          autoGainControl: true,
-          echoCancellation: true,
-          noiseSuppression: true,
+      // Connect to LiveKit room with retry
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const room = new Room({
+            adaptiveStream: true,
+            dynacast: true,
+            audioCaptureDefaults: {
+              autoGainControl: true,
+              echoCancellation: true,
+              noiseSuppression: true,
+            }
+          });
+          roomRef.current = room;
+
+          // Set up event listeners
+          setupRoomListeners(room);
+
+          await room.connect(url, token);
+          setIsConnected(true);
+          lastError = undefined;
+          break;
+        } catch (err) {
+          lastError = err;
+          // Wait briefly before retrying
+          if (attempt === 0) await new Promise(r => setTimeout(r, 1000));
         }
-      });
-      roomRef.current = room;
+      }
 
-      // Set up event listeners
-      setupRoomListeners(room);
-
-      await room.connect(url, token);
-      setIsConnected(true);
+      if (lastError) throw lastError;
 
       // Enable microphone for voice-to-voice communication
       try {
@@ -420,10 +443,13 @@ export function StudentChatbot({
         },
         body: JSON.stringify({ roomName, userIdentity: studentId }),
       });
+    } catch {
+      // ignore room close API errors
+    }
 
-      // Disconnect room
-      if (roomRef.current) {
-        // Cleanup attached elements
+    // Disconnect room (always)
+    if (roomRef.current) {
+      try {
         attachedElements.current.forEach((element) => {
           element.pause();
           element.remove();
@@ -432,30 +458,82 @@ export function StudentChatbot({
         transcriptionBuffer.current.clear();
 
         await roomRef.current.disconnect();
-        roomRef.current = null;
-      }
-
-      setIsConnected(false);
-      setIsRecording(false);
-      setSessionSummary(null);
-      setSummaryPdf(null);
-      setSummaryRequested(false);
-      setRoomName(null);
-      stopSessionTimer();
-
-      try {
-        const state = await fetchSessionState();
-        setSessionTimeLeft(Math.max(0, state.remainingSeconds || 0));
-        setPeriodEndsAt(state.periodEndsAt || null);
       } catch {
-        // ignore quota refresh errors on close
+        // ignore disconnect errors
       }
-
-      handleCloseChat();
-    } catch {
-      // ignore room close errors
+      roomRef.current = null;
     }
+
+    setIsConnected(false);
+    setIsRecording(false);
+    setSessionSummary(null);
+    setSummaryPdf(null);
+    setSummaryRequested(false);
+    summaryReceivedRef.current = false;
+    setRoomName(null);
+    stopSessionTimer();
+
+    try {
+      const state = await fetchSessionState();
+      setSessionTimeLeft(Math.max(0, state.remainingSeconds || 0));
+      setPeriodEndsAt(state.periodEndsAt || null);
+    } catch {
+      // ignore quota refresh errors on close
+    }
+
+    handleCloseChat();
   }, [roomName, handleCloseChat, stopSessionTimer, studentId, fetchSessionState]);
+
+  const forfeitAndClose = useCallback(async () => {
+    if (!studentId) return;
+    setIsForfeiting(true);
+    try {
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://learnup.tn/assistant';
+      await fetch(`${aiBase}/api/chatbot/session/forfeit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userIdentity: studentId }),
+      });
+    } catch {
+      // ignore forfeit API errors
+    } finally {
+      setSessionTimeLeft(0);
+      setIsForfeiting(false);
+      setIsExitConfirmOpen(false);
+      closeRoom();
+    }
+  }, [studentId, closeRoom]);
+
+  useEffect(() => {
+    if (!isChatOpen && isConnected && sessionTimeLeft > 0) {
+      closeRoomTimeoutRef.current = setTimeout(() => {
+        addMessage(
+          language === 'ar'
+            ? 'تم إغلاق الجلسة تلقائياً بسبب عدم النشاط. للحصول على أفضل تجربة، يرجى متابعة التعلم دون انقطاع في المرة القادمة لتجنب فقدان الجلسة.'
+            : 'Session fermee automatiquement pour inactivite. Pour une experience optimale, veuillez continuer la session sans interruption la prochaine fois afin de ne pas perdre la progression.',
+          false,
+        );
+        closeRoom();
+        closeRoomTimeoutRef.current = null;
+      }, AUTO_CLOSE_ROOM_AFTER_MS);
+    }
+
+    if (isChatOpen) {
+      if (closeRoomTimeoutRef.current) {
+        clearTimeout(closeRoomTimeoutRef.current);
+        closeRoomTimeoutRef.current = null;
+      }
+    }
+
+    return () => {
+      if (closeRoomTimeoutRef.current) {
+        clearTimeout(closeRoomTimeoutRef.current);
+        closeRoomTimeoutRef.current = null;
+      }
+    };
+  }, [isChatOpen, isConnected, sessionTimeLeft, closeRoom, addMessage, language]);
 
   const startSessionTimer = useCallback(() => {
     if (sessionTimer) {
@@ -478,11 +556,18 @@ export function StudentChatbot({
         return prev - 1;
       });
     }, 1000);
+
     
     setSessionTimer(timer);
   }, [addMessage, sessionTimer, language]);
 
   const handleOpenChat = useCallback(async () => {
+    // Clear auto-close timeout synchronously BEFORE showing chat
+    if (closeRoomTimeoutRef.current) {
+      clearTimeout(closeRoomTimeoutRef.current);
+      closeRoomTimeoutRef.current = null;
+    }
+
     setIsChatOpen(true);
     setIsMinimized(false);
 
@@ -540,6 +625,17 @@ export function StudentChatbot({
           : 'Preparation du resume en cours...'
         , false
       );
+      setTimeout(() => {
+        if (!summaryReceivedRef.current) {
+          addMessage(
+            language === 'ar'
+              ? 'تعذر إنشاء الملخص. حاول مرة أخرى.'
+              : 'Impossible de generer le resume. Reessayez.',
+            false
+          );
+          setSummaryRequested(false);
+        }
+      }, 30000);
     } catch {
       // ignore summary request errors
     }
@@ -562,6 +658,8 @@ export function StudentChatbot({
         processMessage(data);
       } else if (data.type === 'session_summary') {
         setSessionSummary(data.summary);
+        summaryReceivedRef.current = true;
+        setSummaryRequested(false);
         if (data.pdfBase64) {
           setSummaryPdf({
             base64: data.pdfBase64,
@@ -656,6 +754,41 @@ export function StudentChatbot({
 const downloadSummary = useCallback(async () => {
     if (!sessionSummary) return;
 
+    const node = summaryCardRef.current;
+    if (node) {
+      try {
+        const canvas = await html2canvas(node, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        let heightLeft = pdfHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position -= pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save(`resume-session-${new Date().toISOString().split('T')[0]}.pdf`);
+        return;
+      } catch {
+        // html2canvas failed, fall through to server PDF
+      }
+    }
+
     if (summaryPdf?.base64) {
       try {
         const binaryString = atob(summaryPdf.base64);
@@ -672,187 +805,13 @@ const downloadSummary = useCallback(async () => {
         document.body.appendChild(link);
         link.click();
         link.remove();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         return;
       } catch {
-        // ignore PDF download errors
+        // server PDF download failed, fall through
       }
     }
-
-    try {
-      // Créer un élément HTML temporaire pour le rendu
-      const printElement = document.createElement('div');
-      printElement.style.position = 'absolute';
-      printElement.style.left = '-9999px';
-      printElement.style.top = '-9999px';
-      printElement.style.width = '800px';
-      printElement.style.backgroundColor = 'white';
-      printElement.style.fontFamily = 'Arial, sans-serif';
-      document.body.appendChild(printElement);
-
-      // Template HTML professionnel avec support arabe
-      const htmlContent = `
-        <div style="width: 100%; max-width: 800px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; direction: ${language === 'ar' ? 'rtl' : 'ltr'};">
-          <!-- En-tête -->
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; border-radius: 0 0 20px 20px;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">LearnUP</h1>
-            <p style="margin: 10px 0 0 0; font-size: 18px; opacity: 0.9;">${language === 'ar' ? 'ملخص جلسة التعلم' : "Résumé de Session d'Apprentissage"}</p>
-          </div>
-
-          <!-- Informations générales -->
-          <div style="padding: 30px; background: #f8f9fa;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-              <div style="flex: 1;">
-                <h2 style="color: #2c3e50; font-size: 24px; margin: 0 0 10px 0; border-bottom: 3px solid #667eea; padding-bottom: 5px;">${language === 'ar' ? 'تفاصيل الجلسة' : 'Session Details'}</h2>
-                <p style="margin: 5px 0; color: #666;"><strong>${language === 'ar' ? 'التاريخ:' : 'Date:'}</strong> ${new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'fr-FR')}</p>
-              </div>
-              <div style="text-align: right;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;">L</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Objectif de la session -->
-          <div style="padding: 30px; border-left: 5px solid #667eea; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0; display: flex; align-items: center;">
-              <span style="background: #667eea; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">O</span>
-              ${language === 'ar' ? 'هدف الجلسة' : 'Objectif de la Session'}
-            </h3>
-            <p style="margin: 0; color: #555; font-size: 16px; line-height: 1.6;">${sessionSummary.sessionObjective || ''}</p>
-          </div>
-
-          <!-- Resume detaille -->
-          ${sessionSummary.detailedSummary ? `
-          <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0; display: flex; align-items: center;">
-              <span style="background: #17a2b8; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">R</span>
-              ${language === 'ar' ? 'تفاصيل الجلسة' : 'Resume detaille'}
-            </h3>
-            <p style="margin: 0; color: #555; font-size: 15px; line-height: 1.6;">${sessionSummary.detailedSummary}</p>
-          </div>
-          ` : ''}
-
-          <!-- Mots appris (groupes) -->
-          ${sessionSummary.learnedGroups && sessionSummary.learnedGroups.length > 0 ? `
-          <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
-              <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">V</span>
-              ${language === 'ar' ? 'الكلمات المكتسبة (حسب المجموعة)' : 'Mots Appris (par groupe)'}
-            </h3>
-            <div style="display:flex; flex-direction:column; gap:12px;">
-              ${sessionSummary.learnedGroups.map(g => `
-                <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:10px; padding:12px;">
-                  <div style="font-weight:700; color:#2c3e50; margin-bottom:8px;">${g.group}</div>
-                  <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                    ${g.words.map(w => `<span style="background:white; border:1px solid #e9ecef; padding:6px 8px; border-radius:6px; font-size:13px; color:#555; direction: ${/[\u0600-\u06FF]/.test(w) ? 'rtl' : 'ltr'};">${w}</span>`).join('')}
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          ` : ''} 
-
-          <!-- Exemples -->
-          ${sessionSummary.examples && sessionSummary.examples.length > 0 ? `
-          <div style="padding: 30px; margin: 20px 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-            <h3 style="color: #2c3e50; font-size: 20px; margin: 0 0 20px 0; display: flex; align-items: center;">
-              <span style="background: #ffc107; color: white; padding: 5px 10px; border-radius: 50%; margin-right: 10px; font-size: 14px;">E</span>
-              ${language === 'ar' ? 'امثلة' : 'Exemples'}
-            </h3>
-            <div style="display:flex; flex-direction:column; gap:12px;">
-              ${sessionSummary.examples.map(ex => `
-                <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:10px; padding:12px;">
-                  <div style="font-weight:700; color:#2c3e50; margin-bottom:6px;">${ex.title}</div>
-                  <div style="color:#555; font-size:14px; line-height:1.6;">${ex.text}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          ` : ''}
-
-
-
-          <!-- Pied de page -->
-          <div style="background: #2c3e50; color: white; padding: 30px; text-align: center; margin-top: 40px;">
-            <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
-              <p style="margin: 0; font-size: 14px; opacity: 0.8;">${language === 'ar' ? 'وثيقة تم إنشاؤها تلقائياً بواسطة LearnUP' : 'Document généré automatiquement par LearnUP'}</p>
-              <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.6;">${language === 'ar' ? 'منصة تعلم اللغات' : "Plateforme d'apprentissage des langues"} • ${new Date().getFullYear()}</p>
-            </div>
-          </div>
-        </div>
-      `;
-
-      printElement.innerHTML = htmlContent;
-
-      // Utiliser html2canvas pour capturer le contenu
-      const canvas = await html2canvas(printElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 800,
-        height: printElement.scrollHeight
-      });
-
-      // Créer le PDF
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      // Première page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Pages supplémentaires si nécessaire
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Télécharger le PDF
-      pdf.save(`resume-session-learnup-${new Date().toISOString().split('T')[0]}.pdf`);
-
-      // Nettoyer
-      document.body.removeChild(printElement);
-
-    } catch {
-      // ignore PDF generation errors
-      const doc = new jsPDF();
-      doc.setFontSize(20);
-      doc.text(language === 'ar' ? 'ملخص جلسة التعلم' : 'Résumé de Session d\'Apprentissage', 20, 30);
-      doc.setFontSize(12);
-      doc.text(`${language === 'ar' ? 'الهدف' : 'Objectif'}: ${sessionSummary.sessionObjective || (language === 'ar' ? 'غير محدد' : 'Non spécifié')}`, 20, 50);
-
-      if (sessionSummary.learnedGroups && sessionSummary.learnedGroups.length > 0) {
-        doc.text(language === 'ar' ? 'الكلمات المكتسبة (حسب المجموعة):' : 'Mots appris (par groupe):', 20, 80);
-        let y = 90;
-        sessionSummary.learnedGroups.forEach((g) => {
-          doc.setFontSize(11);
-          doc.text(`- ${g.group}:`, 20, y);
-          y += 7;
-          doc.setFontSize(10);
-          const wordsLine = (g.words || []).join(', ');
-          // tronquer si très long
-          doc.text(wordsLine, 25, y);
-          y += 12;
-        });
-      }
-
-      doc.save(`resume-session-simple-${new Date().toISOString().split('T')[0]}.pdf`);
-    }
-  }, [sessionSummary, language, summaryPdf]);
+  }, [sessionSummary, summaryPdf]);
 
   const toggleRecording = useCallback(async () => {
     if (!roomRef.current) return;
@@ -957,7 +916,13 @@ const downloadSummary = useCallback(async () => {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={closeRoom}
+                  onClick={() => {
+                    if (sessionTimeLeft > 0) {
+                      setIsExitConfirmOpen(true);
+                    } else {
+                      closeRoom();
+                    }
+                  }}
                   disabled={!isConnected}
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
@@ -981,13 +946,13 @@ const downloadSummary = useCallback(async () => {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => {
-                    if (isConnected) {
+                    handleCloseChat();
+                    if (sessionTimeLeft <= 0) {
                       closeRoom();
-                    } else {
-                      handleCloseChat();
                     }
                   }}
                   className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
+                  title={language === 'ar' ? (sessionTimeLeft <= 0 ? 'إنهاء المحادثة' : 'إخفاء المحادثة') : (sessionTimeLeft <= 0 ? 'Fermer la discussion' : 'Masquer la discussion')}
                 >
                   <X className="w-4 h-4" />
                 </motion.button>
@@ -1038,6 +1003,7 @@ const downloadSummary = useCallback(async () => {
                             key={`${message.id}-${index}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
+                            ref={summaryCardRef}
                             className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 cursor-pointer"
                             onClick={downloadSummary}
                           >
@@ -1241,6 +1207,32 @@ const downloadSummary = useCallback(async () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={isExitConfirmOpen} onOpenChange={setIsExitConfirmOpen}>
+        <DialogContent className="max-w-md" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+          <DialogHeader>
+            <DialogTitle className={cn("flex items-center gap-2", language === 'ar' && "flex-row-reverse")}> 
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {language === 'ar' ? 'تأكيد إنهاء الجلسة' : 'Confirmer la fin de session'}
+            </DialogTitle>
+            <DialogDescription>
+              {language === 'ar'
+                ? 'إذا أنهيت الجلسة الآن، ستفقد ما تبقى من الوقت ولن تتمكن من المتابعة.'
+                : 'Si vous terminez la session maintenant, vous perdrez le temps restant et ne pourrez plus continuer.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className={cn("mt-4 flex justify-end gap-2", language === 'ar' && "flex-row-reverse")}>
+            <Button variant="outline" onClick={() => setIsExitConfirmOpen(false)}>
+              {language === 'ar' ? 'متابعة التعلم' : 'Continuer la session'}
+            </Button>
+            <Button onClick={forfeitAndClose} disabled={isForfeiting}>
+              {isForfeiting
+                ? (language === 'ar' ? 'جارٍ الإنهاء...' : 'Fermeture...')
+                : (language === 'ar' ? 'إنهاء وخسارة الوقت' : 'Quitter et perdre le temps')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

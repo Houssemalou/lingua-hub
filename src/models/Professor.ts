@@ -3,6 +3,7 @@
 // ============================================
 
 export type ProfessorType = 'PROF_PRIMAIRE' | 'PROF_BASE' | 'PROF_SECONDAIRE' | 'FORMATEUR' | 'PROF_PREPA';
+export type SubscriptionType = 'BASE' | 'PREMIUM' | 'CUSTOM';
 
 export interface ProfessorModel {
   id: string;
@@ -17,6 +18,7 @@ export interface ProfessorModel {
   languages: string[];
   specialization: string;
   professorType?: ProfessorType;
+  subscriptionType?: SubscriptionType;
   joinedAt: string;
   totalSessions: number;
   isActive?: boolean;
@@ -33,6 +35,7 @@ export interface CreateProfessorDTO {
   languages: string[];
   specialization: string;
   professorType: ProfessorType;
+  subscriptionType?: SubscriptionType;
   createdBy?: string;
 }
 

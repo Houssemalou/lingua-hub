@@ -101,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             languages: p.languages || [],
             specialization: p.specialization || '',
             professorType: p.professorType || undefined,
+            subscriptionType: (p as any).subscriptionType || undefined,
             joinedAt: p.joinedAt || new Date().toISOString(),
             totalSessions: p.totalSessions || 0,
             createdBy: p.createdBy || undefined,

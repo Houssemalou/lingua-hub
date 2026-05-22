@@ -15,6 +15,9 @@ import {
   Video,
   Download,
   AlertTriangle,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -112,7 +115,39 @@ export default function ProfessorSessions() {
   const [selectedSessionName, setSelectedSessionName] = useState('');
   const [selectedRoomName, setSelectedRoomName] = useState('');
 
+  // pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  // delete confirmation
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<RoomModel | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const dateLocale = language === 'ar' ? ar : fr;
+
+  const getSubscriptionQuota = (type?: string) => {
+    if (type === 'CUSTOM') return null;
+    if (type === 'PREMIUM') return 12;
+    return 5;
+  };
+
+  const getSessionMonthKey = (value?: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${date.getMonth()}`;
+  };
+
+  const currentMonthKey = getSessionMonthKey(new Date().toISOString());
+  const sessionsThisMonth = sessions.filter((session) => {
+    const key = getSessionMonthKey(session.createdAt || session.scheduledAt);
+    return key && key === currentMonthKey && session.animatorType === 'professor';
+  }).length;
+  const subscriptionType = professor?.subscriptionType || 'BASE';
+  const monthlyQuota = getSubscriptionQuota(subscriptionType);
+  const quotaRemaining = monthlyQuota === null ? null : Math.max(0, monthlyQuota - sessionsThisMonth);
+  const isQuotaExceeded = quotaRemaining !== null && quotaRemaining <= 0;
 
   // Refresh every 30s so countdowns stay current
   useEffect(() => {
@@ -267,6 +302,17 @@ export default function ProfessorSessions() {
     return matchesSearch && matchesStatus;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / itemsPerPage));
+  const paginatedSessions = filteredSessions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  // reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'live':
@@ -335,6 +381,26 @@ export default function ProfessorSessions() {
       toast.error(isRTL ? 'فشل في جلب التسجيلات' : 'Échec du chargement des enregistrements');
     } finally {
       setLoadingRecordings(false);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!sessionToDelete) return;
+    setDeleting(true);
+    try {
+      const res = await RoomService.delete(sessionToDelete.id);
+      if ((res as any).success) {
+        setSessions(prev => prev.filter(s => s.id !== sessionToDelete.id));
+        toast.success(isRTL ? 'تم حذف الجلسة بنجاح!' : 'Session supprimée avec succès !');
+      } else {
+        toast.error(getFriendlyErrorMessage((res as any).message || (res as any).error, isRTL));
+      }
+    } catch {
+      toast.error(isRTL ? 'فشل في حذف الجلسة' : 'Échec de la suppression de la session');
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setSessionToDelete(null);
     }
   };
 
@@ -416,7 +482,12 @@ export default function ProfessorSessions() {
             <SelectItem value="completed">{isRTL ? 'مكتمل' : 'Terminé'}</SelectItem>
           </SelectContent>
         </Select>
-        <Button className={cn("gap-2", isRTL && "flex-row-reverse")} onClick={() => setIsCreateDialogOpen(true)}>
+        <Button
+          className={cn("gap-2", isRTL && "flex-row-reverse")}
+          onClick={() => setIsCreateDialogOpen(true)}
+          disabled={isQuotaExceeded}
+          title={isQuotaExceeded ? (isRTL ? 'لقد استهلكت الحصة الشهرية' : 'Quota mensuel atteint') : undefined}
+        >
           <Plus className="w-4 h-4" />
           {isRTL ? 'إنشاء جلسة' : 'Créer une session'}
         </Button>
@@ -428,6 +499,26 @@ export default function ProfessorSessions() {
           <DialogHeader>
             <DialogTitle>{isRTL ? 'إنشاء جلسة جديدة' : 'Créer une nouvelle session'}</DialogTitle>
           </DialogHeader>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" dir={isRTL ? 'rtl' : 'ltr'}>
+            {quotaRemaining === null ? (
+              <span>
+                {isRTL ? 'الاشتراك: غير محدود' : 'Abonnement : illimite'}
+              </span>
+            ) : (
+              <span>
+                {isRTL
+                  ? `الحصة الشهرية المتبقية: ${quotaRemaining} من ${monthlyQuota}`
+                  : `Quota mensuel restant : ${quotaRemaining} sur ${monthlyQuota}`}
+              </span>
+            )}
+            {isQuotaExceeded && (
+              <div className="mt-2 text-xs text-amber-900">
+                {isRTL
+                  ? 'لا يمكنك إنشاء جلسة جديدة حتى الشهر القادم.'
+                  : 'Vous ne pouvez pas creer de nouvelle session avant le mois prochain.'}
+              </div>
+            )}
+          </div>
           <form onSubmit={handleCreateRoom} className="space-y-6 mt-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -571,7 +662,7 @@ export default function ProfessorSessions() {
               <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 {isRTL ? 'إلغاء' : 'Annuler'}
               </Button>
-              <Button type="submit" disabled={creating}>
+              <Button type="submit" disabled={creating || isQuotaExceeded}>
                 {creating ? (isRTL ? 'جارٍ الإنشاء...' : 'Création...') : (isRTL ? 'إنشاء' : 'Créer')}
               </Button>
             </div>
@@ -614,7 +705,7 @@ export default function ProfessorSessions() {
             ))}
           </>
         ) : (
-          filteredSessions.map((session) => {
+          paginatedSessions.map((session) => {
             const startCheck = canStartRoom(session, isRTL);
             const joinCheck = canJoinRoom(session, isRTL);
             const statusLower = session.status.toLowerCase();
@@ -682,7 +773,7 @@ export default function ProfessorSessions() {
                   </div>
                   
                   {/* Action Buttons */}
-                  <div className={cn("flex gap-2 pt-2", isRTL && "flex-row-reverse")}>
+                  <div className={cn("flex gap-2 pt-2 flex-wrap", isRTL && "flex-row-reverse")}>
                     {statusLower === 'scheduled' && (
                       <Button
                         onClick={(e) => {
@@ -747,6 +838,19 @@ export default function ProfessorSessions() {
                         </Button>
                       </>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSessionToDelete(session);
+                        setDeleteDialogOpen(true);
+                      }}
+                      className="text-muted-foreground hover:text-destructive shrink-0"
+                      title={isRTL ? 'حذف الجلسة' : 'Supprimer la session'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -754,6 +858,43 @@ export default function ProfessorSessions() {
           })
         )}
       </motion.div>
+
+      {/* Pagination */}
+      {filteredSessions.length > itemsPerPage && (
+        <motion.div variants={item} className={cn("flex items-center justify-center gap-2 pt-4", isRTL && "flex-row-reverse")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {isRTL ? 'السابق' : 'Précédent'}
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              className="min-w-[36px]"
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className="gap-1"
+          >
+            {isRTL ? 'التالي' : 'Suivant'}
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </motion.div>
+      )}
 
       {filteredSessions.length === 0 && (
         <motion.div variants={item} className="text-center py-12">
@@ -768,6 +909,35 @@ export default function ProfessorSessions() {
           </p>
         </motion.div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteDialogOpen(false); setSessionToDelete(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="w-6 h-6 text-destructive shrink-0" />
+              <p className="text-sm">
+                {isRTL
+                  ? `هل أنت متأكد من حذف الجلسة "${sessionToDelete?.name}"؟ لا يمكن التراجع عن هذا الإجراء.`
+                  : `Êtes-vous sûr de vouloir supprimer la session "${sessionToDelete?.name}" ? Cette action est irréversible.`}
+              </p>
+            </div>
+            <div className={cn("flex justify-end gap-3", isRTL && "flex-row-reverse")}>
+              <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setSessionToDelete(null); }}>
+                {isRTL ? 'إلغاء' : 'Annuler'}
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteSession} disabled={deleting}>
+                {deleting
+                  ? (isRTL ? 'جارٍ الحذف...' : 'Suppression...')
+                  : (isRTL ? 'حذف' : 'Supprimer')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Recording Dialog */}
       <Dialog open={recordingDialogOpen} onOpenChange={setRecordingDialogOpen}>

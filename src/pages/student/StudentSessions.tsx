@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer, Video, Download, AlertTriangle } from 'lucide-react';
+import { CalendarCheck, Clock, Filter, Play, CheckCircle, Users, Timer, Video, Download, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,8 @@ export default function StudentSessions() {
   const [loadingRecordings, setLoadingRecordings] = useState(false);
   const [selectedSessionName, setSelectedSessionName] = useState('');
   const [selectedRoomName, setSelectedRoomName] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   
   const dateLocale = language === 'ar' ? ar : fr;
 
@@ -90,6 +92,16 @@ export default function StudentSessions() {
     if (b.status === 'scheduled' && a.status === 'completed') return 1;
     return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredSessions.length / itemsPerPage));
+  const paginatedSessions = filteredSessions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -205,7 +217,7 @@ export default function StudentSessions() {
             <p className="text-muted-foreground">{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
           </div>
         ) : (
-          filteredSessions.map((session) => {
+          paginatedSessions.map((session) => {
             const statusLower = session.status.toLowerCase();
             
             return (
@@ -334,6 +346,43 @@ export default function StudentSessions() {
           })
         )}
       </motion.div>
+
+      {/* Pagination */}
+      {filteredSessions.length > itemsPerPage && (
+        <motion.div variants={item} className={cn("flex items-center justify-center gap-2 pt-4", isRTL && "flex-row-reverse")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {isRTL ? 'السابق' : 'Précédent'}
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              className="min-w-[36px]"
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className="gap-1"
+          >
+            {isRTL ? 'التالي' : 'Suivant'}
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </motion.div>
+      )}
 
       {filteredSessions.length === 0 && !loading && (
         <motion.div variants={item} className={cn("text-center py-12", isRTL && "text-right")}>

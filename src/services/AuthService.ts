@@ -478,7 +478,11 @@ export const AuthService = {
   },
 
   // Generate Access Tokens (bulk)
-  async generateAccessToken(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN', count: number = 1): Promise<ApiResponse<Array<{ token: string; role: string; expiresAt: string; createdAt: string }>>> {
+  async generateAccessToken(
+    role: 'STUDENT' | 'PROFESSOR' | 'ADMIN',
+    count: number = 1,
+    subscriptionType?: 'BASE' | 'PREMIUM' | 'CUSTOM'
+  ): Promise<ApiResponse<Array<{ token: string; role: string; subscriptionType?: string | null; expiresAt: string; createdAt: string }>>> {
     try {
       const response = await apiClient.post<{
         success: boolean;
@@ -486,11 +490,12 @@ export const AuthService = {
         data: Array<{
           token: string;
           role: string;
+          subscriptionType?: string | null;
           expiresAt: string;
           createdAt: string;
         }>;
         error: string | null;
-      }>('/auth/generate-access-token', { role, count });
+      }>('/auth/generate-access-token', { role, count, subscriptionType });
 
       if (!response.success) {
         return {
@@ -560,7 +565,7 @@ export const AuthService = {
   },
 
   // Get Available Access Tokens
-  async getAvailableAccessTokens(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<Array<{ token: string; role: string; expiresAt: string; createdAt: string }>>> {
+  async getAvailableAccessTokens(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<Array<{ token: string; role: string; subscriptionType?: string | null; expiresAt: string; createdAt: string }>>> {
     try {
       const response = await apiClient.get<{
         success: boolean;
@@ -568,6 +573,7 @@ export const AuthService = {
         data: Array<{
           token: string;
           role: string;
+          subscriptionType?: string | null;
           expiresAt: string;
           createdAt: string;
         }>;
