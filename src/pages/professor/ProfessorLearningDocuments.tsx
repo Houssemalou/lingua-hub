@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Download, Eye, FilePenLine, FileText, Save, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Download, Eye, FilePenLine, FileText, Save, Sparkles, Trash2, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,15 @@ import {
   UpdateLearningDocumentDTO,
 } from '@/models';
 import { LearningDocumentService } from '@/services/LearningDocumentService';
+import { ChallengeService, CreateChallengeData } from '@/services/ChallengeService';
+import { GeminiService, AiGeneratedChallenge } from '@/services/GeminiService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SubjectTiles } from '@/components/learning-documents/SubjectTiles';
 import { getLearningDocumentSubjectInfo } from '@/data/learningDocumentSubjects';
 import { DocumentAccessModal } from '@/components/learning-documents/DocumentAccessModal';
+import { AiGenerationDialog } from '@/components/professor/AiGenerationDialog';
+import { AiChallengeReviewModal } from '@/components/professor/AiChallengeReviewModal';
 
 const LEVELS: LanguageLevel[] = [
   'YEAR1', 'YEAR2', 'YEAR3', 'YEAR4', 'YEAR5', 'YEAR6', 'YEAR7', 'YEAR8', 'YEAR9', 'YEAR10',
@@ -76,6 +80,14 @@ export default function ProfessorLearningDocuments() {
   const [visibleCommentsByDocument, setVisibleCommentsByDocument] = useState<Record<string, number>>({});
   const formSectionRef = useRef<HTMLDivElement | null>(null);
   const [selectedDocumentForAccess, setSelectedDocumentForAccess] = useState<{ id: string; title: string } | null>(null);
+
+  const [showAiDialog, setShowAiDialog] = useState(false);
+  const [showAiReview, setShowAiReview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmittingChallenges, setIsSubmittingChallenges] = useState(false);
+  const [pendingDocumentForAi, setPendingDocumentForAi] = useState<LearningDocumentModel | null>(null);
+  const [generatedChallenges, setGeneratedChallenges] = useState<AiGeneratedChallenge[]>([]);
+  const [approvedIndices, setApprovedIndices] = useState<Set<number>>(new Set());
 
   const COMMENTS_PAGE_SIZE = 5;
 
@@ -198,11 +210,17 @@ export default function ProfessorLearningDocuments() {
       };
 
       const res = await LearningDocumentService.createDocument(payload);
+
       if (res.success && res.data) {
         toast.success(isRTL ? 'تم رفع الوثيقة' : 'Document ajoute avec succes');
         setDocuments((prev) => [res.data!, ...prev]);
         setForm((prev) => ({ ...defaultFormState, subject: prev.subject }));
         setEditingId(null);
+
+        if (form.category === 'COURSE' && GeminiService.canGenerateToday()) {
+          setPendingDocumentForAi(res.data);
+          setShowAiDialog(true);
+        }
       } else {
         toast.error(res.error || (isRTL ? 'فشل الرفع' : 'Echec de l upload'));
       }
@@ -335,6 +353,135 @@ export default function ProfessorLearningDocuments() {
     } else {
       toast.error(res.error || (isRTL ? 'فشل حذف التعليق' : 'Echec suppression commentaire'));
     }
+  };
+
+  const handleAiGenerate = async (count: number) => {
+    if (!pendingDocumentForAi) return;
+
+    setIsGenerating(true);
+    try {
+      let fileBlob: Blob;
+      const fileUrl = pendingDocumentForAi.fileUrl;
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
+
+      if (fileUrl) {
+        const response = await fetch(fileUrl);
+        if (response.ok) {
+          fileBlob = await response.blob();
+        } else {
+          const fallbackResponse = await fetch(`${API_BASE_URL}/learning-documents/${pendingDocumentForAi.id}/download`, {
+            credentials: 'include',
+          });
+          if (!fallbackResponse.ok) throw new Error('Impossible de télécharger le fichier');
+          fileBlob = await fallbackResponse.blob();
+        }
+      } else {
+        const response = await fetch(`${API_BASE_URL}/learning-documents/${pendingDocumentForAi.id}/download`, {
+          credentials: 'include',
+        });
+        if (!response.ok) throw new Error('Impossible de télécharger le fichier');
+        fileBlob = await response.blob();
+      }
+
+      const mimeType = pendingDocumentForAi.contentType || fileBlob.type || 'application/octet-stream';
+      const subject = (pendingDocumentForAi.subject || 'OTHER') as LearningDocumentSubject;
+      const level = pendingDocumentForAi.level;
+
+      const challenges = await GeminiService.generateChallenges(
+        fileBlob, mimeType, subject, level, count,
+      );
+
+      setGeneratedChallenges(challenges);
+      setApprovedIndices(new Set(challenges.map((_, i) => i)));
+      setIsGenerating(false);
+      setShowAiDialog(false);
+      setShowAiReview(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (isRTL ? 'فشل توليد التحديات' : 'Echec de la génération des défis'));
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAiEdit = (index: number, challenge: AiGeneratedChallenge) => {
+    setGeneratedChallenges((prev) => {
+      const updated = [...prev];
+      updated[index] = challenge;
+      return updated;
+    });
+  };
+
+  const handleAiDelete = (index: number) => {
+    setGeneratedChallenges((prev) => prev.filter((_, i) => i !== index));
+    setApprovedIndices((prev) => {
+      const next = new Set<number>();
+      for (const i of prev) {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      }
+      return next;
+    });
+  };
+
+  const handleAiToggleApproval = (index: number) => {
+    setApprovedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const handleAiSubmit = async (approved: CreateChallengeData[]) => {
+    setIsSubmittingChallenges(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const challenge of approved) {
+      const res = await ChallengeService.create(challenge);
+      if (res.success) {
+        successCount++;
+      } else {
+        errorCount++;
+      }
+    }
+
+    setIsSubmittingChallenges(false);
+    setShowAiReview(false);
+
+    if (errorCount === 0) {
+      toast.success(
+        isRTL
+          ? `تم إنشاء ${successCount} تحدياً بنجاح`
+          : `${successCount} défi(s) créé(s) avec succès`,
+      );
+      if (pendingDocumentForAi) {
+        GeminiService.markGeneratedToday();
+        GeminiService.markChallengesApproved(pendingDocumentForAi.id);
+      }
+    } else {
+      toast.warning(
+        isRTL
+          ? `تم إنشاء ${successCount} تحدياً، فشل ${errorCount}`
+          : `${successCount} défi(s) créé(s), ${errorCount} échec(s)`,
+      );
+    }
+
+    setPendingDocumentForAi(null);
+    setGeneratedChallenges([]);
+    setApprovedIndices(new Set());
+  };
+
+  const handleGenerateFromExisting = async (doc: LearningDocumentModel) => {
+    if (!GeminiService.canGenerateToday()) {
+      toast.warning(isRTL ? 'لقد استنفدت حصتك اليومية من التوليد. عد لاحقاً.' : 'Vous avez terminé votre quota quotidien. Revenez ultérieurement.');
+      return;
+    }
+    if (GeminiService.hasApprovedChallenges(doc.id)) {
+      toast.warning(isRTL ? 'تم بالفعل إنشاء تحديات لهذا الدرس' : 'Des défis ont déjà été créés pour ce cours');
+      return;
+    }
+    setPendingDocumentForAi(doc);
+    setShowAiDialog(true);
   };
 
   const formatCommentDate = (value?: string) => {
@@ -576,7 +723,12 @@ export default function ProfessorLearningDocuments() {
                               {getLevelLabel(doc.level)} • {doc.isPublished ? (isRTL ? 'منشور' : 'Publie') : (isRTL ? 'مخفي' : 'Brouillon')}
                             </p>
                           </div>
-                          <div className={cn('flex items-center gap-2', isRTL && 'flex-row-reverse')}>
+                          <div className={cn('flex items-center gap-2 flex-wrap', isRTL && 'flex-row-reverse')}>
+                            {doc.category === 'COURSE' && !GeminiService.hasApprovedChallenges(doc.id) && (
+                              <Button size="sm" variant="outline" onClick={() => handleGenerateFromExisting(doc)}>
+                                <Sparkles className="w-4 h-4" />
+                              </Button>
+                            )}
                             <Button size="sm" variant="outline" onClick={() => startEditing(doc)}>
                               <FilePenLine className="w-4 h-4" />
                             </Button>
@@ -704,6 +856,26 @@ export default function ProfessorLearningDocuments() {
           )}
         </CardContent>
       </Card>
+
+      <AiGenerationDialog
+        isOpen={showAiDialog}
+        onClose={() => { setShowAiDialog(false); setPendingDocumentForAi(null); }}
+        onConfirm={handleAiGenerate}
+        loading={isGenerating}
+        canGenerate={GeminiService.canGenerateToday()}
+      />
+
+      <AiChallengeReviewModal
+        isOpen={showAiReview}
+        onClose={() => { setShowAiReview(false); setPendingDocumentForAi(null); }}
+        challenges={generatedChallenges}
+        onEdit={handleAiEdit}
+        onDelete={handleAiDelete}
+        onToggleApproval={handleAiToggleApproval}
+        onSubmit={handleAiSubmit}
+        submitting={isSubmittingChallenges}
+        approvedIndices={approvedIndices}
+      />
 
       <DocumentAccessModal
         open={!!selectedDocumentForAccess}
