@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { EvaluationService, EvaluationData } from '@/services/EvaluationService';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 const container = {
   hidden: { opacity: 0 },
@@ -239,6 +240,7 @@ export default function StudentEvaluations() {
   const [evaluations, setEvaluations] = useState<EvaluationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterLanguage, setFilterLanguage] = useState('all');
+  const [evaluationPage, setEvaluationPage] = useState(1);
 
   useEffect(() => {
     const loadEvaluations = async () => {
@@ -261,6 +263,22 @@ export default function StudentEvaluations() {
   const filteredEvaluations = filterLanguage === 'all'
     ? evaluations
     : evaluations.filter(e => e.language === filterLanguage);
+
+  const paginationLabels = {
+    previous: isRTL ? 'السابق' : 'Precedent',
+    next: isRTL ? 'التالي' : 'Suivant',
+  };
+
+  const evaluationsPerPage = 8;
+  const totalEvaluationPages = Math.max(1, Math.ceil(filteredEvaluations.length / evaluationsPerPage));
+  const pagedEvaluations = filteredEvaluations.slice(
+    (evaluationPage - 1) * evaluationsPerPage,
+    evaluationPage * evaluationsPerPage
+  );
+
+  useEffect(() => {
+    setEvaluationPage(1);
+  }, [filterLanguage, evaluations.length]);
 
   // Stats
   const avgScore = evaluations.length > 0
@@ -434,7 +452,7 @@ export default function StudentEvaluations() {
             </Card>
           </motion.div>
         )}
-        {filteredEvaluations.map(evaluation => (
+        {pagedEvaluations.map(evaluation => (
           <EvaluationDetailCard
             key={evaluation.id}
             evaluation={evaluation}
@@ -442,6 +460,13 @@ export default function StudentEvaluations() {
             dateLocale={dateLocale}
           />
         ))}
+        <PaginationControls
+          page={evaluationPage}
+          totalPages={totalEvaluationPages}
+          onPageChange={setEvaluationPage}
+          isRTL={isRTL}
+          labels={paginationLabels}
+        />
       </div>
     </motion.div>
   );

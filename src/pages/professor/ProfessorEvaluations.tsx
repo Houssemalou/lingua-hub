@@ -57,6 +57,8 @@ import { getFriendlyErrorMessage } from '@/lib/errorMessages';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { EvaluationService, EvaluationData, StudentData, CreateEvaluationData } from '@/services/EvaluationService';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { getLevelLabel, normalizeLevelToYear } from '@/lib/levelLabels';
 
 const container = {
   hidden: { opacity: 0 },
@@ -77,9 +79,34 @@ const LANGUAGES = [
   { value: 'Portuguese', label: 'Portugais', labelAr: 'البرتغالية', icon: null },
 ];
 
-const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const STUDY_LEVELS = [
+  'YEAR1',
+  'YEAR2',
+  'YEAR3',
+  'YEAR4',
+  'YEAR5',
+  'YEAR6',
+  'YEAR7',
+  'YEAR8',
+  'YEAR9',
+  'YEAR10',
+  'YEAR11',
+  'YEAR12',
+  'YEAR13',
+  'PREPA1',
+  'PREPA2',
+];
+
+const LANGUAGE_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 function getLevelColor(level: string) {
+  if (level.startsWith('PREPA')) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+  if (level.startsWith('YEAR')) {
+    const yearNumber = Number(level.replace('YEAR', ''));
+    if (yearNumber >= 1 && yearNumber <= 6) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (yearNumber >= 7 && yearNumber <= 9) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+    if (yearNumber >= 10) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+  }
   switch (level) {
     case 'A1': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     case 'A2': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
@@ -202,7 +229,7 @@ function EvaluateStudentDialog({
             <div className={cn(isRTL && "text-right")}>
               <span>{isRTL ? 'تقييم' : 'Évaluer'} {student.name}</span>
               <p className="text-sm font-normal text-muted-foreground">
-                {isRTL ? 'المستوى الحالي' : 'Niveau actuel'}: <Badge className={getLevelColor(student.level)}>{student.level}</Badge>
+                {isRTL ? 'المستوى الحالي' : 'Niveau actuel'}: <Badge className={getLevelColor(normalizeLevelToYear(student.level))}>{getLevelLabel(normalizeLevelToYear(student.level), isRTL ? 'ar' : 'fr')}</Badge>
               </p>
             </div>
           </DialogTitle>
@@ -388,7 +415,7 @@ function ChangeLevelDialog({
 
         <div className="py-6">
           <div className="grid grid-cols-6 gap-2">
-            {LEVELS.map(level => (
+            {LANGUAGE_LEVELS.map(level => (
               <button
                 key={level}
                 onClick={() => setNewLevel(level)}
@@ -455,8 +482,8 @@ function EvaluationCard({ evaluation, isRTL, dateLocale }: { evaluation: Evaluat
             {/* Score and level change */}
             <div className={cn("flex items-center gap-2 shrink-0", isRTL && "flex-row-reverse")}>
               {evaluation.assignedLevel && (
-                <Badge className={cn("text-xs", getLevelColor(evaluation.assignedLevel))}>
-                  {evaluation.assignedLevel}
+                <Badge className={cn("text-xs", getLevelColor(normalizeLevelToYear(evaluation.assignedLevel)))}>
+                  {getLevelLabel(normalizeLevelToYear(evaluation.assignedLevel), isRTL ? 'ar' : 'fr')}
                 </Badge>
               )}
               <div className={cn("px-2.5 py-1 rounded-full text-sm font-bold bg-gradient-to-r text-white", getScoreGradient(evaluation.overallScore))}>
@@ -543,7 +570,10 @@ export default function ProfessorEvaluations() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('all');
+  const [filterLevel, setFilterLevel] = useState('all');
   const [activeTab, setActiveTab] = useState<'students' | 'history'>('students');
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -577,18 +607,49 @@ export default function ProfessorEvaluations() {
     : 0;
   const uniqueStudentsEvaluated = new Set(evaluations.map(e => e.studentId)).size;
 
+  const paginationLabels = {
+    previous: isRTL ? 'السابق' : 'Precedent',
+    next: isRTL ? 'التالي' : 'Suivant',
+  };
+
   // Filtered students
-  const filteredStudents = students.filter(s =>
-    s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.nickname?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStudents = students.filter((student) => {
+    const matchesQuery =
+      student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.nickname?.toLowerCase().includes(searchQuery.toLowerCase());
+    const normalizedStudentLevel = normalizeLevelToYear(student.level);
+    const matchesLevel = filterLevel === 'all' || normalizedStudentLevel === filterLevel;
+    return matchesQuery && matchesLevel;
+  });
 
   // Filtered evaluations
-  const filteredEvaluations = evaluations.filter(e => {
-    if (filterLanguage !== 'all' && e.language !== filterLanguage) return false;
-    if (searchQuery && !e.studentName?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+  const filteredEvaluations = evaluations.filter((evaluation) => {
+    if (filterLanguage !== 'all' && evaluation.language !== filterLanguage) return false;
+    if (searchQuery && !evaluation.studentName?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterLevel !== 'all') {
+      const evaluationLevel = normalizeLevelToYear(evaluation.assignedLevel || evaluation.previousLevel || '');
+      if (evaluationLevel !== filterLevel) return false;
+    }
     return true;
   });
+
+  const studentsPerPage = 12;
+  const historyPerPage = 10;
+  const totalStudentPages = Math.max(1, Math.ceil(filteredStudents.length / studentsPerPage));
+  const totalHistoryPages = Math.max(1, Math.ceil(filteredEvaluations.length / historyPerPage));
+  const pagedStudents = filteredStudents.slice(
+    (studentsPage - 1) * studentsPerPage,
+    studentsPage * studentsPerPage
+  );
+  const pagedEvaluations = filteredEvaluations.slice(
+    (historyPage - 1) * historyPerPage,
+    historyPage * historyPerPage
+  );
+
+  useEffect(() => {
+    setStudentsPage(1);
+    setHistoryPage(1);
+  }, [searchQuery, filterLanguage, filterLevel, students.length, evaluations.length]);
 
   if (isLoading) {
     return (
@@ -723,16 +784,31 @@ export default function ProfessorEvaluations() {
             </button>
           </div>
 
-          <div className={cn("flex items-center gap-2 flex-1", isRTL && "flex-row-reverse")}>
+            <div className={cn("flex items-center gap-2 flex-1", isRTL && "flex-row-reverse")}>
             <div className="relative flex-1 max-w-sm">
               <Search className={cn("absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground", isRTL ? "right-3" : "left-3")} />
               <Input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder={isRTL ? 'بحث...' : 'Rechercher...'}
+                  placeholder={isRTL ? 'بحث عن طالب...' : 'Rechercher un etudiant...'}
                 className={cn("h-9", isRTL ? "pr-9" : "pl-9")}
               />
             </div>
+
+              <Select value={filterLevel} onValueChange={setFilterLevel}>
+                <SelectTrigger className="w-[130px] h-9">
+                  <GraduationCap className="w-3.5 h-3.5 mr-1.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{isRTL ? 'كل المستويات' : 'Tous'}</SelectItem>
+                  {STUDY_LEVELS.map(level => (
+                    <SelectItem key={level} value={level}>
+                      {getLevelLabel(level, isRTL ? 'ar' : 'fr')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
             {activeTab === 'history' && (
               <Select value={filterLanguage} onValueChange={setFilterLanguage}>
@@ -766,7 +842,7 @@ export default function ProfessorEvaluations() {
               </CardContent>
             </Card>
           )}
-          {filteredStudents.map(student => (
+          {pagedStudents.map(student => (
             <motion.div key={student.id} variants={item}>
               <Card className="hover:shadow-md transition-all hover:border-primary/30">
                 <CardContent className="p-4">
@@ -781,7 +857,9 @@ export default function ProfessorEvaluations() {
                       <div className={cn("min-w-0", isRTL && "text-right")}>
                         <p className="font-semibold truncate">{student.name}</p>
                         <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", isRTL && "flex-row-reverse")}>
-                          <Badge className={cn("text-xs", getLevelColor(student.level))}>{student.level}</Badge>
+                          <Badge className={cn("text-xs", getLevelColor(normalizeLevelToYear(student.level)))}>
+                            {getLevelLabel(normalizeLevelToYear(student.level), isRTL ? 'ar' : 'fr')}
+                          </Badge>
                           <span>@{student.nickname}</span>
                           {student.totalSessions > 0 && (
                             <>
@@ -801,6 +879,13 @@ export default function ProfessorEvaluations() {
               </Card>
             </motion.div>
           ))}
+          <PaginationControls
+            page={studentsPage}
+            totalPages={totalStudentPages}
+            onPageChange={setStudentsPage}
+            isRTL={isRTL}
+            labels={paginationLabels}
+          />
         </div>
       )}
 
@@ -818,9 +903,16 @@ export default function ProfessorEvaluations() {
               </CardContent>
             </Card>
           )}
-          {filteredEvaluations.map(evaluation => (
+          {pagedEvaluations.map(evaluation => (
             <EvaluationCard key={evaluation.id} evaluation={evaluation} isRTL={isRTL} dateLocale={dateLocale} />
           ))}
+          <PaginationControls
+            page={historyPage}
+            totalPages={totalHistoryPages}
+            onPageChange={setHistoryPage}
+            isRTL={isRTL}
+            labels={paginationLabels}
+          />
         </div>
       )}
     </motion.div>

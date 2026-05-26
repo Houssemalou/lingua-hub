@@ -127,6 +127,13 @@ const PROTRACTOR_LABEL_COUNT = 7;
 const PROTRACTOR_MAJOR_TICK = 12;
 const PROTRACTOR_MINOR_TICK = 7;
 const COMPASS_TRACE_POINTS = 80;
+const RULER_LENGTH = 320;
+const RULER_WIDTH = 32;
+const RULER_TICK_COUNT = 17;
+const RULER_MAJOR_TICK = 10;
+const RULER_MINOR_TICK = 6;
+const SET_SQUARE_LONG = 220;
+const SET_SQUARE_SHORT = 160;
 const MM_TO_PX = 96 / 25.4;
 const TABLET_DRAW_MIN_POINT_DISTANCE = 0.75;
 const TABLET_DRAW_DECIMALS = 2;
@@ -230,6 +237,32 @@ const getPointOnCircle = (
   y: center.y + Math.sin(angle) * radius,
 });
 
+const projectPointToLine = (
+  point: { x: number; y: number },
+  origin: { x: number; y: number },
+  angle: number,
+) => {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  const vx = point.x - origin.x;
+  const vy = point.y - origin.y;
+  const t = vx * dx + vy * dy;
+  return {
+    x: origin.x + dx * t,
+    y: origin.y + dy * t,
+  };
+};
+
+const distanceToLine = (
+  point: { x: number; y: number },
+  origin: { x: number; y: number },
+  angle: number,
+) => {
+  const nx = -Math.sin(angle);
+  const ny = Math.cos(angle);
+  return Math.abs((point.x - origin.x) * nx + (point.y - origin.y) * ny);
+};
+
 const toRelativePoints = (
   points: { x: number; y: number }[],
   center: { x: number; y: number },
@@ -288,6 +321,9 @@ class CompassTool extends StateNode {
   private startAngle: number | null = null;
   private lastAngle: number | null = null;
   private accumulatedSweep = 0;
+  private isPlaced = false;
+  private isTracing = false;
+  private hasTrace = false;
 
   private armId: TLShapeId | null = null;
   private traceId: TLShapeId | null = null;
@@ -305,52 +341,65 @@ class CompassTool extends StateNode {
   }
 
   override onPointerDown(_info: TLPointerEventInfo) {
-    const center = toFixedPoint(this.editor.inputs.currentPagePoint);
-    this.center = center;
-    this.activeRadius = Math.max(TOOL_MIN_RADIUS, CompassTool.configuredRadius);
+    const point = toFixedPoint(this.editor.inputs.currentPagePoint);
+
+    if (!this.isPlaced) {
+      this.center = point;
+      this.activeRadius = Math.max(TOOL_MIN_RADIUS, CompassTool.configuredRadius);
+      this.startAngle = null;
+      this.lastAngle = null;
+      this.accumulatedSweep = 0;
+      this.isPlaced = true;
+      this.isTracing = false;
+      this.hasTrace = false;
+
+      this.armId = createShapeId();
+      this.traceId = createShapeId();
+      this.centerId = createShapeId();
+      this.tipId = createShapeId();
+
+      const dotHalf = TOOL_DOT_SIZE / 2;
+
+      this.editor.createShapes([
+        createLineShape(this.armId, point.x, point.y),
+        createLineShape(this.traceId, point.x, point.y),
+        {
+          id: this.centerId,
+          type: "geo",
+          x: point.x - dotHalf,
+          y: point.y - dotHalf,
+          props: {
+            geo: "ellipse",
+            w: TOOL_DOT_SIZE,
+            h: TOOL_DOT_SIZE,
+            dash: "solid",
+            fill: "solid",
+            color: "black",
+          },
+        },
+        {
+          id: this.tipId,
+          type: "geo",
+          x: point.x + this.activeRadius - dotHalf,
+          y: point.y - dotHalf,
+          props: {
+            geo: "ellipse",
+            w: TOOL_DOT_SIZE,
+            h: TOOL_DOT_SIZE,
+            dash: "solid",
+            fill: "none",
+            color: "black",
+          },
+        },
+      ]);
+      return;
+    }
+
+    if (!this.center) return;
+    this.isTracing = !this.editor.inputs.shiftKey;
     this.startAngle = null;
     this.lastAngle = null;
     this.accumulatedSweep = 0;
-
-    this.armId = createShapeId();
-    this.traceId = createShapeId();
-    this.centerId = createShapeId();
-    this.tipId = createShapeId();
-
-    const dotHalf = TOOL_DOT_SIZE / 2;
-
-    this.editor.createShapes([
-      createLineShape(this.armId, center.x, center.y),
-      createLineShape(this.traceId, center.x, center.y),
-      {
-        id: this.centerId,
-        type: "geo",
-        x: center.x - dotHalf,
-        y: center.y - dotHalf,
-        props: {
-          geo: "ellipse",
-          w: TOOL_DOT_SIZE,
-          h: TOOL_DOT_SIZE,
-          dash: "solid",
-          fill: "solid",
-          color: "black",
-        },
-      },
-      {
-        id: this.tipId,
-        type: "geo",
-        x: center.x + this.activeRadius - dotHalf,
-        y: center.y - dotHalf,
-        props: {
-          geo: "ellipse",
-          w: TOOL_DOT_SIZE,
-          h: TOOL_DOT_SIZE,
-          dash: "solid",
-          fill: "none",
-          color: "black",
-        },
-      },
-    ]);
   }
 
   override onPointerMove(_info: TLPointerEventInfo) {
@@ -358,10 +407,39 @@ class CompassTool extends StateNode {
 
     const current = toFixedPoint(this.editor.inputs.currentPagePoint);
     const angle = getAngle(this.center, current);
-    if (this.activeRadius === null) {
-      this.activeRadius = Math.max(TOOL_MIN_RADIUS, getDistance(this.center, current));
-    }
-    const radius = this.activeRadius;
+    const radius =
+      this.activeRadius ??
+      Math.max(TOOL_MIN_RADIUS, getDistance(this.center, current));
+    this.activeRadius = radius;
+
+    const tip = getPointOnCircle(this.center, radius, angle);
+
+    this.editor.updateShape({
+      id: this.armId,
+      type: "line",
+      x: this.center.x,
+      y: this.center.y,
+      props: {
+        points: toLinePointsRecord([
+          { x: 0, y: 0 },
+          { x: tip.x - this.center.x, y: tip.y - this.center.y },
+        ]),
+      },
+    });
+
+    this.editor.updateShape({
+      id: this.tipId,
+      type: "geo",
+      x: tip.x - TOOL_DOT_SIZE / 2,
+      y: tip.y - TOOL_DOT_SIZE / 2,
+      props: {
+        geo: "ellipse",
+        w: TOOL_DOT_SIZE,
+        h: TOOL_DOT_SIZE,
+      },
+    });
+
+    if (!this.isTracing) return;
 
     if (this.startAngle === null) {
       this.startAngle = angle;
@@ -390,21 +468,6 @@ class CompassTool extends StateNode {
           ),
         );
 
-    const tip = getPointOnCircle(this.center, radius, angle);
-
-    this.editor.updateShape({
-      id: this.armId,
-      type: "line",
-      x: this.center.x,
-      y: this.center.y,
-      props: {
-        points: toLinePointsRecord([
-          { x: 0, y: 0 },
-          { x: tip.x - this.center.x, y: tip.y - this.center.y },
-        ]),
-      },
-    });
-
     this.editor.updateShape({
       id: this.traceId,
       type: "line",
@@ -415,24 +478,24 @@ class CompassTool extends StateNode {
       },
     });
 
-    this.editor.updateShape({
-      id: this.tipId,
-      type: "geo",
-      x: tip.x - TOOL_DOT_SIZE / 2,
-      y: tip.y - TOOL_DOT_SIZE / 2,
-      props: {
-        geo: "ellipse",
-        w: TOOL_DOT_SIZE,
-        h: TOOL_DOT_SIZE,
-      },
-    });
+    if (Math.abs(rawSweep) > 0.02) {
+      this.hasTrace = true;
+    }
   }
 
   override onPointerUp(_info: TLPointerEventInfo) {
-    this.finish();
+    if (this.isTracing) {
+      this.finish();
+      return;
+    }
+    this.isTracing = false;
   }
 
   override onCancel() {
+    this.finish(true);
+  }
+
+  override onExit() {
     this.finish(true);
   }
 
@@ -444,8 +507,9 @@ class CompassTool extends StateNode {
     ) as TLShapeId[];
     const traceId = this.traceId;
 
-    if (isCanceled) {
-      const all = this.allIds().filter((id) => !!this.editor.getShape(id));
+    const all = this.allIds().filter((id) => !!this.editor.getShape(id));
+
+    if (isCanceled || !this.hasTrace) {
       this.editor.deleteShapes(all);
     } else {
       const existingHelpers = helperIds.filter((id) => !!this.editor.getShape(id));
@@ -462,10 +526,371 @@ class CompassTool extends StateNode {
     this.startAngle = null;
     this.lastAngle = null;
     this.accumulatedSweep = 0;
+    this.isPlaced = false;
+    this.isTracing = false;
+    this.hasTrace = false;
     this.armId = null;
     this.traceId = null;
     this.centerId = null;
     this.tipId = null;
+  }
+}
+
+class RulerTool extends StateNode {
+  static override id = "ruler";
+
+  private anchor: { x: number; y: number } | null = null;
+  private startRaw: { x: number; y: number } | null = null;
+  private angle = 0;
+  private isDrawing = false;
+
+  private rulerId: TLShapeId | null = null;
+  private tickIds: TLShapeId[] = [];
+  private drawId: TLShapeId | null = null;
+  private lastStart: { x: number; y: number } | null = null;
+  private lastEnd: { x: number; y: number } | null = null;
+
+  private allIds(): TLShapeId[] {
+    return [this.rulerId, this.drawId, ...this.tickIds].filter(
+      Boolean,
+    ) as TLShapeId[];
+  }
+
+  override onEnter() {
+    this.editor.setCursor({ type: "cross", rotation: 0 });
+  }
+
+  override onPointerDown(_info: TLPointerEventInfo) {
+    const point = toFixedPoint(this.editor.inputs.currentPagePoint);
+    this.anchor = point;
+    this.startRaw = point;
+    this.angle = 0;
+    this.isDrawing = !this.editor.inputs.shiftKey;
+    this.lastStart = null;
+    this.lastEnd = null;
+
+    this.rulerId = createShapeId();
+    this.drawId = createShapeId();
+    this.tickIds = Array.from({ length: RULER_TICK_COUNT }, () =>
+      createShapeId(),
+    );
+
+    this.editor.createShapes([
+      {
+        id: this.rulerId,
+        type: "geo",
+        x: point.x - RULER_LENGTH / 2,
+        y: point.y - RULER_WIDTH / 2,
+        props: {
+          geo: "rectangle",
+          w: RULER_LENGTH,
+          h: RULER_WIDTH,
+          dash: "solid",
+          fill: "semi",
+          color: "yellow",
+        },
+      },
+      createLineShape(this.drawId, point.x, point.y),
+      ...this.tickIds.map((tickId) => ({
+        ...createLineShape(tickId, point.x, point.y),
+      })),
+    ]);
+  }
+
+  override onPointerMove(_info: TLPointerEventInfo) {
+    if (!this.anchor || !this.rulerId || !this.drawId) return;
+
+    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
+    this.angle = getAngle(this.anchor, current);
+
+    this.editor.updateShape({
+      id: this.rulerId,
+      type: "geo",
+      x: this.anchor.x - RULER_LENGTH / 2,
+      y: this.anchor.y - RULER_WIDTH / 2,
+      rotation: this.angle,
+      props: {
+        geo: "rectangle",
+        w: RULER_LENGTH,
+        h: RULER_WIDTH,
+        dash: "solid",
+        fill: "semi",
+        color: "yellow",
+      },
+    });
+
+    const dir = { x: Math.cos(this.angle), y: Math.sin(this.angle) };
+    const normal = { x: -dir.y, y: dir.x };
+
+    this.tickIds.forEach((tickId, index) => {
+      const t =
+        RULER_TICK_COUNT <= 1 ? 0 : index / (RULER_TICK_COUNT - 1);
+      const offset = (t - 0.5) * RULER_LENGTH;
+      const isMajor = index % 4 === 0 || index === RULER_TICK_COUNT - 1;
+      const tickLen = isMajor ? RULER_MAJOR_TICK : RULER_MINOR_TICK;
+      const outer = {
+        x: this.anchor!.x + dir.x * offset + normal.x * (RULER_WIDTH / 2),
+        y: this.anchor!.y + dir.y * offset + normal.y * (RULER_WIDTH / 2),
+      };
+      const inner = {
+        x: outer.x - normal.x * tickLen,
+        y: outer.y - normal.y * tickLen,
+      };
+
+      this.editor.updateShape({
+        id: tickId,
+        type: "line",
+        x: this.anchor!.x,
+        y: this.anchor!.y,
+        props: {
+          points: toLinePointsRecord(
+            toRelativePoints([inner, outer], this.anchor!),
+          ),
+        },
+      });
+    });
+
+    if (!this.isDrawing) return;
+
+    const startPoint = projectPointToLine(
+      this.startRaw ?? this.anchor,
+      this.anchor,
+      this.angle,
+    );
+    const endPoint = projectPointToLine(current, this.anchor, this.angle);
+    this.lastStart = startPoint;
+    this.lastEnd = endPoint;
+
+    this.editor.updateShape({
+      id: this.drawId,
+      type: "line",
+      x: startPoint.x,
+      y: startPoint.y,
+      props: {
+        points: toLinePointsRecord([
+          { x: 0, y: 0 },
+          { x: endPoint.x - startPoint.x, y: endPoint.y - startPoint.y },
+        ]),
+      },
+    });
+  }
+
+  override onPointerUp(_info: TLPointerEventInfo) {
+    this.finish();
+  }
+
+  override onCancel() {
+    this.finish(true);
+  }
+
+  override onExit() {
+    this.finish(true);
+  }
+
+  private finish(isCanceled = false) {
+    const ids = this.allIds();
+    const validIds = ids.filter((id) => !!this.editor.getShape(id));
+    const hasLine =
+      this.lastStart &&
+      this.lastEnd &&
+      getDistance(this.lastStart, this.lastEnd) > 2;
+
+    if (isCanceled || !hasLine) {
+      this.editor.deleteShapes(validIds);
+    } else {
+      const helperIds = [this.rulerId, ...this.tickIds].filter(Boolean) as TLShapeId[];
+      const helpers = helperIds.filter((id) => !!this.editor.getShape(id));
+      if (helpers.length > 0) {
+        this.editor.deleteShapes(helpers);
+      }
+      if (this.drawId && this.editor.getShape(this.drawId)) {
+        this.editor.select(this.drawId);
+      }
+    }
+
+    this.anchor = null;
+    this.startRaw = null;
+    this.angle = 0;
+    this.isDrawing = false;
+    this.rulerId = null;
+    this.tickIds = [];
+    this.drawId = null;
+    this.lastStart = null;
+    this.lastEnd = null;
+  }
+}
+
+class SetSquareTool extends StateNode {
+  static override id = "set-square";
+
+  private corner: { x: number; y: number } | null = null;
+  private angle = 0;
+  private activeEdgeAngle = 0;
+  private isDrawing = false;
+
+  private edgeAId: TLShapeId | null = null;
+  private edgeBId: TLShapeId | null = null;
+  private diagId: TLShapeId | null = null;
+  private drawId: TLShapeId | null = null;
+  private startRaw: { x: number; y: number } | null = null;
+  private lastStart: { x: number; y: number } | null = null;
+  private lastEnd: { x: number; y: number } | null = null;
+
+  private allIds(): TLShapeId[] {
+    return [this.edgeAId, this.edgeBId, this.diagId, this.drawId].filter(
+      Boolean,
+    ) as TLShapeId[];
+  }
+
+  override onEnter() {
+    this.editor.setCursor({ type: "cross", rotation: 0 });
+  }
+
+  override onPointerDown(_info: TLPointerEventInfo) {
+    const point = toFixedPoint(this.editor.inputs.currentPagePoint);
+    this.corner = point;
+    this.angle = 0;
+    this.startRaw = point;
+    this.isDrawing = !this.editor.inputs.shiftKey;
+    this.lastStart = null;
+    this.lastEnd = null;
+
+    this.edgeAId = createShapeId();
+    this.edgeBId = createShapeId();
+    this.diagId = createShapeId();
+    this.drawId = createShapeId();
+
+    this.editor.createShapes([
+      createLineShape(this.edgeAId, point.x, point.y),
+      createLineShape(this.edgeBId, point.x, point.y),
+      createLineShape(this.diagId, point.x, point.y),
+      createLineShape(this.drawId, point.x, point.y),
+    ]);
+  }
+
+  override onPointerMove(_info: TLPointerEventInfo) {
+    if (!this.corner || !this.edgeAId || !this.edgeBId || !this.diagId || !this.drawId) {
+      return;
+    }
+
+    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
+    this.angle = getAngle(this.corner, current);
+    const angleB = this.angle + Math.PI / 2;
+
+    const edgeAEnd = getPointOnCircle(this.corner, SET_SQUARE_LONG, this.angle);
+    const edgeBEnd = getPointOnCircle(this.corner, SET_SQUARE_SHORT, angleB);
+
+    this.editor.updateShape({
+      id: this.edgeAId,
+      type: "line",
+      x: this.corner.x,
+      y: this.corner.y,
+      props: {
+        points: toLinePointsRecord(
+          toRelativePoints([this.corner, edgeAEnd], this.corner),
+        ),
+      },
+    });
+
+    this.editor.updateShape({
+      id: this.edgeBId,
+      type: "line",
+      x: this.corner.x,
+      y: this.corner.y,
+      props: {
+        points: toLinePointsRecord(
+          toRelativePoints([this.corner, edgeBEnd], this.corner),
+        ),
+      },
+    });
+
+    this.editor.updateShape({
+      id: this.diagId,
+      type: "line",
+      x: this.corner.x,
+      y: this.corner.y,
+      props: {
+        points: toLinePointsRecord(
+          toRelativePoints([edgeAEnd, edgeBEnd], this.corner),
+        ),
+      },
+    });
+
+    if (!this.isDrawing) return;
+
+    const distA = distanceToLine(current, this.corner, this.angle);
+    const distB = distanceToLine(current, this.corner, angleB);
+    this.activeEdgeAngle = distA <= distB ? this.angle : angleB;
+
+    const startPoint = projectPointToLine(
+      this.startRaw ?? this.corner,
+      this.corner,
+      this.activeEdgeAngle,
+    );
+    const endPoint = projectPointToLine(current, this.corner, this.activeEdgeAngle);
+    this.lastStart = startPoint;
+    this.lastEnd = endPoint;
+
+    this.editor.updateShape({
+      id: this.drawId,
+      type: "line",
+      x: startPoint.x,
+      y: startPoint.y,
+      props: {
+        points: toLinePointsRecord([
+          { x: 0, y: 0 },
+          { x: endPoint.x - startPoint.x, y: endPoint.y - startPoint.y },
+        ]),
+      },
+    });
+  }
+
+  override onPointerUp(_info: TLPointerEventInfo) {
+    this.finish();
+  }
+
+  override onCancel() {
+    this.finish(true);
+  }
+
+  override onExit() {
+    this.finish(true);
+  }
+
+  private finish(isCanceled = false) {
+    const ids = this.allIds();
+    const validIds = ids.filter((id) => !!this.editor.getShape(id));
+    const hasLine =
+      this.lastStart &&
+      this.lastEnd &&
+      getDistance(this.lastStart, this.lastEnd) > 2;
+
+    if (isCanceled || !hasLine) {
+      this.editor.deleteShapes(validIds);
+    } else {
+      const helperIds = [this.edgeAId, this.edgeBId, this.diagId].filter(
+        Boolean,
+      ) as TLShapeId[];
+      const helpers = helperIds.filter((id) => !!this.editor.getShape(id));
+      if (helpers.length > 0) {
+        this.editor.deleteShapes(helpers);
+      }
+      if (this.drawId && this.editor.getShape(this.drawId)) {
+        this.editor.select(this.drawId);
+      }
+    }
+
+    this.corner = null;
+    this.angle = 0;
+    this.activeEdgeAngle = 0;
+    this.isDrawing = false;
+    this.edgeAId = null;
+    this.edgeBId = null;
+    this.diagId = null;
+    this.drawId = null;
+    this.startRaw = null;
+    this.lastStart = null;
+    this.lastEnd = null;
   }
 }
 
@@ -696,12 +1121,14 @@ class ProtractorTool extends StateNode {
   }
 }
 
-const CUSTOM_TOOLS = [CompassTool, ProtractorTool];
+const CUSTOM_TOOLS = [CompassTool, RulerTool, SetSquareTool, ProtractorTool];
 
 const customToolAssetUrls: TLUiAssetUrlOverrides = {
   icons: {
     "tool-compass-custom": "/tldraw-icons/compass.svg",
     "tool-protractor-custom": "/tldraw-icons/protractor.svg",
+    "tool-ruler-custom": "/tldraw-icons/ruler.svg",
+    "tool-set-square-custom": "/tldraw-icons/set-square.svg",
   },
 };
 
@@ -713,6 +1140,20 @@ const customToolOverrides: TLUiOverrides = {
       label: "tools.compass",
       kbd: "c",
       onSelect: () => editor.setCurrentTool("compass"),
+    };
+    tools.ruler = {
+      id: "ruler",
+      icon: "tool-ruler-custom",
+      label: "tools.ruler",
+      kbd: "r",
+      onSelect: () => editor.setCurrentTool("ruler"),
+    };
+    tools["set-square"] = {
+      id: "set-square",
+      icon: "tool-set-square-custom",
+      label: "tools.set-square",
+      kbd: "q",
+      onSelect: () => editor.setCurrentTool("set-square"),
     };
     tools.protractor = {
       id: "protractor",
@@ -726,14 +1167,20 @@ const customToolOverrides: TLUiOverrides = {
   translations: {
     en: {
       "tools.compass": "Compass",
+      "tools.ruler": "Ruler",
+      "tools.set-square": "Set square",
       "tools.protractor": "Protractor",
     },
     fr: {
       "tools.compass": "Compas",
+      "tools.ruler": "Règle",
+      "tools.set-square": "Équerre",
       "tools.protractor": "Rapporteur",
     },
     ar: {
       "tools.compass": "فرجار",
+      "tools.ruler": "مسطرة",
+      "tools.set-square": "مثلث الرسم",
       "tools.protractor": "منقلة",
     },
   },
@@ -759,6 +1206,8 @@ const CustomToolbar = () => (
       <ToolbarItem tool="rhombus" />
       <ToolbarItem tool="star" />
       <ToolbarItem tool="line" />
+      <ToolbarItem tool="ruler" />
+      <ToolbarItem tool="set-square" />
       <ToolbarItem tool="highlight" />
       <ToolbarItem tool="frame" />
       <ToolbarItem tool="compass" />

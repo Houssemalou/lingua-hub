@@ -13,6 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 // Components
 import { DailyChallenges } from '@/components/gamification/DailyChallenges';
@@ -52,6 +53,7 @@ export default function StudentGames() {
   const [leaderboard, setLeaderboard] = useState<ChallengeLeaderboardEntry[]>([]);
   const [loadingChallenges, setLoadingChallenges] = useState(true);
   const [gameStats, setGameStats] = useState<StudentGameStatsData | null>(null);
+  const [challengePage, setChallengePage] = useState(1);
 
   const fetchChallengeData = async () => {
     setLoadingChallenges(true);
@@ -132,6 +134,21 @@ export default function StudentGames() {
   };
 
   const t = labels[language as keyof typeof labels] || labels.fr;
+  const paginationLabels = {
+    previous: language === 'ar' ? 'السابق' : language === 'fr' ? 'Precedent' : 'Previous',
+    next: language === 'ar' ? 'التالي' : language === 'fr' ? 'Suivant' : 'Next',
+  };
+
+  const challengesPerPage = 12;
+  const totalChallengePages = Math.max(1, Math.ceil(activeChallenges.length / challengesPerPage));
+  const pagedChallenges = activeChallenges.slice(
+    (challengePage - 1) * challengesPerPage,
+    challengePage * challengesPerPage
+  );
+
+  useEffect(() => {
+    setChallengePage(1);
+  }, [activeChallenges.length]);
 
   const handlePlayChallenge = (challengeId: string) => {
     const challenge = activeChallenges.find(c => c.id === challengeId);
@@ -295,16 +312,26 @@ export default function StudentGames() {
                 <p className="text-muted-foreground mt-2">{t.checkBack}</p>
               </Card>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeChallenges.map((challenge) => (
-                  <ChallengeCard
-                    key={challenge.id}
-                    challenge={challenge}
-                    studentId={user?.id || '1'}
-                    onPlay={handlePlayChallenge}
-                    completedChallengeIds={completedChallengeIds}
-                  />
-                ))}
+              <div className="space-y-6">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pagedChallenges.map((challenge) => (
+                    <ChallengeCard
+                      key={challenge.id}
+                      challenge={challenge}
+                      studentId={user?.id || '1'}
+                      onPlay={handlePlayChallenge}
+                      completedChallengeIds={completedChallengeIds}
+                    />
+                  ))}
+                </div>
+                <PaginationControls
+                  page={challengePage}
+                  totalPages={totalChallengePages}
+                  onPageChange={setChallengePage}
+                  isRTL={isRTL}
+                  labels={paginationLabels}
+                  simple
+                />
               </div>
             )}
 

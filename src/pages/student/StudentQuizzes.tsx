@@ -27,6 +27,7 @@ import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getFriendlyErrorMessage } from '@/lib/errorMessages';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 
 const container = {
   hidden: { opacity: 0 },
@@ -48,6 +49,8 @@ export default function StudentQuizzes() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [availablePage, setAvailablePage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
 
   // Data
   const [quizzes, setQuizzes] = useState<QuizModel[]>([]);
@@ -95,6 +98,11 @@ export default function StudentQuizzes() {
         )
       : 0;
 
+  const paginationLabels = {
+    previous: isRTL ? 'السابق' : 'Precedent',
+    next: isRTL ? 'التالي' : 'Suivant',
+  };
+
   // Filtered
   const filteredAvailable = quizzes.filter(
     (q) =>
@@ -106,6 +114,24 @@ export default function StudentQuizzes() {
       (r.quizTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (r.sessionName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const availablePerPage = 12;
+  const historyPerPage = 10;
+  const totalAvailablePages = Math.max(1, Math.ceil(filteredAvailable.length / availablePerPage));
+  const totalHistoryPages = Math.max(1, Math.ceil(filteredResults.length / historyPerPage));
+  const pagedAvailable = filteredAvailable.slice(
+    (availablePage - 1) * availablePerPage,
+    availablePage * availablePerPage
+  );
+  const pagedHistory = filteredResults.slice(
+    (historyPage - 1) * historyPerPage,
+    historyPage * historyPerPage
+  );
+
+  useEffect(() => {
+    setAvailablePage(1);
+    setHistoryPage(1);
+  }, [searchQuery, quizzes.length, results.length]);
 
   // Start quiz
   const handleStartQuiz = async (quizId: string) => {
@@ -333,8 +359,9 @@ export default function StudentQuizzes() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAvailable.map((quiz) => {
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pagedAvailable.map((quiz) => {
                   const isExpired = takenQuizIds.has(quiz.id);
                   return (
                     <motion.div key={quiz.id} variants={item}>
@@ -391,7 +418,15 @@ export default function StudentQuizzes() {
                       </Card>
                     </motion.div>
                   );
-                })}
+                  })}
+                </div>
+                <PaginationControls
+                  page={availablePage}
+                  totalPages={totalAvailablePages}
+                  onPageChange={setAvailablePage}
+                  isRTL={isRTL}
+                  labels={paginationLabels}
+                />
               </div>
             )}
           </TabsContent>
@@ -408,8 +443,9 @@ export default function StudentQuizzes() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-3">
-                {filteredResults.map((result) => {
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  {pagedHistory.map((result) => {
                   const scorePercent =
                     result.totalQuestions > 0
                       ? Math.round((result.score / result.totalQuestions) * 100)
@@ -476,7 +512,15 @@ export default function StudentQuizzes() {
                       </Card>
                     </motion.div>
                   );
-                })}
+                  })}
+                </div>
+                <PaginationControls
+                  page={historyPage}
+                  totalPages={totalHistoryPages}
+                  onPageChange={setHistoryPage}
+                  isRTL={isRTL}
+                  labels={paginationLabels}
+                />
               </div>
             )}
           </TabsContent>

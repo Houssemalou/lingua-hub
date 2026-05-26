@@ -10,6 +10,8 @@ import {
   Trash2,
   Send,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +30,15 @@ import { fr, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getFriendlyErrorMessage } from '@/lib/errorMessages';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const container = {
   hidden: { opacity: 0 },
@@ -49,6 +60,8 @@ export default function ProfessorQuizzes() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [quizPage, setQuizPage] = useState(1);
+  const [resultsPage, setResultsPage] = useState(1);
 
   // Data state
   const [quizzes, setQuizzes] = useState<QuizModel[]>([]);
@@ -60,6 +73,10 @@ export default function ProfessorQuizzes() {
   const [error, setError] = useState<string | null>(null);
 
   const dateLocale = language === 'ar' ? ar : fr;
+  const paginationLabels = {
+    previous: isRTL ? 'السابق' : 'Precedent',
+    next: isRTL ? 'التالي' : 'Suivant',
+  };
 
   // Fetch quizzes and their results
   const fetchData = useCallback(async () => {
@@ -192,12 +209,33 @@ export default function ProfessorQuizzes() {
     (result.quizTitle || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const quizzesPerPage = 6;
+  const resultsPerPage = 10;
+  const totalQuizPages = Math.max(1, Math.ceil(quizzes.length / quizzesPerPage));
+  const totalResultsPages = Math.max(1, Math.ceil(filteredResults.length / resultsPerPage));
+  const pagedQuizzes = quizzes.slice(
+    (quizPage - 1) * quizzesPerPage,
+    quizPage * quizzesPerPage
+  );
+  const pagedResults = filteredResults.slice(
+    (resultsPage - 1) * resultsPerPage,
+    resultsPage * resultsPerPage
+  );
+
   // Stats
   const totalResults = quizResults.length;
   const passedResults = quizResults.filter(r => r.passed).length;
   const avgScore = totalResults > 0
     ? Math.round(quizResults.reduce((acc, r) => acc + r.score, 0) / totalResults)
     : 0;
+
+  useEffect(() => {
+    setQuizPage(1);
+  }, [quizzes.length]);
+
+  useEffect(() => {
+    setResultsPage(1);
+  }, [searchQuery, quizResults.length]);
 
   // Loading state
   if (isLoading) {
@@ -388,7 +426,7 @@ export default function ProfessorQuizzes() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {quizzes.map((quiz) => (
+                {pagedQuizzes.map((quiz) => (
                   <div
                     key={quiz.id}
                     className={cn(
@@ -438,6 +476,14 @@ export default function ProfessorQuizzes() {
                   </div>
                 ))}
               </div>
+              <PaginationControls
+                page={quizPage}
+                totalPages={totalQuizPages}
+                onPageChange={setQuizPage}
+                isRTL={isRTL}
+                labels={paginationLabels}
+                className="mt-4"
+              />
             </CardContent>
           </Card>
         </motion.div>
@@ -465,69 +511,81 @@ export default function ProfessorQuizzes() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={cn("border-b border-border", isRTL && "text-right")}>
-                    <th className="pb-3 font-medium text-muted-foreground">{isRTL ? 'الطالب' : 'Etudiant'}</th>
-                    <th className="pb-3 font-medium text-muted-foreground hidden sm:table-cell">{isRTL ? 'الجلسة' : 'Session'}</th>
-                    <th className="pb-3 font-medium text-muted-foreground">{isRTL ? 'النتيجة' : 'Score'}</th>
-                    <th className="pb-3 font-medium text-muted-foreground hidden md:table-cell">{isRTL ? 'التاريخ' : 'Date'}</th>
-                    <th className="pb-3 font-medium text-muted-foreground">{isRTL ? 'الحالة' : 'Statut'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredResults.length > 0 ? (
-                    filteredResults.map((result) => (
-                      <tr key={result.id} className={cn("border-b border-border/50", isRTL && "text-right")}>
-                        <td className="py-3">
-                          <div className={cn("flex items-center gap-2", isRTL && "flex-row-reverse")}>
+              <Table className="table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[22%]">{isRTL ? 'الطالب' : 'Etudiant'}</TableHead>
+                    <TableHead className="w-[22%] hidden sm:table-cell">{isRTL ? 'الاختبار' : 'Quiz'}</TableHead>
+                    <TableHead className="w-[18%] hidden md:table-cell">{isRTL ? 'الجلسة' : 'Session'}</TableHead>
+                    <TableHead className="w-[12%]">{isRTL ? 'النتيجة' : 'Score'}</TableHead>
+                    <TableHead className="w-[16%] hidden lg:table-cell">{isRTL ? 'التاريخ' : 'Date'}</TableHead>
+                    <TableHead className="w-[10%]">{isRTL ? 'الحالة' : 'Statut'}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedResults.length > 0 ? (
+                    pagedResults.map((result) => (
+                      <TableRow key={result.id}>
+                        <TableCell>
+                          <div className={cn("flex items-center gap-2 truncate", isRTL && "flex-row-reverse")}>
                             <img
                               src={result.studentAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(result.studentName)}`}
                               alt=""
-                              className="w-8 h-8 rounded-full"
+                              className="w-8 h-8 rounded-full shrink-0"
                             />
-                            <span className="font-medium">{result.studentName}</span>
+                            <span className="font-medium truncate">{result.studentName}</span>
                           </div>
-                        </td>
-                        <td className="py-3 hidden sm:table-cell text-muted-foreground">
-                          {result.sessionName || result.quizTitle || '-'}
-                        </td>
-                        <td className="py-3">
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell truncate text-muted-foreground">
+                          {result.quizTitle || '-'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell truncate text-muted-foreground">
+                          {result.sessionName || '-'}
+                        </TableCell>
+                        <TableCell>
                           <span className={cn(
                             "font-bold",
                             result.score >= 70 ? "text-green-500" : "text-red-500"
                           )}>
                             {result.score}%
                           </span>
-                        </td>
-                        <td className="py-3 hidden md:table-cell text-muted-foreground">
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground">
                           {format(new Date(result.completedAt), 'PP', { locale: dateLocale })}
-                        </td>
-                        <td className="py-3">
+                        </TableCell>
+                        <TableCell>
                           {result.passed ? (
-                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                            <Badge className="bg-green-500/10 text-green-500 border-green-500/20 whitespace-nowrap">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               {isRTL ? 'ناجح' : 'Reussi'}
                             </Badge>
                           ) : (
-                            <Badge className="bg-red-500/10 text-red-500 border-red-500/20">
+                            <Badge className="bg-red-500/10 text-red-500 border-red-500/20 whitespace-nowrap">
                               <XCircle className="w-3 h-3 mr-1" />
                               {isRTL ? 'راسب' : 'Echoue'}
                             </Badge>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                   ) : (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                         {isRTL ? 'لا توجد نتائج' : 'Aucun resultat'}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
+            <PaginationControls
+              page={resultsPage}
+              totalPages={totalResultsPages}
+              onPageChange={setResultsPage}
+              isRTL={isRTL}
+              labels={paginationLabels}
+              className="mt-4"
+            />
           </CardContent>
         </Card>
       </motion.div>

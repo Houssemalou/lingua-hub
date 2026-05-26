@@ -22,6 +22,7 @@ export interface RoomModel {
   animatorType: AnimatorType;
   professorId?: string;
   livekitRoomName?: string;
+  recordingEnabled?: boolean;
   updatedAt?: string;
 }
 

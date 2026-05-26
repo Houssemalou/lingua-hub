@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ChallengeCreator, ChallengeFormData } from '@/components/professor/ChallengeCreator';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import {
   challengeSubjects,
   difficultyConfig,
@@ -64,6 +65,7 @@ export default function ProfessorChallenges() {
   const [viewChallenge, setViewChallenge] = useState<ProfessorChallenge | null>(null);
   const [deleteChallenge, setDeleteChallenge] = useState<ProfessorChallenge | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [challengePage, setChallengePage] = useState(1);
 
   const labels = {
     fr: {
@@ -135,6 +137,10 @@ export default function ProfessorChallenges() {
   };
 
   const t = labels[language as keyof typeof labels] || labels.fr;
+  const paginationLabels = {
+    previous: language === 'ar' ? 'السابق' : language === 'fr' ? 'Precedent' : 'Previous',
+    next: language === 'ar' ? 'التالي' : language === 'fr' ? 'Suivant' : 'Next',
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -235,6 +241,16 @@ export default function ProfessorChallenges() {
   };
 
   const activeChallenges = challenges.filter(c => c.isActive && new Date(c.expiresAt) > new Date());
+  const challengesPerPage = 12;
+  const totalChallengePages = Math.max(1, Math.ceil(activeChallenges.length / challengesPerPage));
+  const pagedChallenges = activeChallenges.slice(
+    (challengePage - 1) * challengesPerPage,
+    challengePage * challengesPerPage
+  );
+
+  useEffect(() => {
+    setChallengePage(1);
+  }, [activeChallenges.length]);
 
   if (loading) {
     return (
@@ -414,8 +430,9 @@ export default function ProfessorChallenges() {
                 </Button>
               </Card>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeChallenges.map((challenge, index) => {
+              <div className="space-y-6">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pagedChallenges.map((challenge, index) => {
                   const subject = getSubjectInfo(challenge.subject);
                   const difficulty = getDifficultyInfo(challenge.difficulty);
                   const participants = challenge.participantCount ?? 0;
@@ -494,7 +511,16 @@ export default function ProfessorChallenges() {
                       </Card>
                     </motion.div>
                   );
-                })}
+                  })}
+                </div>
+                <PaginationControls
+                  page={challengePage}
+                  totalPages={totalChallengePages}
+                  onPageChange={setChallengePage}
+                  isRTL={isRTL}
+                  labels={paginationLabels}
+                  simple
+                />
               </div>
             )}
           </TabsContent>

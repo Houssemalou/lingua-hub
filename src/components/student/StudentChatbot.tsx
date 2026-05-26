@@ -6,7 +6,6 @@ import {
   Mic,
   MicOff,
   Send,
-  Download,
   MessageCircle,
   X,
   Minimize2,
@@ -45,7 +44,6 @@ interface ChatMessage {
 const STUDENT_CHAT_SESSION_DURATION_SECONDS = 15 * 60;
 const CHAT_HISTORY_TTL_MS = 5 * 60 * 1000;
 const SUMMARY_ICON_THRESHOLD_SECONDS = 10 * 60;
-const AUTO_CLOSE_ROOM_AFTER_MS = 2 * 60 * 1000;
 
 export function StudentChatbot({
   studentId,
@@ -88,7 +86,7 @@ export function StudentChatbot({
   const transcriptionBuffer = useRef(new Map<string, ChatMessage>());
   const attachedElements = useRef(new Map<string, HTMLMediaElement>());
   const clearHistoryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeRoomTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityRef = useRef(Date.now());
 
   const historyStorageKey = `student-chatbot-history:${studentId}`;
 
@@ -226,7 +224,12 @@ export function StudentChatbot({
     };
   }, [sessionTimer]);
 
+  const markActivity = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
+
   const addMessage = useCallback((content: string, isUser: boolean = false, type: 'text' | 'summary' | 'transcription' = 'text') => {
+    markActivity();
     const normalized = content?.toString().trim();
     const message: ChatMessage = {
       id: Date.now().toString(),
@@ -266,7 +269,7 @@ export function StudentChatbot({
       // no recent duplicate found -> append
       return [...prev, message];
     });
-  }, []);
+  }, [markActivity]);
 
   const setupRoomListeners = useCallback((room: Room) => {
     room.on(RoomEvent.TrackSubscribed, (
@@ -506,34 +509,6 @@ export function StudentChatbot({
     }
   }, [studentId, closeRoom]);
 
-  useEffect(() => {
-    if (!isChatOpen && isConnected && sessionTimeLeft > 0) {
-      closeRoomTimeoutRef.current = setTimeout(() => {
-        addMessage(
-          language === 'ar'
-            ? 'تم إغلاق الجلسة تلقائياً بسبب عدم النشاط. للحصول على أفضل تجربة، يرجى متابعة التعلم دون انقطاع في المرة القادمة لتجنب فقدان الجلسة.'
-            : 'Session fermee automatiquement pour inactivite. Pour une experience optimale, veuillez continuer la session sans interruption la prochaine fois afin de ne pas perdre la progression.',
-          false,
-        );
-        closeRoom();
-        closeRoomTimeoutRef.current = null;
-      }, AUTO_CLOSE_ROOM_AFTER_MS);
-    }
-
-    if (isChatOpen) {
-      if (closeRoomTimeoutRef.current) {
-        clearTimeout(closeRoomTimeoutRef.current);
-        closeRoomTimeoutRef.current = null;
-      }
-    }
-
-    return () => {
-      if (closeRoomTimeoutRef.current) {
-        clearTimeout(closeRoomTimeoutRef.current);
-        closeRoomTimeoutRef.current = null;
-      }
-    };
-  }, [isChatOpen, isConnected, sessionTimeLeft, closeRoom, addMessage, language]);
 
   const startSessionTimer = useCallback(() => {
     if (sessionTimer) {
@@ -570,6 +545,7 @@ export function StudentChatbot({
 
     setIsChatOpen(true);
     setIsMinimized(false);
+    markActivity();
 
     if (!isConnected && !isConnecting) {
       try {
@@ -606,6 +582,7 @@ export function StudentChatbot({
     addMessage,
     language,
     fetchSessionState,
+    markActivity,
   ]);
 
   const requestSummaryNow = useCallback(async () => {
@@ -654,6 +631,7 @@ export function StudentChatbot({
   const handleDataMessage = useCallback((message: string, participant?: RemoteParticipant) => {
     try {
       const data = JSON.parse(message);
+      markActivity();
       if (data.type === 'agent_message') {
         processMessage(data);
       } else if (data.type === 'session_summary') {
@@ -671,12 +649,15 @@ export function StudentChatbot({
     } catch {
       // ignore data message errors
     }
-  }, [processMessage, addMessage, language]);
+  }, [processMessage, addMessage, language, markActivity]);
 
   const handleTranscription = useCallback((transcription: TranscriptionSegment, participant?: Participant) => {
     const role = participant?.identity?.toLowerCase()?.includes('agent') ? 'assistant' : 'user';
     const segmentId = transcription.id || Date.now().toString();
     const normalized = transcription.text?.toString().trim() || '';
+    if (normalized) {
+      markActivity();
+    }
 
     const message: ChatMessage = {
       id: segmentId,
@@ -726,7 +707,7 @@ export function StudentChatbot({
         return [...prev, message];
       });
     }
-  }, []);
+  }, [markActivity]);
 
   const sendMessage = useCallback(async () => {
     if (!currentMessage.trim() || !roomRef.current) return;
@@ -905,12 +886,12 @@ const downloadSummary = useCallback(async () => {
                     onClick={requestSummaryNow}
                     disabled={summaryRequested}
                     className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                      "h-8 px-3 rounded-full flex items-center justify-center transition-colors text-xs font-semibold",
                       summaryRequested ? "bg-white/10 text-white/50" : "bg-white/20 text-white hover:bg-white/30"
                     )}
                     title={language === 'ar' ? 'احصل على ملخص الجلسة' : 'Generer le resume'}
                   >
-                    <Download className="w-4 h-4" />
+                    {language === 'ar' ? 'ملخص' : 'Resume'}
                   </motion.button>
                 )}
                 <motion.button
@@ -1017,9 +998,8 @@ const downloadSummary = useCallback(async () => {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={downloadSummary}
-                                  className="flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition-colors text-xs"
+                                  className="flex items-center bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition-colors text-xs"
                                 >
-                                  <Download className="w-3 h-3" />
                                   {language === 'ar' ? 'تحميل PDF' : 'Télécharger PDF'}
                                 </button>
                               </div>

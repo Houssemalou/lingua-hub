@@ -14,6 +14,7 @@ import {
   Plus,
   Video,
   Download,
+  Upload,
   AlertTriangle,
   Trash2,
   ChevronLeft,
@@ -45,6 +46,7 @@ import { toast } from 'sonner';
 import { StudentService } from '@/services/StudentService';
 import { canStartRoom, canJoinRoom, formatTimeUntilJoinable } from '@/lib/roomUtils';
 import { getFriendlyErrorMessage } from '@/lib/errorMessages';
+import { Progress } from '@/components/ui/progress';
 
 const container = {
   hidden: { opacity: 0 },
@@ -114,6 +116,11 @@ export default function ProfessorSessions() {
   const [loadingRecordings, setLoadingRecordings] = useState(false);
   const [selectedSessionName, setSelectedSessionName] = useState('');
   const [selectedRoomName, setSelectedRoomName] = useState('');
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadSession, setUploadSession] = useState<RoomModel | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -420,6 +427,43 @@ export default function ProfessorSessions() {
     } catch {
       toast.error(isRTL ? 'فشل في تحميل التسجيل' : 'Échec du téléchargement');
     }
+  };
+
+  const handleUploadRecording = async () => {
+    if (!uploadSession || !uploadFile) return;
+    const roomName = uploadSession.livekitRoomName;
+    if (!roomName) {
+      toast.error(isRTL ? 'لا يوجد اسم غرفة لايف كيت' : 'Aucun nom de salle LiveKit disponible');
+      return;
+    }
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      const res = await RecordingService.uploadExternalRecording(
+        roomName,
+        uploadFile,
+        (progress) => setUploadProgress(progress)
+      );
+      if (res.success) {
+        toast.success(isRTL ? 'تم رفع التسجيل بنجاح!' : 'Enregistrement uploadé avec succès !');
+        setUploadDialogOpen(false);
+        setUploadFile(null);
+        setUploadProgress(0);
+      } else {
+        toast.error(res.error || (isRTL ? 'فشل في رفع التسجيل' : 'Échec de l\'upload'));
+      }
+    } catch {
+      toast.error(isRTL ? 'فشل في رفع التسجيل' : 'Échec de l\'upload');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadClick = (session: RoomModel) => {
+    setUploadSession(session);
+    setUploadFile(null);
+    setUploadProgress(0);
+    setUploadDialogOpen(true);
   };
 
   const getExpirationInfo = (rec: SessionRecording) => {
@@ -814,17 +858,32 @@ export default function ProfessorSessions() {
                     )}
                     {statusLower === 'completed' && (
                       <>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewRecording(session);
-                          }}
-                          variant="outline"
-                          size="icon"
-                          title={isRTL ? 'مشاهدة التسجيل' : 'Voir l\'enregistrement'}
-                        >
-                          <Video className="w-4 h-4" />
-                        </Button>
+                        {session.recordingEnabled !== false && (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewRecording(session);
+                            }}
+                            variant="outline"
+                            size="icon"
+                            title={isRTL ? 'مشاهدة التسجيل' : 'Voir l\'enregistrement'}
+                          >
+                            <Video className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {session.recordingEnabled === false && (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUploadClick(session);
+                            }}
+                            variant="outline"
+                            size="icon"
+                            title={isRTL ? 'رفع تسجيل خارجي' : 'Uploader un enregistrement'}
+                          >
+                            <Upload className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1002,6 +1061,80 @@ export default function ProfessorSessions() {
                 );
               })
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* External Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={(open) => { if (!open && !uploading) { setUploadDialogOpen(false); setUploadFile(null); setUploadProgress(0); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isRTL ? `رفع تسجيل: ${uploadSession?.name || ''}` : `Uploader un enregistrement: ${uploadSession?.name || ''}`}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
+              <Upload className="w-4 h-4 shrink-0" />
+              <span>
+                {isRTL
+                  ? 'اختر ملف فيديو من جهازك لرفعه كتسجيل لهذه الجلسة. سيكون متاحاً للطلاب لمدة 3 أيام.'
+                  : "Sélectionnez un fichier vidéo depuis votre appareil. Il sera disponible pour les étudiants pendant 3 jours."}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="recording-file">
+                {isRTL ? 'ملف التسجيل' : 'Fichier d\'enregistrement'}
+              </Label>
+              <Input
+                id="recording-file"
+                type="file"
+                accept="video/*"
+                disabled={uploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setUploadFile(file);
+                  setUploadProgress(0);
+                }}
+              />
+              {uploadFile && (
+                <p className="text-xs text-muted-foreground">
+                  {uploadFile.name} ({(uploadFile.size / (1024 * 1024)).toFixed(1)} MB)
+                </p>
+              )}
+            </div>
+
+            {uploadProgress > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>{isRTL ? 'جاري الرفع...' : 'Upload en cours...'}</span>
+                  <span className="font-medium">{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-3" />
+              </div>
+            )}
+
+            <div className={cn("flex justify-end gap-3", isRTL && "flex-row-reverse")}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={uploading}
+                onClick={() => { setUploadDialogOpen(false); setUploadFile(null); setUploadProgress(0); }}
+              >
+                {isRTL ? 'إلغاء' : 'Annuler'}
+              </Button>
+              <Button
+                type="button"
+                disabled={!uploadFile || uploading}
+                onClick={handleUploadRecording}
+              >
+                {uploading
+                  ? (isRTL ? `${uploadProgress}% جاري...` : `${uploadProgress}%...`)
+                  : (isRTL ? 'رفع' : 'Uploader')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

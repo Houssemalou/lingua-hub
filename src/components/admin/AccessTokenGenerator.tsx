@@ -28,6 +28,7 @@ interface GeneratedToken {
   token: string;
   role: 'STUDENT' | 'PROFESSOR' | 'ADMIN';
   subscriptionType?: 'BASE' | 'PREMIUM' | 'CUSTOM' | null;
+  recordingEnabled?: boolean;
   expiresAt: string;
   createdAt: string;
 }
@@ -43,6 +44,7 @@ export const AccessTokenGenerator: React.FC = () => {
   const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
   const [tokenCount, setTokenCount] = useState<number>(1);
   const [professorSubscriptionType, setProfessorSubscriptionType] = useState<'BASE' | 'PREMIUM' | 'CUSTOM'>('BASE');
+  const [professorRecordingEnabled, setProfessorRecordingEnabled] = useState<boolean>(true);
 
   // Load tokens on component mount
   useEffect(() => {
@@ -77,7 +79,8 @@ export const AccessTokenGenerator: React.FC = () => {
       const response = await AuthService.generateAccessToken(
         role,
         count,
-        role === 'PROFESSOR' ? professorSubscriptionType : undefined
+        role === 'PROFESSOR' ? professorSubscriptionType : undefined,
+        role === 'PROFESSOR' ? professorRecordingEnabled : undefined
       );
       if (response.success) {
         const newTokens: GeneratedToken[] = response.data.map(t => ({
@@ -355,6 +358,11 @@ export const AccessTokenGenerator: React.FC = () => {
             {token.subscriptionType}
           </Badge>
         )}
+        {role === 'PROFESSOR' && token.recordingEnabled === false && (
+          <Badge variant="outline" className="text-xs border-destructive/50 text-destructive">
+            {isRTL ? 'بدون تسجيل' : 'Sans enreg.'}
+          </Badge>
+        )}
         <Badge variant="outline" className="text-xs">
           {role === 'STUDENT' ? (isRTL ? 'طالب' : 'Étudiant') : role === 'PROFESSOR' ? (isRTL ? 'أستاذ' : 'Professeur') : (isRTL ? 'إداري' : 'Admin')}
         </Badge>
@@ -550,6 +558,25 @@ export const AccessTokenGenerator: React.FC = () => {
                     <option value="PREMIUM">{isRTL ? 'ممتاز (12/شهر)' : 'Premium (12/mois)'}</option>
                     <option value="CUSTOM">{isRTL ? 'مخصص (غير محدود)' : 'Custom (illimité)'}</option>
                   </select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{isRTL ? 'تسجيل' : 'Enregistrement'}</Label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={professorRecordingEnabled}
+                    onClick={() => setProfessorRecordingEnabled(!professorRecordingEnabled)}
+                    className={cn(
+                      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      professorRecordingEnabled ? "bg-primary" : "bg-input"
+                    )}
+                  >
+                    <span className={cn(
+                      "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                      professorRecordingEnabled ? "translate-x-4" : "translate-x-0"
+                    )} />
+                  </button>
                 </div>
                 <Button 
                   onClick={() => generateToken('PROFESSOR')} 

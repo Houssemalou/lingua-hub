@@ -481,8 +481,9 @@ export const AuthService = {
   async generateAccessToken(
     role: 'STUDENT' | 'PROFESSOR' | 'ADMIN',
     count: number = 1,
-    subscriptionType?: 'BASE' | 'PREMIUM' | 'CUSTOM'
-  ): Promise<ApiResponse<Array<{ token: string; role: string; subscriptionType?: string | null; expiresAt: string; createdAt: string }>>> {
+    subscriptionType?: 'BASE' | 'PREMIUM' | 'CUSTOM',
+    recordingEnabled?: boolean
+  ): Promise<ApiResponse<Array<{ token: string; role: string; subscriptionType?: string | null; recordingEnabled?: boolean; expiresAt: string; createdAt: string }>>> {
     try {
       const response = await apiClient.post<{
         success: boolean;
@@ -491,11 +492,12 @@ export const AuthService = {
           token: string;
           role: string;
           subscriptionType?: string | null;
+          recordingEnabled?: boolean;
           expiresAt: string;
           createdAt: string;
         }>;
         error: string | null;
-      }>('/auth/generate-access-token', { role, count, subscriptionType });
+      }>('/auth/generate-access-token', { role, count, subscriptionType, recordingEnabled });
 
       if (!response.success) {
         return {
@@ -565,7 +567,7 @@ export const AuthService = {
   },
 
   // Get Available Access Tokens
-  async getAvailableAccessTokens(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<Array<{ token: string; role: string; subscriptionType?: string | null; expiresAt: string; createdAt: string }>>> {
+  async getAvailableAccessTokens(role: 'STUDENT' | 'PROFESSOR' | 'ADMIN'): Promise<ApiResponse<Array<{ token: string; role: string; subscriptionType?: string | null; recordingEnabled?: boolean; expiresAt: string; createdAt: string }>>> {
     try {
       const response = await apiClient.get<{
         success: boolean;
@@ -574,6 +576,7 @@ export const AuthService = {
           token: string;
           role: string;
           subscriptionType?: string | null;
+          recordingEnabled?: boolean;
           expiresAt: string;
           createdAt: string;
         }>;
