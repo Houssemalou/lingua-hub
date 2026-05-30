@@ -127,7 +127,7 @@ export function StudentChatbot({
   }, [historyStorageKey]);
 
   const fetchSessionState = useCallback(async () => {
-    const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://learnup.tn/assistant';
+    const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://colearn.learnup.tn/assistant';
     const response = await fetch(
       `${aiBase}/api/chatbot/session/state?userIdentity=${encodeURIComponent(studentId)}`,
       { method: 'GET' },
@@ -343,7 +343,7 @@ export function StudentChatbot({
     setIsConnecting(true);
     try {
       // Create room via API
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://learnup.tn/assistant';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://colearn.learnup.tn/assistant';
       const response = await fetch(`${aiBase}/api/room/create`, {
         method: 'POST',
         headers: {
@@ -438,7 +438,7 @@ export function StudentChatbot({
     if (!roomName) return;
 
     try {
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://learnup.tn/assistant';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://colearn.learnup.tn/assistant';
       await fetch(`${aiBase}/api/room/close`, {
         method: 'POST',
         headers: {
@@ -491,7 +491,7 @@ export function StudentChatbot({
     if (!studentId) return;
     setIsForfeiting(true);
     try {
-      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://learnup.tn/assistant';
+      const aiBase = import.meta.env.VITE_AI_ASSISTANT_URL || 'https://colearn.learnup.tn/assistant';
       await fetch(`${aiBase}/api/chatbot/session/forfeit`, {
         method: 'POST',
         headers: {
