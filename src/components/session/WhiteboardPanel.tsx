@@ -13,18 +13,13 @@ import {
   loadSnapshot,
   DefaultToolbar,
   ToolbarItem,
-  StateNode,
-  TLPointerEventInfo,
-  TLUiOverrides,
-  TLUiAssetUrlOverrides,
-  toRichText,
 } from "tldraw";
 import "tldraw/tldraw.css";
 import jsPDF from "jspdf";
 import { Room } from "livekit-client";
 import { motion, AnimatePresence } from "framer-motion";
-import { createShapeId, TLShapeId } from "@tldraw/tlschema";
-import { getIndices, IndexKey } from "@tldraw/utils";
+import { PolypadCanvas } from "@/shapes/polypad";
+import type { WhiteboardMode } from "./WhiteboardChoiceDialog";
 import {
   X,
   Download,
@@ -82,6 +77,7 @@ interface WhiteboardPanelProps {
   participants?: WhiteboardParticipant[];
   mediaControls?: MediaControlProps;
   isRecordingMode?: boolean;
+  whiteboardMode: WhiteboardMode;
 }
 
 type WritingPermission = "professor-only" | "all" | "specific-student";
@@ -118,22 +114,6 @@ interface WhiteboardSnapshotMessage {
   allowedStudentName?: string;
 }
 
-const TOOL_MIN_RADIUS = 20;
-const TOOL_DOT_SIZE = 8;
-const PROTRACTOR_MIN_RADIUS = 60;
-const PROTRACTOR_ARC_POINTS = 61;
-const PROTRACTOR_TICK_COUNT = 19;
-const PROTRACTOR_LABEL_COUNT = 7;
-const PROTRACTOR_MAJOR_TICK = 12;
-const PROTRACTOR_MINOR_TICK = 7;
-const COMPASS_TRACE_POINTS = 80;
-const RULER_LENGTH = 320;
-const RULER_WIDTH = 32;
-const RULER_TICK_COUNT = 17;
-const RULER_MAJOR_TICK = 10;
-const RULER_MINOR_TICK = 6;
-const SET_SQUARE_LONG = 220;
-const SET_SQUARE_SHORT = 160;
 const MM_TO_PX = 96 / 25.4;
 const TABLET_DRAW_MIN_POINT_DISTANCE = 0.75;
 const TABLET_DRAW_DECIMALS = 2;
@@ -215,976 +195,7 @@ const areDrawSegmentsEquivalent = (
   return true;
 };
 
-const getDistance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-  Math.hypot(b.x - a.x, b.y - a.y);
 
-const getAngle = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-  Math.atan2(b.y - a.y, b.x - a.x);
-
-const normalizeAngleDelta = (delta: number) => {
-  let d = delta;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-};
-
-const getPointOnCircle = (
-  center: { x: number; y: number },
-  radius: number,
-  angle: number,
-) => ({
-  x: center.x + Math.cos(angle) * radius,
-  y: center.y + Math.sin(angle) * radius,
-});
-
-const projectPointToLine = (
-  point: { x: number; y: number },
-  origin: { x: number; y: number },
-  angle: number,
-) => {
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
-  const vx = point.x - origin.x;
-  const vy = point.y - origin.y;
-  const t = vx * dx + vy * dy;
-  return {
-    x: origin.x + dx * t,
-    y: origin.y + dy * t,
-  };
-};
-
-const distanceToLine = (
-  point: { x: number; y: number },
-  origin: { x: number; y: number },
-  angle: number,
-) => {
-  const nx = -Math.sin(angle);
-  const ny = Math.cos(angle);
-  return Math.abs((point.x - origin.x) * nx + (point.y - origin.y) * ny);
-};
-
-const toRelativePoints = (
-  points: { x: number; y: number }[],
-  center: { x: number; y: number },
-) => points.map((point) => ({ x: point.x - center.x, y: point.y - center.y }));
-
-const toLinePointsRecord = (points: { x: number; y: number }[]) => {
-  const indices = getIndices(points.length);
-  return points.reduce(
-    (acc, point, i) => {
-      const index = indices[i] as IndexKey;
-      acc[index] = { id: index, index, x: point.x, y: point.y };
-      return acc;
-    },
-    {} as Record<string, { id: string; index: IndexKey; x: number; y: number }>,
-  );
-};
-
-const createLineShape = (id: TLShapeId, x: number, y: number) => ({
-  id,
-  type: "line" as const,
-  x,
-  y,
-  props: {
-    dash: "solid" as const,
-    size: "s" as const,
-    color: "black" as const,
-    spline: "line" as const,
-    points: toLinePointsRecord([
-      { x: -0.5, y: 0 },
-      { x: 0.5, y: 0 },
-    ]),
-    scale: 1,
-  },
-});
-
-const createArcPolyline = (
-  center: { x: number; y: number },
-  radius: number,
-  start: number,
-  sweep: number,
-  pointsCount: number,
-) => {
-  const safeCount = Math.max(2, pointsCount);
-  return Array.from({ length: safeCount }, (_, i) => {
-    const t = safeCount === 1 ? 0 : i / (safeCount - 1);
-    return getPointOnCircle(center, radius, start + sweep * t);
-  });
-};
-
-class CompassTool extends StateNode {
-  static override id = "compass";
-  static configuredRadius = 120;
-
-  private center: { x: number; y: number } | null = null;
-  private activeRadius: number | null = null;
-  private startAngle: number | null = null;
-  private lastAngle: number | null = null;
-  private accumulatedSweep = 0;
-  private isPlaced = false;
-  private isTracing = false;
-  private hasTrace = false;
-
-  private armId: TLShapeId | null = null;
-  private traceId: TLShapeId | null = null;
-  private centerId: TLShapeId | null = null;
-  private tipId: TLShapeId | null = null;
-
-  private allIds(): TLShapeId[] {
-    return [this.armId, this.traceId, this.centerId, this.tipId].filter(
-      Boolean,
-    ) as TLShapeId[];
-  }
-
-  override onEnter() {
-    this.editor.setCursor({ type: "cross", rotation: 0 });
-  }
-
-  override onPointerDown(_info: TLPointerEventInfo) {
-    const point = toFixedPoint(this.editor.inputs.currentPagePoint);
-
-    if (!this.isPlaced) {
-      this.center = point;
-      this.activeRadius = Math.max(TOOL_MIN_RADIUS, CompassTool.configuredRadius);
-      this.startAngle = null;
-      this.lastAngle = null;
-      this.accumulatedSweep = 0;
-      this.isPlaced = true;
-      this.isTracing = false;
-      this.hasTrace = false;
-
-      this.armId = createShapeId();
-      this.traceId = createShapeId();
-      this.centerId = createShapeId();
-      this.tipId = createShapeId();
-
-      const dotHalf = TOOL_DOT_SIZE / 2;
-
-      this.editor.createShapes([
-        createLineShape(this.armId, point.x, point.y),
-        createLineShape(this.traceId, point.x, point.y),
-        {
-          id: this.centerId,
-          type: "geo",
-          x: point.x - dotHalf,
-          y: point.y - dotHalf,
-          props: {
-            geo: "ellipse",
-            w: TOOL_DOT_SIZE,
-            h: TOOL_DOT_SIZE,
-            dash: "solid",
-            fill: "solid",
-            color: "black",
-          },
-        },
-        {
-          id: this.tipId,
-          type: "geo",
-          x: point.x + this.activeRadius - dotHalf,
-          y: point.y - dotHalf,
-          props: {
-            geo: "ellipse",
-            w: TOOL_DOT_SIZE,
-            h: TOOL_DOT_SIZE,
-            dash: "solid",
-            fill: "none",
-            color: "black",
-          },
-        },
-      ]);
-      return;
-    }
-
-    if (!this.center) return;
-    this.isTracing = !this.editor.inputs.shiftKey;
-    this.startAngle = null;
-    this.lastAngle = null;
-    this.accumulatedSweep = 0;
-  }
-
-  override onPointerMove(_info: TLPointerEventInfo) {
-    if (!this.center || !this.armId || !this.traceId || !this.tipId) return;
-
-    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
-    const angle = getAngle(this.center, current);
-    const radius =
-      this.activeRadius ??
-      Math.max(TOOL_MIN_RADIUS, getDistance(this.center, current));
-    this.activeRadius = radius;
-
-    const tip = getPointOnCircle(this.center, radius, angle);
-
-    this.editor.updateShape({
-      id: this.armId,
-      type: "line",
-      x: this.center.x,
-      y: this.center.y,
-      props: {
-        points: toLinePointsRecord([
-          { x: 0, y: 0 },
-          { x: tip.x - this.center.x, y: tip.y - this.center.y },
-        ]),
-      },
-    });
-
-    this.editor.updateShape({
-      id: this.tipId,
-      type: "geo",
-      x: tip.x - TOOL_DOT_SIZE / 2,
-      y: tip.y - TOOL_DOT_SIZE / 2,
-      props: {
-        geo: "ellipse",
-        w: TOOL_DOT_SIZE,
-        h: TOOL_DOT_SIZE,
-      },
-    });
-
-    if (!this.isTracing) return;
-
-    if (this.startAngle === null) {
-      this.startAngle = angle;
-      this.lastAngle = angle;
-      this.accumulatedSweep = 0;
-    } else if (this.lastAngle !== null) {
-      const delta = normalizeAngleDelta(angle - this.lastAngle);
-      this.accumulatedSweep += delta;
-      this.lastAngle = angle;
-    }
-
-    const rawSweep = this.accumulatedSweep;
-    const sweep = Math.abs(rawSweep) < 0.07 ? 0.07 : rawSweep;
-    const isCircle = Math.abs(rawSweep) >= Math.PI * 2 - 0.2;
-
-    const tracePoints = isCircle
-      ? createArcPolyline(this.center, radius, 0, Math.PI * 2, COMPASS_TRACE_POINTS)
-      : createArcPolyline(
-          this.center,
-          radius,
-          this.startAngle ?? angle,
-          sweep,
-          Math.max(
-            12,
-            Math.floor((Math.abs(sweep) / (Math.PI * 2)) * COMPASS_TRACE_POINTS),
-          ),
-        );
-
-    this.editor.updateShape({
-      id: this.traceId,
-      type: "line",
-      x: this.center.x,
-      y: this.center.y,
-      props: {
-        points: toLinePointsRecord(toRelativePoints(tracePoints, this.center)),
-      },
-    });
-
-    if (Math.abs(rawSweep) > 0.02) {
-      this.hasTrace = true;
-    }
-  }
-
-  override onPointerUp(_info: TLPointerEventInfo) {
-    if (this.isTracing) {
-      this.finish();
-      return;
-    }
-    this.isTracing = false;
-  }
-
-  override onCancel() {
-    this.finish(true);
-  }
-
-  override onExit() {
-    this.finish(true);
-  }
-
-  private finish(isCanceled = false) {
-    if (!this.center) return;
-
-    const helperIds = [this.armId, this.centerId, this.tipId].filter(
-      Boolean,
-    ) as TLShapeId[];
-    const traceId = this.traceId;
-
-    const all = this.allIds().filter((id) => !!this.editor.getShape(id));
-
-    if (isCanceled || !this.hasTrace) {
-      this.editor.deleteShapes(all);
-    } else {
-      const existingHelpers = helperIds.filter((id) => !!this.editor.getShape(id));
-      if (existingHelpers.length > 0) {
-        this.editor.deleteShapes(existingHelpers);
-      }
-      if (traceId && this.editor.getShape(traceId)) {
-        this.editor.select(traceId);
-      }
-    }
-
-    this.center = null;
-    this.activeRadius = null;
-    this.startAngle = null;
-    this.lastAngle = null;
-    this.accumulatedSweep = 0;
-    this.isPlaced = false;
-    this.isTracing = false;
-    this.hasTrace = false;
-    this.armId = null;
-    this.traceId = null;
-    this.centerId = null;
-    this.tipId = null;
-  }
-}
-
-class RulerTool extends StateNode {
-  static override id = "ruler";
-
-  private anchor: { x: number; y: number } | null = null;
-  private startRaw: { x: number; y: number } | null = null;
-  private angle = 0;
-  private isDrawing = false;
-
-  private rulerId: TLShapeId | null = null;
-  private tickIds: TLShapeId[] = [];
-  private drawId: TLShapeId | null = null;
-  private lastStart: { x: number; y: number } | null = null;
-  private lastEnd: { x: number; y: number } | null = null;
-
-  private allIds(): TLShapeId[] {
-    return [this.rulerId, this.drawId, ...this.tickIds].filter(
-      Boolean,
-    ) as TLShapeId[];
-  }
-
-  override onEnter() {
-    this.editor.setCursor({ type: "cross", rotation: 0 });
-  }
-
-  override onPointerDown(_info: TLPointerEventInfo) {
-    const point = toFixedPoint(this.editor.inputs.currentPagePoint);
-    this.anchor = point;
-    this.startRaw = point;
-    this.angle = 0;
-    this.isDrawing = !this.editor.inputs.shiftKey;
-    this.lastStart = null;
-    this.lastEnd = null;
-
-    this.rulerId = createShapeId();
-    this.drawId = createShapeId();
-    this.tickIds = Array.from({ length: RULER_TICK_COUNT }, () =>
-      createShapeId(),
-    );
-
-    this.editor.createShapes([
-      {
-        id: this.rulerId,
-        type: "geo",
-        x: point.x - RULER_LENGTH / 2,
-        y: point.y - RULER_WIDTH / 2,
-        props: {
-          geo: "rectangle",
-          w: RULER_LENGTH,
-          h: RULER_WIDTH,
-          dash: "solid",
-          fill: "semi",
-          color: "yellow",
-        },
-      },
-      createLineShape(this.drawId, point.x, point.y),
-      ...this.tickIds.map((tickId) => ({
-        ...createLineShape(tickId, point.x, point.y),
-      })),
-    ]);
-  }
-
-  override onPointerMove(_info: TLPointerEventInfo) {
-    if (!this.anchor || !this.rulerId || !this.drawId) return;
-
-    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
-    this.angle = getAngle(this.anchor, current);
-
-    this.editor.updateShape({
-      id: this.rulerId,
-      type: "geo",
-      x: this.anchor.x - RULER_LENGTH / 2,
-      y: this.anchor.y - RULER_WIDTH / 2,
-      rotation: this.angle,
-      props: {
-        geo: "rectangle",
-        w: RULER_LENGTH,
-        h: RULER_WIDTH,
-        dash: "solid",
-        fill: "semi",
-        color: "yellow",
-      },
-    });
-
-    const dir = { x: Math.cos(this.angle), y: Math.sin(this.angle) };
-    const normal = { x: -dir.y, y: dir.x };
-
-    this.tickIds.forEach((tickId, index) => {
-      const t =
-        RULER_TICK_COUNT <= 1 ? 0 : index / (RULER_TICK_COUNT - 1);
-      const offset = (t - 0.5) * RULER_LENGTH;
-      const isMajor = index % 4 === 0 || index === RULER_TICK_COUNT - 1;
-      const tickLen = isMajor ? RULER_MAJOR_TICK : RULER_MINOR_TICK;
-      const outer = {
-        x: this.anchor!.x + dir.x * offset + normal.x * (RULER_WIDTH / 2),
-        y: this.anchor!.y + dir.y * offset + normal.y * (RULER_WIDTH / 2),
-      };
-      const inner = {
-        x: outer.x - normal.x * tickLen,
-        y: outer.y - normal.y * tickLen,
-      };
-
-      this.editor.updateShape({
-        id: tickId,
-        type: "line",
-        x: this.anchor!.x,
-        y: this.anchor!.y,
-        props: {
-          points: toLinePointsRecord(
-            toRelativePoints([inner, outer], this.anchor!),
-          ),
-        },
-      });
-    });
-
-    if (!this.isDrawing) return;
-
-    const startPoint = projectPointToLine(
-      this.startRaw ?? this.anchor,
-      this.anchor,
-      this.angle,
-    );
-    const endPoint = projectPointToLine(current, this.anchor, this.angle);
-    this.lastStart = startPoint;
-    this.lastEnd = endPoint;
-
-    this.editor.updateShape({
-      id: this.drawId,
-      type: "line",
-      x: startPoint.x,
-      y: startPoint.y,
-      props: {
-        points: toLinePointsRecord([
-          { x: 0, y: 0 },
-          { x: endPoint.x - startPoint.x, y: endPoint.y - startPoint.y },
-        ]),
-      },
-    });
-  }
-
-  override onPointerUp(_info: TLPointerEventInfo) {
-    this.finish();
-  }
-
-  override onCancel() {
-    this.finish(true);
-  }
-
-  override onExit() {
-    this.finish(true);
-  }
-
-  private finish(isCanceled = false) {
-    const ids = this.allIds();
-    const validIds = ids.filter((id) => !!this.editor.getShape(id));
-    const hasLine =
-      this.lastStart &&
-      this.lastEnd &&
-      getDistance(this.lastStart, this.lastEnd) > 2;
-
-    if (isCanceled || !hasLine) {
-      this.editor.deleteShapes(validIds);
-    } else {
-      const helperIds = [this.rulerId, ...this.tickIds].filter(Boolean) as TLShapeId[];
-      const helpers = helperIds.filter((id) => !!this.editor.getShape(id));
-      if (helpers.length > 0) {
-        this.editor.deleteShapes(helpers);
-      }
-      if (this.drawId && this.editor.getShape(this.drawId)) {
-        this.editor.select(this.drawId);
-      }
-    }
-
-    this.anchor = null;
-    this.startRaw = null;
-    this.angle = 0;
-    this.isDrawing = false;
-    this.rulerId = null;
-    this.tickIds = [];
-    this.drawId = null;
-    this.lastStart = null;
-    this.lastEnd = null;
-  }
-}
-
-class SetSquareTool extends StateNode {
-  static override id = "set-square";
-
-  private corner: { x: number; y: number } | null = null;
-  private angle = 0;
-  private activeEdgeAngle = 0;
-  private isDrawing = false;
-
-  private edgeAId: TLShapeId | null = null;
-  private edgeBId: TLShapeId | null = null;
-  private diagId: TLShapeId | null = null;
-  private drawId: TLShapeId | null = null;
-  private startRaw: { x: number; y: number } | null = null;
-  private lastStart: { x: number; y: number } | null = null;
-  private lastEnd: { x: number; y: number } | null = null;
-
-  private allIds(): TLShapeId[] {
-    return [this.edgeAId, this.edgeBId, this.diagId, this.drawId].filter(
-      Boolean,
-    ) as TLShapeId[];
-  }
-
-  override onEnter() {
-    this.editor.setCursor({ type: "cross", rotation: 0 });
-  }
-
-  override onPointerDown(_info: TLPointerEventInfo) {
-    const point = toFixedPoint(this.editor.inputs.currentPagePoint);
-    this.corner = point;
-    this.angle = 0;
-    this.startRaw = point;
-    this.isDrawing = !this.editor.inputs.shiftKey;
-    this.lastStart = null;
-    this.lastEnd = null;
-
-    this.edgeAId = createShapeId();
-    this.edgeBId = createShapeId();
-    this.diagId = createShapeId();
-    this.drawId = createShapeId();
-
-    this.editor.createShapes([
-      createLineShape(this.edgeAId, point.x, point.y),
-      createLineShape(this.edgeBId, point.x, point.y),
-      createLineShape(this.diagId, point.x, point.y),
-      createLineShape(this.drawId, point.x, point.y),
-    ]);
-  }
-
-  override onPointerMove(_info: TLPointerEventInfo) {
-    if (!this.corner || !this.edgeAId || !this.edgeBId || !this.diagId || !this.drawId) {
-      return;
-    }
-
-    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
-    this.angle = getAngle(this.corner, current);
-    const angleB = this.angle + Math.PI / 2;
-
-    const edgeAEnd = getPointOnCircle(this.corner, SET_SQUARE_LONG, this.angle);
-    const edgeBEnd = getPointOnCircle(this.corner, SET_SQUARE_SHORT, angleB);
-
-    this.editor.updateShape({
-      id: this.edgeAId,
-      type: "line",
-      x: this.corner.x,
-      y: this.corner.y,
-      props: {
-        points: toLinePointsRecord(
-          toRelativePoints([this.corner, edgeAEnd], this.corner),
-        ),
-      },
-    });
-
-    this.editor.updateShape({
-      id: this.edgeBId,
-      type: "line",
-      x: this.corner.x,
-      y: this.corner.y,
-      props: {
-        points: toLinePointsRecord(
-          toRelativePoints([this.corner, edgeBEnd], this.corner),
-        ),
-      },
-    });
-
-    this.editor.updateShape({
-      id: this.diagId,
-      type: "line",
-      x: this.corner.x,
-      y: this.corner.y,
-      props: {
-        points: toLinePointsRecord(
-          toRelativePoints([edgeAEnd, edgeBEnd], this.corner),
-        ),
-      },
-    });
-
-    if (!this.isDrawing) return;
-
-    const distA = distanceToLine(current, this.corner, this.angle);
-    const distB = distanceToLine(current, this.corner, angleB);
-    this.activeEdgeAngle = distA <= distB ? this.angle : angleB;
-
-    const startPoint = projectPointToLine(
-      this.startRaw ?? this.corner,
-      this.corner,
-      this.activeEdgeAngle,
-    );
-    const endPoint = projectPointToLine(current, this.corner, this.activeEdgeAngle);
-    this.lastStart = startPoint;
-    this.lastEnd = endPoint;
-
-    this.editor.updateShape({
-      id: this.drawId,
-      type: "line",
-      x: startPoint.x,
-      y: startPoint.y,
-      props: {
-        points: toLinePointsRecord([
-          { x: 0, y: 0 },
-          { x: endPoint.x - startPoint.x, y: endPoint.y - startPoint.y },
-        ]),
-      },
-    });
-  }
-
-  override onPointerUp(_info: TLPointerEventInfo) {
-    this.finish();
-  }
-
-  override onCancel() {
-    this.finish(true);
-  }
-
-  override onExit() {
-    this.finish(true);
-  }
-
-  private finish(isCanceled = false) {
-    const ids = this.allIds();
-    const validIds = ids.filter((id) => !!this.editor.getShape(id));
-    const hasLine =
-      this.lastStart &&
-      this.lastEnd &&
-      getDistance(this.lastStart, this.lastEnd) > 2;
-
-    if (isCanceled || !hasLine) {
-      this.editor.deleteShapes(validIds);
-    } else {
-      const helperIds = [this.edgeAId, this.edgeBId, this.diagId].filter(
-        Boolean,
-      ) as TLShapeId[];
-      const helpers = helperIds.filter((id) => !!this.editor.getShape(id));
-      if (helpers.length > 0) {
-        this.editor.deleteShapes(helpers);
-      }
-      if (this.drawId && this.editor.getShape(this.drawId)) {
-        this.editor.select(this.drawId);
-      }
-    }
-
-    this.corner = null;
-    this.angle = 0;
-    this.activeEdgeAngle = 0;
-    this.isDrawing = false;
-    this.edgeAId = null;
-    this.edgeBId = null;
-    this.diagId = null;
-    this.drawId = null;
-    this.startRaw = null;
-    this.lastStart = null;
-    this.lastEnd = null;
-  }
-}
-
-class ProtractorTool extends StateNode {
-  static override id = "protractor";
-
-  private center: { x: number; y: number } | null = null;
-  private arcId: TLShapeId | null = null;
-  private baseId: TLShapeId | null = null;
-  private centerId: TLShapeId | null = null;
-  private tickIds: TLShapeId[] = [];
-  private labelIds: TLShapeId[] = [];
-
-  private allIds(): TLShapeId[] {
-    return [
-      this.arcId,
-      this.baseId,
-      this.centerId,
-      ...this.tickIds,
-      ...this.labelIds,
-    ].filter(Boolean) as TLShapeId[];
-  }
-
-  override onEnter() {
-    this.editor.setCursor({ type: "cross", rotation: 0 });
-  }
-
-  override onPointerDown(_info: TLPointerEventInfo) {
-    const center = toFixedPoint(this.editor.inputs.currentPagePoint);
-    this.center = center;
-    this.arcId = createShapeId();
-    this.baseId = createShapeId();
-    this.centerId = createShapeId();
-    this.tickIds = Array.from({ length: PROTRACTOR_TICK_COUNT }, () =>
-      createShapeId(),
-    );
-    this.labelIds = Array.from({ length: PROTRACTOR_LABEL_COUNT }, () =>
-      createShapeId(),
-    );
-
-    const dotHalf = TOOL_DOT_SIZE / 2;
-
-    this.editor.createShapes([
-      {
-        id: this.arcId,
-        type: "line",
-        x: center.x,
-        y: center.y,
-        props: {
-          dash: "solid",
-          size: "s",
-          color: "black",
-          spline: "line",
-          points: toLinePointsRecord([
-            { x: -1, y: 0 },
-            { x: 1, y: 0 },
-          ]),
-          scale: 1,
-        },
-      },
-      {
-        id: this.baseId,
-        type: "line",
-        x: center.x,
-        y: center.y,
-        props: {
-          dash: "solid",
-          size: "s",
-          color: "black",
-          spline: "line",
-          points: toLinePointsRecord([
-            { x: -1, y: 0 },
-            { x: 1, y: 0 },
-          ]),
-          scale: 1,
-        },
-      },
-      {
-        id: this.centerId,
-        type: "geo",
-        x: center.x - dotHalf,
-        y: center.y - dotHalf,
-        props: {
-          geo: "ellipse",
-          w: TOOL_DOT_SIZE,
-          h: TOOL_DOT_SIZE,
-          dash: "solid",
-          fill: "solid",
-          color: "black",
-        },
-      },
-      ...this.tickIds.map((tickId) => ({
-        ...createLineShape(tickId, center.x, center.y),
-      })),
-      ...this.labelIds.map((labelId, i) => ({
-        id: labelId,
-        type: "text" as const,
-        x: center.x,
-        y: center.y,
-        props: {
-          richText: toRichText(`${i * 30}`),
-          size: "s" as const,
-          color: "black" as const,
-        },
-      })),
-    ]);
-  }
-
-  override onPointerMove(_info: TLPointerEventInfo) {
-    if (!this.center || !this.arcId || !this.baseId || !this.centerId) return;
-    const current = toFixedPoint(this.editor.inputs.currentPagePoint);
-    const radius = Math.max(PROTRACTOR_MIN_RADIUS, getDistance(this.center, current));
-    const angle = getAngle(this.center, current);
-    const arcStart = angle + Math.PI;
-    const arcSweep = -Math.PI;
-    const arcPoints = createArcPolyline(
-      this.center,
-      radius,
-      arcStart,
-      arcSweep,
-      PROTRACTOR_ARC_POINTS,
-    );
-
-    const baseRight = getPointOnCircle(this.center, radius, angle);
-    const baseLeft = getPointOnCircle(this.center, radius, angle + Math.PI);
-
-    this.editor.updateShape({
-      id: this.arcId,
-      type: "line",
-      x: this.center.x,
-      y: this.center.y,
-      props: {
-        points: toLinePointsRecord(toRelativePoints(arcPoints, this.center)),
-      },
-    });
-
-    this.editor.updateShape({
-      id: this.baseId,
-      type: "line",
-      x: this.center.x,
-      y: this.center.y,
-      props: {
-        points: toLinePointsRecord(
-          toRelativePoints([baseLeft, baseRight], this.center),
-        ),
-      },
-    });
-
-    this.tickIds.forEach((tickId, index) => {
-      const t = index / (PROTRACTOR_TICK_COUNT - 1);
-      const tickAngle = arcStart + arcSweep * t;
-      const isMajor = index % 3 === 0 || index === PROTRACTOR_TICK_COUNT - 1;
-      const tickLen = isMajor ? PROTRACTOR_MAJOR_TICK : PROTRACTOR_MINOR_TICK;
-      const outer = getPointOnCircle(this.center!, radius, tickAngle);
-      const inner = getPointOnCircle(this.center!, radius - tickLen, tickAngle);
-
-      this.editor.updateShape({
-        id: tickId,
-        type: "line",
-        x: this.center!.x,
-        y: this.center!.y,
-        props: {
-          points: toLinePointsRecord(
-            toRelativePoints([inner, outer], this.center!),
-          ),
-        },
-      });
-    });
-
-    this.labelIds.forEach((labelId, index) => {
-      const t = index / (PROTRACTOR_LABEL_COUNT - 1);
-      const labelAngle = arcStart + arcSweep * t;
-      const labelPoint = getPointOnCircle(this.center!, radius - 24, labelAngle);
-      const value = Math.round(t * 180);
-
-      this.editor.updateShape({
-        id: labelId,
-        type: "text",
-        x: labelPoint.x,
-        y: labelPoint.y,
-        rotation: 0,
-        props: {
-          richText: toRichText(`${value}°`),
-          size: "s",
-          color: "black",
-        },
-      });
-    });
-  }
-
-  override onPointerUp(_info: TLPointerEventInfo) {
-    this.finish();
-  }
-
-  override onCancel() {
-    this.finish(true);
-  }
-
-  private finish(isCanceled = false) {
-    if (!this.center) return;
-
-    const ids = this.allIds();
-    const validIds = ids.filter((id) => !!this.editor.getShape(id));
-
-    if (isCanceled) {
-      this.editor.deleteShapes(validIds);
-    } else if (validIds.length > 1) {
-      const center = this.center;
-      const groupId = createShapeId();
-
-      // Restore robust move-as-one behavior by creating a parent group and reparenting all parts.
-      this.editor.createShape({
-        id: groupId,
-        type: "group",
-        x: center.x,
-        y: center.y,
-      } as any);
-      this.editor.reparentShapes(validIds, groupId);
-      this.editor.select(groupId);
-    }
-
-    this.center = null;
-    this.arcId = null;
-    this.baseId = null;
-    this.centerId = null;
-    this.tickIds = [];
-    this.labelIds = [];
-  }
-}
-
-const CUSTOM_TOOLS = [CompassTool, RulerTool, SetSquareTool, ProtractorTool];
-
-const customToolAssetUrls: TLUiAssetUrlOverrides = {
-  icons: {
-    "tool-compass-custom": "/tldraw-icons/compass.svg",
-    "tool-protractor-custom": "/tldraw-icons/protractor.svg",
-    "tool-ruler-custom": "/tldraw-icons/ruler.svg",
-    "tool-set-square-custom": "/tldraw-icons/set-square.svg",
-  },
-};
-
-const customToolOverrides: TLUiOverrides = {
-  tools(editor, tools) {
-    tools.compass = {
-      id: "compass",
-      icon: "tool-compass-custom",
-      label: "tools.compass",
-      kbd: "c",
-      onSelect: () => editor.setCurrentTool("compass"),
-    };
-    tools.ruler = {
-      id: "ruler",
-      icon: "tool-ruler-custom",
-      label: "tools.ruler",
-      kbd: "r",
-      onSelect: () => editor.setCurrentTool("ruler"),
-    };
-    tools["set-square"] = {
-      id: "set-square",
-      icon: "tool-set-square-custom",
-      label: "tools.set-square",
-      kbd: "q",
-      onSelect: () => editor.setCurrentTool("set-square"),
-    };
-    tools.protractor = {
-      id: "protractor",
-      icon: "tool-protractor-custom",
-      label: "tools.protractor",
-      kbd: "p",
-      onSelect: () => editor.setCurrentTool("protractor"),
-    };
-    return tools;
-  },
-  translations: {
-    en: {
-      "tools.compass": "Compass",
-      "tools.ruler": "Ruler",
-      "tools.set-square": "Set square",
-      "tools.protractor": "Protractor",
-    },
-    fr: {
-      "tools.compass": "Compas",
-      "tools.ruler": "Règle",
-      "tools.set-square": "Équerre",
-      "tools.protractor": "Rapporteur",
-    },
-    ar: {
-      "tools.compass": "فرجار",
-      "tools.ruler": "مسطرة",
-      "tools.set-square": "مثلث الرسم",
-      "tools.protractor": "منقلة",
-    },
-  },
-};
 
 const CustomToolbar = () => (
   <DefaultToolbar>
@@ -1206,12 +217,8 @@ const CustomToolbar = () => (
       <ToolbarItem tool="rhombus" />
       <ToolbarItem tool="star" />
       <ToolbarItem tool="line" />
-      <ToolbarItem tool="ruler" />
-      <ToolbarItem tool="set-square" />
       <ToolbarItem tool="highlight" />
       <ToolbarItem tool="frame" />
-      <ToolbarItem tool="compass" />
-      <ToolbarItem tool="protractor" />
     </>
   </DefaultToolbar>
 );
@@ -1225,6 +232,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   participants = [],
   mediaControls,
   isRecordingMode,
+  whiteboardMode,
 }) => {
   const isMobile = useIsMobile();
   const { isRTL } = useLanguage();
@@ -1233,7 +241,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   );
   const editorRef = useRef<any>(null);
   const [currentTool, setCurrentTool] = useState<string>("select");
-  const [compassRadiusMm, setCompassRadiusMm] = useState<number>(32);
+  const polypadExportRef = useRef<(() => Promise<string>) | null>(null);
   const [permissions, setPermissions] =
     useState<WritingPermission>("professor-only");
   const [allowedStudentIdentity, setAllowedStudentIdentity] = useState<
@@ -1334,14 +342,6 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
 
   // Filter to only students for the selector
   const studentParticipants = participants.filter((p) => p.role === "student");
-
-  useEffect(() => {
-    const radiusPx = Math.round(compassRadiusMm * MM_TO_PX);
-    CompassTool.configuredRadius = Math.max(
-      TOOL_MIN_RADIUS,
-      radiusPx || TOOL_MIN_RADIUS,
-    );
-  }, [compassRadiusMm]);
 
   // Keep local tool state synced so custom controls can appear/disappear reliably.
   useEffect(() => {
@@ -1936,6 +936,105 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
   // Export current whiteboard page as a single-page PDF
   const handleExport = useCallback(async () => {
     try {
+      // --- Polypad export ---
+      if (whiteboardMode === "polypad") {
+        const exportFn = polypadExportRef.current;
+        if (!exportFn) {
+          toast.error(isRTL ? "المحرر غير جاهز" : "Éditeur non prêt");
+          return;
+        }
+        toast(
+          isRTL
+            ? "جارٍ إنشاء ملف PDF — يرجى الانتظار..."
+            : "Génération du PDF en cours — veuillez patienter…",
+        );
+
+        const svgDataUri = await exportFn();
+
+        const doc = new jsPDF({
+          unit: "mm",
+          format: "a4",
+          orientation: "landscape",
+        });
+
+        const A4_W = 297;
+        const A4_H = 210;
+        const MARGIN = 12;
+
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, A4_W, A4_H, "F");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(40, 40, 40);
+        doc.text("learnUpBoard", MARGIN, MARGIN + 7);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(140, 140, 140);
+        doc.text("Tableau Blanc — LearnUP", A4_W - MARGIN, MARGIN + 7, {
+          align: "right",
+        });
+
+        // Render SVG in a canvas to embed in PDF
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = svgDataUri;
+        });
+        const c = document.createElement("canvas");
+        c.width = Math.min(img.naturalWidth, 2000);
+        c.height = Math.min(img.naturalHeight, 2000);
+        const ctx = c.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const dataUri = c.toDataURL("image/jpeg", 0.92);
+
+        const pxToMm = 25.4 / 96;
+        const wMm = c.width * pxToMm;
+        const hMm = c.height * pxToMm;
+        const contentW = A4_W - MARGIN * 2;
+        const contentH = A4_H - MARGIN * 2 - 12 - 8;
+        const scaleFactor = Math.min(contentW / wMm, contentH / hMm, 1);
+        const finalW = wMm * scaleFactor;
+        const finalH = hMm * scaleFactor;
+        const imgLeft = MARGIN + (contentW - finalW) / 2;
+        const imgTop = MARGIN + 12 + (contentH - finalH) / 2;
+
+        doc.addImage(dataUri, "JPEG", imgLeft, imgTop, finalW, finalH);
+
+        const footerY = A4_H - MARGIN + 2;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(160, 160, 160);
+        doc.text("learnUpBoard", MARGIN, footerY);
+        doc.text(
+          new Date().toLocaleDateString("fr-FR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          A4_W - MARGIN,
+          footerY,
+          { align: "right" },
+        );
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.2);
+        doc.line(MARGIN, footerY - 4, A4_W - MARGIN, footerY - 4);
+
+        doc.save(
+          `tableau-blanc-learnupboard-${new Date().toISOString().slice(0, 10)}.pdf`,
+        );
+        toast.success(
+          isRTL ? "تم تصدير الصفحة في PDF بنجاح" : "Export PDF réussi",
+        );
+        return;
+      }
+
+      // --- tldraw export ---
       const editor = editorRef.current;
       if (!editor) {
         toast.error(isRTL ? "المحرر غير جاهز" : "Éditeur non prêt");
@@ -2134,7 +1233,7 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
     } catch {
       toast.error(isRTL ? "خطأ أثناء التصدير" : "Erreur lors de l'export");
     }
-  }, [isRTL]);
+  }, [isRTL, whiteboardMode]);
 
   const canWrite =
     isProfessor ||
@@ -2155,7 +1254,11 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-semibold text-gray-800 text-sm sm:text-base truncate">
-                {isRTL ? "اللوحة البيضاء" : "Tableau Blanc"}
+                {whiteboardMode === "polypad"
+                  ? "learnUpBoard"
+                  : isRTL
+                    ? "اللوحة البيضاء"
+                    : "Tableau Blanc"}
               </span>
             </div>
             <Badge
@@ -2358,83 +1461,66 @@ export const WhiteboardPanel: React.FC<WhiteboardPanelProps> = ({
         </AnimatePresence>
       )}
 
-      {/* Tldraw canvas */}
+      {/* Canvas area */}
       <div
         className="flex-1 min-h-0 relative"
         style={{ touchAction: "none" }}
         onDoubleClick={handleCanvasDoubleClick}
       >
-        {!isRecordingMode && currentTool === "compass" && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-white/95 backdrop-blur border border-gray-200 rounded-xl px-3 py-2 shadow-lg flex items-center gap-2">
-            <span className="text-xs text-gray-600 whitespace-nowrap">
-              {isRTL ? "نصف القطر" : "Rayon"}
-            </span>
-            <input
-              type="number"
-              min={5}
-              max={150}
-              step={1}
-              value={compassRadiusMm}
-              onChange={(e) => {
-                const next = Number(e.target.value);
-                if (Number.isNaN(next)) return;
-                setCompassRadiusMm(Math.max(5, Math.min(150, next)));
-              }}
-              className="w-20 h-8 text-sm text-black rounded-md border border-gray-300 px-2 bg-white"
-            />
-            <span className="text-xs text-gray-500">mm</span>
-          </div>
-        )}
-
-        <Tldraw
-          autoFocus
-          store={store}
-          tools={CUSTOM_TOOLS}
-          assetUrls={customToolAssetUrls}
-          overrides={customToolOverrides}
-          components={{ Toolbar: CustomToolbar }}
-          hideUi={isRecordingMode}  // show controls for students in read-only mode
-          inferDarkMode={false}
-          onMount={(editor) => {
-            editorRef.current = editor;
-            // isReadonly blocks drawing but still allows pan/zoom for all users
-            editor.updateInstanceState({ isReadonly: isReadOnly });
-            // Keep handwriting visible/clear by default on pen tablets.
-            try {
-              editor.setStyleForNextShapes(DefaultSizeStyle, "m");
-              editor.setStyleForNextShapes(DefaultDashStyle, "draw");
-              editor.setStyleForNextShapes(DefaultColorStyle, "black");
-            } catch (e) {
-              /* ignore */
-            }
-            // Disable debug rendering and keep default instance behavior stable.
-            editor.updateInstanceState({ isDebugMode: false });
-            // Tablet profile: prefer clean medium strokes for handwriting clarity.
-            try {
-              editor.user.updateUserPreferences?.({ colorScheme: "light" });
-            } catch (e) {
-              /* ignore */
-            }
-            // Start at 50% zoom — users can freely zoom in/out
-            try {
-              editor.setCamera({ x: 0, y: 0, z: 0.5 });
-            } catch (e) {
-              /* ignore */
-            }
-            // Default to draw tool when user can write; otherwise keep select for pan/zoom.
-            try {
-              const mountTool = isReadOnly ? "select" : "draw";
-              editor.setCurrentTool?.(mountTool);
-              setCurrentTool(mountTool);
-            } catch (e) {
-              /* ignore */
-            }
-            setEditorReady(true);
+        {/* Tldraw — always mounted to preserve state */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            visibility: whiteboardMode === "tldraw" ? "visible" : "hidden",
+            pointerEvents: whiteboardMode === "tldraw" ? "auto" : "none",
           }}
-        />
+        >
+          <Tldraw
+            autoFocus={whiteboardMode === "tldraw"}
+            store={store}
+            components={{ Toolbar: CustomToolbar }}
+            hideUi={isRecordingMode}
+            inferDarkMode={false}
+            onMount={(editor) => {
+              editorRef.current = editor;
+              editor.updateInstanceState({ isReadonly: isReadOnly });
+              try {
+                editor.setStyleForNextShapes(DefaultSizeStyle, "m");
+                editor.setStyleForNextShapes(DefaultDashStyle, "draw");
+                editor.setStyleForNextShapes(DefaultColorStyle, "black");
+              } catch {}
+              editor.updateInstanceState({ isDebugMode: false });
+              try {
+                editor.user.updateUserPreferences?.({ colorScheme: "light" });
+              } catch {}
+              try {
+                editor.setCamera({ x: 0, y: 0, z: 0.5 });
+              } catch {}
+              try {
+                const mountTool = isReadOnly ? "select" : "draw";
+                editor.setCurrentTool?.(mountTool);
+                setCurrentTool(mountTool);
+              } catch {}
+              setEditorReady(true);
+            }}
+          />
+        </div>
 
-        {/* No blocking overlay — tldraw's isReadonly prevents drawing while
-            allowing students to freely pan and zoom the canvas. */}
+        {/* Polypad — always mounted to preserve state */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            visibility: whiteboardMode === "polypad" ? "visible" : "hidden",
+            pointerEvents: whiteboardMode === "polypad" ? "auto" : "none",
+          }}
+        >
+          <PolypadCanvas
+            hidden={whiteboardMode !== "polypad"}
+            onExportReady={(fn) => { polypadExportRef.current = fn; }}
+          />
+        </div>
       </div>
 
       {/* Transparent media controls overlay on double-click */}

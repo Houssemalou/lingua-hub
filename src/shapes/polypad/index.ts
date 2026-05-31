@@ -1,0 +1,1 @@
+export { PolypadCanvas } from "./PolypadCanvas";

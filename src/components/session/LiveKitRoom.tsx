@@ -11,6 +11,7 @@ import { ChatPanel, type ChatMessage } from './ChatPanel';
 import { ParticipantList } from './ParticipantList';
 import { ScreenShareLayout } from './ScreenShareLayout';
 import { WhiteboardPanel } from './WhiteboardPanel';
+import { WhiteboardChoiceDialog, type WhiteboardMode } from './WhiteboardChoiceDialog';
 import { PhoneOff, MessageSquare, Users, X, ChevronDown, Pencil, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +83,9 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [whiteboardMode, setWhiteboardMode] = useState<WhiteboardMode | null>(null);
+  const [showWhiteboardChoice, setShowWhiteboardChoice] = useState(false);
+  const [whiteboardChoiceMade, setWhiteboardChoiceMade] = useState(false);
   const [syncWhiteboard, setSyncWhiteboard] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -284,20 +288,32 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               variant="ghost"
               size={isMobile ? "sm" : "sm"}
               onClick={() => {
-                setShowWhiteboard(s => {
-                  const next = !s;
+                if (showWhiteboard) {
+                  // Close whiteboard
+                  setShowWhiteboard(false);
                   if (syncWhiteboard && isProfessor) {
                     try {
                       room.localParticipant.publishData(
-                        new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: next, scope: 'global' })),
+                        new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: false, scope: 'global' })),
                         { reliable: true }
                       );
-                    } catch {
-                      // ignore whiteboard toggle errors
-                    }
+                    } catch {}
                   }
-                  return next;
-                });
+                } else if (whiteboardChoiceMade && whiteboardMode) {
+                  // Already chose — open directly
+                  setShowWhiteboard(true);
+                  if (syncWhiteboard && isProfessor) {
+                    try {
+                      room.localParticipant.publishData(
+                        new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: true, scope: 'global' })),
+                        { reliable: true }
+                      );
+                    } catch {}
+                  }
+                } else {
+                  // First time — show choice dialog
+                  setShowWhiteboardChoice(true);
+                }
               }}
               className={cn(
                 "rounded-full font-semibold transition-all border-0 relative",
@@ -405,7 +421,8 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
   // Screen share layout
   if (isScreenSharing && screenSharingParticipant) {
     return (
-      <div className="flex flex-col h-full bg-gray-900">
+      <>
+        <div className="flex flex-col h-full bg-gray-900">
         <div className="flex-1 relative flex min-h-0">
           <div className="flex-1 min-h-0">
             <ScreenShareLayout
@@ -443,6 +460,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
                 onClose={() => setShowWhiteboard(false)}
                 roomId={roomId}
                 isRecordingMode={isRecordingMode}
+                whiteboardMode={whiteboardMode ?? "tldraw"}
                 participants={formattedParticipants.map(p => ({
                   identity: p.formatted.id,
                   name: p.formatted.name,
@@ -467,7 +485,26 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
           </>
         )}
       </div>
-    );
+      <WhiteboardChoiceDialog
+        open={showWhiteboardChoice}
+        onSelect={(mode) => {
+          setWhiteboardMode(mode);
+          setWhiteboardChoiceMade(true);
+          setShowWhiteboardChoice(false);
+          setShowWhiteboard(true);
+          if (syncWhiteboard && isProfessor) {
+            try {
+              room.localParticipant.publishData(
+                new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: true, scope: 'global' })),
+                { reliable: true }
+              );
+            } catch {}
+          }
+        }}
+        onCancel={() => setShowWhiteboardChoice(false)}
+      />
+    </>
+  );
   }
 
   // Normal Gallery Layout
@@ -499,6 +536,7 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
               onClose={() => setShowWhiteboard(false)}
               roomId={roomId}
               isRecordingMode={isRecordingMode}
+              whiteboardMode={whiteboardMode ?? "tldraw"}
               participants={formattedParticipants.map(p => ({
                 identity: p.formatted.id,
                 name: p.formatted.name,
@@ -555,6 +593,24 @@ const RoomContent: React.FC<{ roomId: string; onLeaveRoom: () => void; isRecordi
           </BottomSheet>
         </>
       )}
+      <WhiteboardChoiceDialog
+        open={showWhiteboardChoice}
+        onSelect={(mode) => {
+          setWhiteboardMode(mode);
+          setWhiteboardChoiceMade(true);
+          setShowWhiteboardChoice(false);
+          setShowWhiteboard(true);
+          if (syncWhiteboard && isProfessor) {
+            try {
+              room.localParticipant.publishData(
+                new TextEncoder().encode(JSON.stringify({ type: 'whiteboard_toggle', visible: true, scope: 'global' })),
+                { reliable: true }
+              );
+            } catch {}
+          }
+        }}
+        onCancel={() => setShowWhiteboardChoice(false)}
+      />
     </div>
   );
 };
